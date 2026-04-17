@@ -1,0 +1,1 @@
+ALTER TABLE public.agendas ADD COLUMN item_cronograma text NULL DEFAULT NULL;

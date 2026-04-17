@@ -1,0 +1,1 @@
+ALTER TABLE public.projetos ADD COLUMN codigo_cliente text NOT NULL DEFAULT '';

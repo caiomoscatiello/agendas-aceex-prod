@@ -1,0 +1,1 @@
+ALTER TABLE public.agendas ADD COLUMN flag_integracao text NOT NULL DEFAULT 'APP';

@@ -1,0 +1,1 @@
+ALTER TABLE public.projetos ADD COLUMN status text NOT NULL DEFAULT 'Em planejamento';

@@ -1,0 +1,1 @@
+ALTER TABLE cronograma_itens ADD COLUMN IF NOT EXISTS monday_item_id text NULL;

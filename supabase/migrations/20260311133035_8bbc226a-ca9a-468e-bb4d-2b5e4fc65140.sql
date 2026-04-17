@@ -1,0 +1,1 @@
+ALTER TABLE public.requisicoes_agenda ADD COLUMN atividade text;

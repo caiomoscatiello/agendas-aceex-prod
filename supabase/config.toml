@@ -1,0 +1,52 @@
+project_id = "mgkpvctvkkfvvornexuq"
+
+[functions.create-user]
+verify_jwt = false
+
+[functions.setup-admin]
+verify_jwt = false
+
+[functions.manage-user]
+verify_jwt = false
+
+[functions.send-os-email]
+verify_jwt = false
+
+[functions.send-email]
+verify_jwt = false
+
+[functions.check-overdue-agendas]
+verify_jwt = false
+
+[functions.protheus-users]
+verify_jwt = false
+
+[functions.protheus-projects]
+verify_jwt = false
+
+[functions.protheus-agenda-sync]
+verify_jwt = false
+
+[functions.protheus-agenda-receive]
+verify_jwt = false
+
+[functions.protheus-receber-agenda]
+verify_jwt = false
+
+[functions.monday-sync-project]
+verify_jwt = false
+
+[functions.monday-test-connection]
+verify_jwt = false
+
+[functions.monday-reset-board]
+verify_jwt = false
+
+[functions.monday-webhook-receiver]
+verify_jwt = false
+
+[functions.sharepoint-upload]
+verify_jwt = false
+
+[functions.check-alertas]
+verify_jwt = false

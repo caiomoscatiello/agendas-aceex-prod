@@ -1,0 +1,1 @@
+ALTER TABLE public.integration_logs ADD COLUMN response jsonb DEFAULT NULL;

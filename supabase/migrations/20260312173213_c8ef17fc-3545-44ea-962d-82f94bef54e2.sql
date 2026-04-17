@@ -1,0 +1,1 @@
+ALTER TABLE public.protheus_integracoes ADD COLUMN endpoint text NOT NULL DEFAULT '';

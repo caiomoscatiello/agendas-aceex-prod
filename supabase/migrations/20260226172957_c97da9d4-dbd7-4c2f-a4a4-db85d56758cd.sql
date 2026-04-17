@@ -1,0 +1,1 @@
+ALTER TABLE public.projetos ADD COLUMN deslocamento smallint NOT NULL DEFAULT 0 CHECK (deslocamento >= 0 AND deslocamento <= 9);

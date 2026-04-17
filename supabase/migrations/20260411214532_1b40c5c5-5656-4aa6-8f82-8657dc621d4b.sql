@@ -1,0 +1,1 @@
+ALTER TABLE public.agendas ADD COLUMN atividade_descricao text;
