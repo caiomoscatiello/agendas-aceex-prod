@@ -342,6 +342,23 @@ function CsvTab() {
             console.error("Erro ao sincronizar com Protheus:", err);
           }
         }
+        // Sync Monday — fire-and-forget apenas para agendas com item_cronograma
+        const mondayIds = (inserted || [])
+          .filter((a) => {
+            const row = validRows.find((r) => r.user_id === a.user_id && convertDateToISO(r.data) === a.data && r.cliente === a.cliente);
+            return row?.item_cronograma;
+          })
+          .map((a) => a.id)
+          .filter(Boolean);
+        if (mondayIds.length > 0) {
+          Promise.all(
+            mondayIds.map((id) =>
+              supabase.functions.invoke("monday-agenda-sync", {
+                body: { action: "create", agenda_id: id },
+              }).catch(() => {})
+            )
+          );
+        }
       }
 
       setRows([]);
@@ -659,8 +676,7 @@ function ManualTab() {
       const { data } = await supabase
         .from("cronograma_itens")
         .select("id, codigo, descricao, atividade_id")
-        .eq("atividade_id", atv.id)
-        .eq("user_id", consultorUserId);
+        .eq("atividade_id", atv.id);
       setCronogramaItens(data || []);
       setSelectedCronograma("");
     };
@@ -750,10 +766,17 @@ function ManualTab() {
         console.error("Erro ao sincronizar com Protheus:", err);
       }
     }
-
     resetForm();
     setLoading(false);
     setConflictDialogOpen(false);
+
+    // Sync Monday — fire-and-forget apenas se agenda tem item de cronograma
+    const agendaId = (inserted || [])[0]?.id;
+    if (agendaId && selectedCronograma) {
+      supabase.functions.invoke("monday-agenda-sync", {
+        body: { action: "create", agenda_id: agendaId },
+      }).catch(() => {});
+    }
   };
 
   const handleVerificarEIncluir = async () => {
