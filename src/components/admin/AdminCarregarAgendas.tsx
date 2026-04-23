@@ -173,8 +173,10 @@ function CsvTab() {
       });
 
       const atividadeIdMap = new Map<string, string>();
+      const atividadeDescricaoMap = new Map<string, string>();
       atividadesRes.data?.forEach((a) => {
         atividadeIdMap.set(`${a.projeto_id}|${a.codigo}`, a.id);
+        atividadeDescricaoMap.set(`${a.projeto_id}|${a.codigo}`, a.descricao);
       });
 
       const cronogramaMap = new Map<string, typeof cronogramaRes.data extends (infer T)[] | null ? T : never>();
@@ -289,16 +291,21 @@ function CsvTab() {
         return;
       }
 
-      const insertData = validRows.map((r) => ({
-        user_id: r.user_id!,
-        usuario: r.usuario,
-        email: r.email,
-        cliente: r.cliente,
-        data: convertDateToISO(r.data),
-        atividade: r.atividade,
-        item_cronograma: r.item_cronograma || null,
-        flag_integracao: "LOVABLE",
-      }));
+      const insertData = validRows.map((r) => {
+        const projetoId = Array.from(projetosRes.data || []).find((p) => p.nome_cliente === r.cliente)?.id;
+        const atividadeDescricao = projetoId ? atividadeDescricaoMap.get(`${projetoId}|${r.atividade}`) || null : null;
+        return {
+          user_id: r.user_id!,
+          usuario: r.usuario,
+          email: r.email,
+          cliente: r.cliente,
+          data: convertDateToISO(r.data),
+          atividade: r.atividade,
+          atividade_descricao: atividadeDescricao,
+          item_cronograma: r.item_cronograma || null,
+          flag_integracao: "LOVABLE",
+        };
+      });
 
       const { data: inserted, error } = await supabase.from("agendas").insert(insertData).select("id, data, cliente, user_id, atividade, flag_integracao");
       if (error) {
@@ -703,6 +710,7 @@ function ManualTab() {
     setLoading(true);
     const dataISO = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
 
+    const atividadeObj = atividades.find((a) => a.codigo === selectedAtividade);
     const insertPayload = {
       user_id: consultorUserId!,
       usuario: consultorNome,
@@ -710,6 +718,7 @@ function ManualTab() {
       cliente: clienteNome,
       data: dataISO,
       atividade: selectedAtividade,
+      atividade_descricao: atividadeObj?.descricao || null,
       item_cronograma: selectedCronograma || null,
       flag_integracao: "LOVABLE" as const,
     };
