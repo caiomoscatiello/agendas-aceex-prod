@@ -157,7 +157,7 @@ function CsvTab() {
         supabase.from("profiles").select("user_id, email").in("email", emails),
         supabase.from("projetos").select("id, nome_cliente"),
         supabase.from("projeto_atividades").select("id, codigo, projeto_id, descricao, horas"),
-        supabase.from("cronograma_itens").select("id, atividade_id, codigo, descricao, user_id, horas_reservadas"),
+        supabase.from("cronograma_itens").select("id, atividade_id, codigo, user_id, horas_reservadas"),
         supabase.from("agendas").select("user_id, data, cliente, atividade"),
       ]);
 
@@ -173,17 +173,13 @@ function CsvTab() {
       });
 
       const atividadeIdMap = new Map<string, string>();
-      const atividadeDescricaoMap = new Map<string, string>();
       atividadesRes.data?.forEach((a) => {
         atividadeIdMap.set(`${a.projeto_id}|${a.codigo}`, a.id);
-        atividadeDescricaoMap.set(`${a.projeto_id}|${a.codigo}`, a.descricao);
       });
 
       const cronogramaMap = new Map<string, typeof cronogramaRes.data extends (infer T)[] | null ? T : never>();
-      const cronogramaDescricaoMap = new Map<string, string>();
       cronogramaRes.data?.forEach((c) => {
         cronogramaMap.set(`${c.atividade_id}|${c.codigo}|${c.user_id}`, c);
-        cronogramaDescricaoMap.set(`${c.atividade_id}|${c.codigo}`, (c as any).descricao || "");
       });
 
       const existingAgendaKeys = new Set<string>();
@@ -293,26 +289,16 @@ function CsvTab() {
         return;
       }
 
-      const insertData = validRows.map((r) => {
-        const projetoId = Array.from(projetosRes.data || []).find((p) => p.nome_cliente === r.cliente)?.id;
-        const atividadeDescricao = projetoId ? atividadeDescricaoMap.get(`${projetoId}|${r.atividade}`) || null : null;
-        const atividadeId = projetoId ? atividadeIdMap.get(`${projetoId}|${r.atividade}`) : null;
-        const ciDescricao = atividadeId && r.item_cronograma ? cronogramaDescricaoMap.get(`${atividadeId}|${r.item_cronograma}`) || null : null;
-        const itemCronogramaLabel = r.item_cronograma
-          ? ciDescricao ? `${r.item_cronograma} - ${ciDescricao}` : r.item_cronograma
-          : null;
-        return {
-          user_id: r.user_id!,
-          usuario: r.usuario,
-          email: r.email,
-          cliente: r.cliente,
-          data: convertDateToISO(r.data),
-          atividade: r.atividade,
-          atividade_descricao: atividadeDescricao,
-          item_cronograma: itemCronogramaLabel,
-          flag_integracao: "LOVABLE",
-        };
-      });
+      const insertData = validRows.map((r) => ({
+        user_id: r.user_id!,
+        usuario: r.usuario,
+        email: r.email,
+        cliente: r.cliente,
+        data: convertDateToISO(r.data),
+        atividade: r.atividade,
+        item_cronograma: r.item_cronograma || null,
+        flag_integracao: "LOVABLE",
+      }));
 
       const { data: inserted, error } = await supabase.from("agendas").insert(insertData).select("id, data, cliente, user_id, atividade, flag_integracao");
       if (error) {
@@ -355,17 +341,6 @@ function CsvTab() {
           } catch (err: any) {
             console.error("Erro ao sincronizar com Protheus:", err);
           }
-        }
-        // Sync Monday — fire-and-forget para cada agenda inserida
-        const mondayIds = (inserted || []).map((a) => a.id).filter(Boolean);
-        if (mondayIds.length > 0) {
-          Promise.all(
-            mondayIds.map((id) =>
-              supabase.functions.invoke("monday-agenda-sync", {
-                body: { action: "create", agenda_id: id },
-              }).catch(() => {})
-            )
-          );
         }
       }
 
@@ -684,7 +659,8 @@ function ManualTab() {
       const { data } = await supabase
         .from("cronograma_itens")
         .select("id, codigo, descricao, atividade_id")
-        .eq("atividade_id", atv.id);
+        .eq("atividade_id", atv.id)
+        .eq("user_id", consultorUserId);
       setCronogramaItens(data || []);
       setSelectedCronograma("");
     };
@@ -717,11 +693,6 @@ function ManualTab() {
     setLoading(true);
     const dataISO = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
 
-    const atividadeObj = atividades.find((a) => a.codigo === selectedAtividade);
-    const cronogramaObj = cronogramaItens.find((c) => c.codigo === selectedCronograma);
-    const itemCronogramaLabel = cronogramaObj
-      ? `${cronogramaObj.codigo} - ${cronogramaObj.descricao}`
-      : selectedCronograma || null;
     const insertPayload = {
       user_id: consultorUserId!,
       usuario: consultorNome,
@@ -729,8 +700,7 @@ function ManualTab() {
       cliente: clienteNome,
       data: dataISO,
       atividade: selectedAtividade,
-      atividade_descricao: atividadeObj?.descricao || null,
-      item_cronograma: itemCronogramaLabel,
+      item_cronograma: selectedCronograma || null,
       flag_integracao: "LOVABLE" as const,
     };
 
@@ -780,17 +750,10 @@ function ManualTab() {
         console.error("Erro ao sincronizar com Protheus:", err);
       }
     }
+
     resetForm();
     setLoading(false);
     setConflictDialogOpen(false);
-
-    // Sync Monday — fire-and-forget
-    const agendaId = (inserted || [])[0]?.id;
-    if (agendaId) {
-      supabase.functions.invoke("monday-agenda-sync", {
-        body: { action: "create", agenda_id: agendaId },
-      }).catch(() => {});
-    }
   };
 
   const handleVerificarEIncluir = async () => {
