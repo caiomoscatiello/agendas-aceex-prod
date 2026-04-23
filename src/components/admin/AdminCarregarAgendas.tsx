@@ -157,7 +157,7 @@ function CsvTab() {
         supabase.from("profiles").select("user_id, email").in("email", emails),
         supabase.from("projetos").select("id, nome_cliente"),
         supabase.from("projeto_atividades").select("id, codigo, projeto_id, descricao, horas"),
-        supabase.from("cronograma_itens").select("id, atividade_id, codigo, user_id, horas_reservadas"),
+        supabase.from("cronograma_itens").select("id, atividade_id, codigo, descricao, user_id, horas_reservadas"),
         supabase.from("agendas").select("user_id, data, cliente, atividade"),
       ]);
 
@@ -173,13 +173,17 @@ function CsvTab() {
       });
 
       const atividadeIdMap = new Map<string, string>();
+      const atividadeDescricaoMap = new Map<string, string>();
       atividadesRes.data?.forEach((a) => {
         atividadeIdMap.set(`${a.projeto_id}|${a.codigo}`, a.id);
+        atividadeDescricaoMap.set(`${a.projeto_id}|${a.codigo}`, a.descricao);
       });
 
       const cronogramaMap = new Map<string, typeof cronogramaRes.data extends (infer T)[] | null ? T : never>();
+      const cronogramaDescricaoMap = new Map<string, string>();
       cronogramaRes.data?.forEach((c) => {
         cronogramaMap.set(`${c.atividade_id}|${c.codigo}|${c.user_id}`, c);
+        cronogramaDescricaoMap.set(`${c.atividade_id}|${c.codigo}`, (c as any).descricao || "");
       });
 
       const existingAgendaKeys = new Set<string>();
@@ -289,16 +293,26 @@ function CsvTab() {
         return;
       }
 
-      const insertData = validRows.map((r) => ({
-        user_id: r.user_id!,
-        usuario: r.usuario,
-        email: r.email,
-        cliente: r.cliente,
-        data: convertDateToISO(r.data),
-        atividade: r.atividade,
-        item_cronograma: r.item_cronograma || null,
-        flag_integracao: "LOVABLE",
-      }));
+      const insertData = validRows.map((r) => {
+        const projetoId = Array.from(projetosRes.data || []).find((p) => p.nome_cliente === r.cliente)?.id;
+        const atividadeDescricao = projetoId ? atividadeDescricaoMap.get(`${projetoId}|${r.atividade}`) || null : null;
+        const atividadeId = projetoId ? atividadeIdMap.get(`${projetoId}|${r.atividade}`) : null;
+        const ciDescricao = atividadeId && r.item_cronograma ? cronogramaDescricaoMap.get(`${atividadeId}|${r.item_cronograma}`) || null : null;
+        const itemCronogramaLabel = r.item_cronograma
+          ? ciDescricao ? `${r.item_cronograma} - ${ciDescricao}` : r.item_cronograma
+          : null;
+        return {
+          user_id: r.user_id!,
+          usuario: r.usuario,
+          email: r.email,
+          cliente: r.cliente,
+          data: convertDateToISO(r.data),
+          atividade: r.atividade,
+          atividade_descricao: atividadeDescricao,
+          item_cronograma: itemCronogramaLabel,
+          flag_integracao: "LOVABLE",
+        };
+      });
 
       const { data: inserted, error } = await supabase.from("agendas").insert(insertData).select("id, data, cliente, user_id, atividade, flag_integracao");
       if (error) {
@@ -709,6 +723,11 @@ function ManualTab() {
     setLoading(true);
     const dataISO = selectedDate ? format(selectedDate, "yyyy-MM-dd") : "";
 
+    const atividadeObj = atividades.find((a) => a.codigo === selectedAtividade);
+    const cronogramaObj = cronogramaItens.find((c) => c.codigo === selectedCronograma);
+    const itemCronogramaLabel = cronogramaObj
+      ? `${cronogramaObj.codigo} - ${cronogramaObj.descricao}`
+      : (selectedCronograma && selectedCronograma !== "__none__" ? selectedCronograma : null);
     const insertPayload = {
       user_id: consultorUserId!,
       usuario: consultorNome,
@@ -716,7 +735,8 @@ function ManualTab() {
       cliente: clienteNome,
       data: dataISO,
       atividade: selectedAtividade,
-      item_cronograma: selectedCronograma || null,
+      atividade_descricao: atividadeObj?.descricao || null,
+      item_cronograma: itemCronogramaLabel,
       flag_integracao: "LOVABLE" as const,
     };
 
@@ -772,7 +792,7 @@ function ManualTab() {
 
     // Sync Monday — fire-and-forget apenas se agenda tem item de cronograma
     const agendaId = (inserted || [])[0]?.id;
-    if (agendaId && selectedCronograma) {
+    if (agendaId && itemCronogramaLabel) {
       supabase.functions.invoke("monday-agenda-sync", {
         body: { action: "create", agenda_id: agendaId },
       }).catch(() => {});
@@ -908,7 +928,7 @@ function ManualTab() {
           <Label className="text-xs">Item Cronograma <span className="text-muted-foreground font-normal">(opcional)</span></Label>
           <Select
             value={selectedCronograma}
-            onValueChange={setSelectedCronograma}
+            onValueChange={(v) => setSelectedCronograma(v === "__none__" ? "" : v)}
             disabled={!selectedAtividade || !consultorUserId}
           >
             <SelectTrigger>
