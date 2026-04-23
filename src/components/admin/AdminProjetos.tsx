@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings } from "lucide-react";
+import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -113,9 +113,10 @@ type IntegracaoConfig = {
   key: string;
   nome: string;
   logo: React.ReactNode;
-  status: "ativo" | "criado" | "nao_criado" | "desenvolvimento" | "detalhamento";
+  status: "ativo" | "criado" | "nao_criado" | "disponivel" | "desenvolvimento" | "detalhamento";
   statusLabel: string;
   sub?: string;
+  help?: string;
   acoes?: React.ReactNode;
   zonaRisco?: React.ReactNode;
 };
@@ -1667,11 +1668,14 @@ export default function AdminProjetos() {
                       <text x="13" y="16.5" textAnchor="middle" fontSize="7" fontWeight="700" fontFamily="sans-serif" fill="#036C70">S</text>
                     </svg>
                   ),
-                  status: detailProjeto?.sharepoint_pasta_url ? "ativo" : "detalhamento",
-                  statusLabel: detailProjeto?.sharepoint_pasta_url ? "✓ Ativo" : "Em detalhamento",
+                  status: detailProjeto?.sharepoint_pasta_url ? "ativo" : "disponivel",
+                  statusLabel: detailProjeto?.sharepoint_pasta_url ? "✓ Ativo" : "Disponível",
                   sub: detailProjeto?.sharepoint_pasta_url
                     ? `Documentos/${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
-                    : "Entrega de documentos — em breve",
+                    : "Nenhum documento enviado ainda para este projeto.",
+                  help: detailProjeto?.sharepoint_pasta_url
+                    ? undefined
+                    : "A pasta deste projeto no SharePoint é criada automaticamente no primeiro envio de documento. O status passa para Ativo assim que isso ocorrer.",
                   acoes: detailProjeto?.sharepoint_pasta_url ? (
                     <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => window.open(detailProjeto.sharepoint_pasta_url!, "_blank")}>
                       <ExternalLink className="h-3 w-3" /> Abrir pasta
@@ -1698,11 +1702,14 @@ export default function AdminProjetos() {
                       <span className="text-[10px] font-bold text-purple-400">Au</span>
                     </div>
                   ),
-                  status: detailProjeto?.autentique_folder_id ? "ativo" : "desenvolvimento",
-                  statusLabel: detailProjeto?.autentique_folder_id ? "✓ Ativo" : "Em desenvolvimento",
+                  status: detailProjeto?.autentique_folder_id ? "ativo" : "disponivel",
+                  statusLabel: detailProjeto?.autentique_folder_id ? "✓ Ativo" : "Disponível",
                   sub: detailProjeto?.autentique_folder_id
                     ? `${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
-                    : "Assinaturas eletrônicas — em breve",
+                    : "Nenhum envelope de assinatura criado ainda para este projeto.",
+                  help: detailProjeto?.autentique_folder_id
+                    ? undefined
+                    : "A pasta e o envelope no Autentique são criados automaticamente quando o coordenador aciona o envio para assinatura em um item do cronograma. O status passa para Ativo assim que isso ocorrer.",
                   acoes: detailProjeto?.autentique_folder_url ? (
                     <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => window.open(detailProjeto.autentique_folder_url!, "_blank")}>
                       <ExternalLink className="h-3 w-3" /> Abrir pasta
@@ -1715,6 +1722,7 @@ export default function AdminProjetos() {
                 ativo: "bg-emerald-50 text-emerald-800 border border-emerald-300",
                 criado: "bg-emerald-50 text-emerald-800 border border-emerald-300",
                 nao_criado: "bg-muted text-muted-foreground border",
+                disponivel: "bg-slate-50 text-slate-600 border border-slate-200",
                 desenvolvimento: "bg-yellow-50 text-yellow-800 border border-yellow-300",
                 detalhamento: "bg-blue-50 text-blue-800 border border-blue-200",
               };
@@ -1732,6 +1740,12 @@ export default function AdminProjetos() {
                           <Badge className={cn("text-[10px] font-normal", badgeClasses[integ.status])}>{integ.statusLabel}</Badge>
                         </div>
                         {integ.sub && <p className="text-xs text-muted-foreground mb-2">{integ.sub}</p>}
+                        {integ.help && (
+                          <div className="flex items-start gap-1.5 mt-1 mb-2 rounded-md bg-muted/50 px-2 py-1.5">
+                            <HelpCircle className="h-3 w-3 text-muted-foreground shrink-0 mt-0.5" />
+                            <p className="text-[11px] text-muted-foreground leading-snug">{integ.help}</p>
+                          </div>
+                        )}
                         {integ.acoes && <div className="flex items-center gap-2">{integ.acoes}</div>}
                         {integ.zonaRisco}
                       </div>
