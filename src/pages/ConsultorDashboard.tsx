@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, Loader2, XCircle, PlusCircle, ChevronLeft, ChevronRight, Ban, Receipt, Camera, Settings, ChevronsUpDown, Check, ClipboardEdit, Plus, Trash2, CircleDollarSign, FileDown, Clock, LayoutDashboard, FileText, CalendarDays, ListTodo, BarChart2, FileStack } from "lucide-react";
+import { LogOut, Loader2, XCircle, PlusCircle, ChevronLeft, ChevronRight, Ban, Receipt, Camera, Settings, ChevronsUpDown, Check, ClipboardEdit, Plus, Trash2, CircleDollarSign, FileDown, Clock, LayoutDashboard, FileText, CalendarDays, ListTodo, BarChart2, FileStack, ExternalLink, Printer } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -101,11 +101,14 @@ export default function ConsultorDashboard() {
   const [reqDescricaoAtividade, setReqDescricaoAtividade] = useState("");
   const [reqJustificativa, setReqJustificativa] = useState("");
 
-  const [offProjetos, setOffProjetos] = useState<{ id: string; nome_cliente: string; coordenador_id: string | null; deslocamento?: number; email_contato?: string | null; status?: string }[]>([]);
+  const [offProjetos, setOffProjetos] = useState<{ id: string; nome_cliente: string; coordenador_id: string | null; deslocamento?: number; email_contato?: string | null; status?: string; monday_board_url?: string | null; sharepoint_pasta_url?: string | null }[]>([]);
   
   // Summary dialog state
   const [resumoOpen, setResumoOpen] = useState(false);
   const [resumoLoading, setResumoLoading] = useState(false);
+  const [osResumoOpen, setOsResumoOpen] = useState(false);
+  const [osResumoData, setOsResumoData] = useState<{ atividades: any[]; modalidade: string; descricao: string; deslocamento: number; totalHoras: number; projeto: any } | null>(null);
+  const [osEnviando, setOsEnviando] = useState(false);
   const [projetoDeslocamento, setProjetoDeslocamento] = useState(0);
   const [requisicoesPendentes, setRequisicoesPendentes] = useState<RequisicaoPendente[]>([]);
 
@@ -128,7 +131,7 @@ export default function ConsultorDashboard() {
   const [tsSemanas, setTsSemanas] = useState<{ label: string; agendadas: number; apontadas: number }[]>([]);
   const [tsProjetos, setTsProjetos] = useState<{ cliente: string; horas: number }[]>([]);
 
-  // Dados da visão geral
+  // Dados da vis??o geral
   const [vgAgendasConfirmadas, setVgAgendasConfirmadas] = useState(0);
   const [vgAgendasApontadas, setVgAgendasApontadas] = useState(0);
   const [vgDiasLivres, setVgDiasLivres] = useState(0);
@@ -155,7 +158,7 @@ export default function ConsultorDashboard() {
   };
 
   const loadProjetos = async () => {
-    const { data } = await supabase.from("projetos").select("id, nome_cliente, coordenador_id, deslocamento, email_contato, status");
+    const { data } = await supabase.from("projetos").select("id, nome_cliente, coordenador_id, deslocamento, email_contato, status, monday_board_url, sharepoint_pasta_url");
     setOffProjetos((data as any) || []);
   };
 
@@ -168,7 +171,7 @@ export default function ConsultorDashboard() {
 
   const getRfStatusLabel = (status: string): string => {
     const map: Record<string, string> = {
-      confirmada: "Prevista", em_aprovacao: "Em Aprovação",
+      confirmada: "Prevista", em_aprovacao: "Em Aprova????o",
       apontamento_ok: "Apontamento Ok", apontamento_ajustado: "Ajustado",
     };
     return map[status] || status;
@@ -327,13 +330,13 @@ export default function ConsultorDashboard() {
         <td>${ag.cliente}</td>
         <td><span class="tag">${getRfStatusLabel(ag.status)}</span></td>
         <td class="r">${formatHoras(hL)}</td>
-        <td class="r">${ag.deslocamento > 0 ? formatHoras(ag.deslocamento) : "—"}</td>
+        <td class="r">${ag.deslocamento > 0 ? formatHoras(ag.deslocamento) : "???"}</td>
         <td class="r">${formatHoras(tot)}</td>
       </tr>`;
     }).join("");
 
     const subtotaisHoras = Object.entries(porClienteHoras).map(([cli, h]) =>
-      `<tr class="sub"><td colspan="5">Subtotal — ${cli}</td><td class="r">${formatHoras(h)}</td></tr>`
+      `<tr class="sub"><td colspan="5">Subtotal ??? ${cli}</td><td class="r">${formatHoras(h)}</td></tr>`
     ).join("");
 
     const linhasDesp = rfDespesas.map((d) =>
@@ -347,7 +350,7 @@ export default function ConsultorDashboard() {
     ).join("");
 
     const subtotaisDesp = Object.entries(porClienteDesp).map(([cli, val]) =>
-      `<tr class="sub"><td colspan="4">Subtotal — ${cli}</td><td class="r">${val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td></tr>`
+      `<tr class="sub"><td colspan="4">Subtotal ??? ${cli}</td><td class="r">${val.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</td></tr>`
     ).join("");
 
     const conteudoHoras = `
@@ -393,28 +396,28 @@ export default function ConsultorDashboard() {
         </tbody>
       </table>
       <div class="summary">
-        <div class="scard"><div class="slabel">Lançamentos</div><div class="svalue">${rfDespesas.length}</div></div>
+        <div class="scard"><div class="slabel">Lan??amentos</div><div class="svalue">${rfDespesas.length}</div></div>
         <div class="scard hi" style="grid-column:span 2">
           <div class="slabel">Total geral</div>
           <div class="svalue blue">${totalValorDesp.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</div>
         </div>
       </div>`;
 
-    const titulo = tipo === "horas" ? "Relatório de Horas" : "Relatório de Despesas";
+    const titulo = tipo === "horas" ? "Relat??rio de Horas" : "Relat??rio de Despesas";
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body>
       <div class="doc-header">
-        <div><div class="brand">ACEEX</div><div class="brand-sub">Grupo ACEEX — Sistema de Gestão</div></div>
-        <div><div class="meta-title">${titulo}</div><div class="meta-line">Competência: ${mesAno}</div><div class="meta-line">Emissão: ${agora}</div></div>
+        <div><div class="brand">ACEEX</div><div class="brand-sub">Grupo ACEEX ??? Sistema de Gest??o</div></div>
+        <div><div class="meta-title">${titulo}</div><div class="meta-line">Compet??ncia: ${mesAno}</div><div class="meta-line">Emiss??o: ${agora}</div></div>
       </div>
       <div class="info-grid">
         <div class="info-cell"><div class="info-label">Consultor</div><div class="info-value">${user?.email || ""}</div></div>
-        <div class="info-cell"><div class="info-label">Período</div><div class="info-value">${periodoInicio} – ${periodoFim}</div></div>
+        <div class="info-cell"><div class="info-label">Per??odo</div><div class="info-value">${periodoInicio} ??? ${periodoFim}</div></div>
         <div class="info-cell"><div class="info-label">Gerado em</div><div class="info-value">${agora}</div></div>
       </div>
       <div class="section-title">Detalhamento</div>
       ${tipo === "horas" ? conteudoHoras : conteudoDesp}
-      <div class="footer"><span>Gerado pelo Sistema ACEEX — Documento de uso interno</span><span>Exportado em ${agora}</span></div>
+      <div class="footer"><span>Gerado pelo Sistema ACEEX ??? Documento de uso interno</span><span>Exportado em ${agora}</span></div>
     </body></html>`;
 
     const printWin = window.open("", "_blank");
@@ -511,7 +514,7 @@ export default function ConsultorDashboard() {
       return { label: "Aguardando Cancelamento", color: "bg-orange-500 text-white" };
     }
     if (agenda.status === "em_aprovacao") {
-      return { label: "EM APROVAÇÃO", color: "bg-yellow-500 text-white" };
+      return { label: "EM APROVA????O", color: "bg-yellow-500 text-white" };
     }
     if (agenda.status === "doc_pendente") {
       return { label: "DOC. PENDENTE", color: "bg-amber-600 text-white" };
@@ -580,12 +583,12 @@ export default function ConsultorDashboard() {
     if (!selectedAgenda) return;
     const projeto = offProjetos.find((p) => p.nome_cliente === selectedAgenda.cliente);
     if (projeto && projeto.status !== "Liberado") {
-      toast({ title: "Projeto não liberado", description: `O projeto "${selectedAgenda.cliente}" está com status "${projeto.status || 'Em planejamento'}". Apontamentos só são permitidos para projetos liberados.`, variant: "destructive" });
+      toast({ title: "Projeto n??o liberado", description: `O projeto "${selectedAgenda.cliente}" est?? com status "${projeto.status || 'Em planejamento'}". Apontamentos s?? s??o permitidos para projetos liberados.`, variant: "destructive" });
       return;
     }
     await loadAtividadesParaApontamento(selectedAgenda.cliente);
 
-    // Pré-preencher descrição da atividade vinda da requisição aprovada
+    // Pr??-preencher descri????o da atividade vinda da requisi????o aprovada
     const { data: reqData } = await supabase
       .from("requisicoes_agenda")
       .select("descricao_atividade")
@@ -712,12 +715,12 @@ export default function ConsultorDashboard() {
       }
     }
 
-    // Validar feeling obrigatório
+    // Validar feeling obrigat??rio
     for (const aa of atividadesApontadas) {
       if (aa.percentual_feeling === null || aa.percentual_feeling === undefined) {
         toast({
-          title: "% de conclusão obrigatório",
-          description: `Informe o % de conclusão para ${aa.atividade_codigo || "a atividade"}.`,
+          title: "% de conclus??o obrigat??rio",
+          description: `Informe o % de conclus??o para ${aa.atividade_codigo || "a atividade"}.`,
           variant: "destructive",
         });
         return;
@@ -800,15 +803,15 @@ export default function ConsultorDashboard() {
 
     await supabase.from("agendas").update({ status: newStatus }).eq("id", selectedAgenda.id);
 
-    // Sync Monday — fire-and-forget
+    // Sync Monday ??? fire-and-forget
     supabase.functions.invoke("monday-agenda-sync", {
       body: { action: "update", agenda_id: selectedAgenda.id },
     }).catch(() => {});
 
     if (shouldAutoApprove) {
-      toast({ title: "Apontamento aprovado automaticamente!", description: "Os dados conferem com a solicitação aprovada." });
+      toast({ title: "Apontamento aprovado automaticamente!", description: "Os dados conferem com a solicita????o aprovada." });
     } else {
-      toast({ title: "Apontamento registrado!", description: "Enviado para aprovação do coordenador." });
+      toast({ title: "Apontamento registrado!", description: "Enviado para aprova????o do coordenador." });
     }
     setResumoOpen(false);
     setResumoLoading(false);
@@ -836,7 +839,7 @@ export default function ConsultorDashboard() {
         toast({ title: "Documento enviado!", description: "Arquivo enviado ao SharePoint com sucesso." });
         setCronogramaItemDoc((prev) => prev ? { ...prev, doc_satisfeito: true } : null);
         setDocFile(null);
-        // Sync Monday — fire-and-forget
+        // Sync Monday ??? fire-and-forget
         supabase.functions.invoke("monday-agenda-sync", {
           body: { action: "update", agenda_id: selectedAgenda?.id },
         }).catch(() => {});
@@ -877,7 +880,7 @@ export default function ConsultorDashboard() {
     const newStatus = shouldAutoApprove ? "apontamento_ok" : "em_aprovacao";
     await supabase.from("agendas").update({ status: newStatus }).eq("id", selectedAgenda.id);
 
-    // Sync Monday — fire-and-forget
+    // Sync Monday ??? fire-and-forget
     supabase.functions.invoke("monday-agenda-sync", {
       body: { action: "update", agenda_id: selectedAgenda.id },
     }).catch(() => {});
@@ -914,6 +917,97 @@ export default function ConsultorDashboard() {
     setResumoOpen(false);
     setResumoLoading(false);
     await loadData();
+  };
+
+  const handleVerOSResumo = async () => {
+    if (!selectedAgenda || !selectedDate) return;
+
+    const { data: apontAtividades } = await supabase
+      .from("apontamento_atividades" as any)
+      .select("atividade_codigo, atividade_descricao, horas, modalidade, descricao")
+      .eq("agenda_id", selectedAgenda.id);
+
+    if (!apontAtividades || (apontAtividades as any[]).length === 0) {
+      toast({ title: "Erro", description: "Nenhum apontamento encontrado.", variant: "destructive" });
+      return;
+    }
+
+    const modalidade = (apontAtividades as any[])[0]?.modalidade || "Remoto";
+    const descricao = (apontAtividades as any[])[0]?.descricao || "";
+    const atividades = (apontAtividades as any[]).map((a: any) => ({
+      atividade_codigo: a.atividade_codigo,
+      atividade_descricao: a.atividade_descricao,
+      horas: a.horas,
+    }));
+    const projeto = offProjetos.find((p) => p.nome_cliente === selectedAgenda.cliente);
+    const deslocamento = modalidade === "Presencial" && projeto?.deslocamento ? projeto.deslocamento : 0;
+    const totalHoras = atividades.reduce((s: number, a: any) => s + Number(a.horas), 0) + deslocamento;
+
+    setOsResumoData({ atividades, modalidade, descricao, deslocamento, totalHoras, projeto });
+    setOsResumoOpen(true);
+  };
+
+  const handleImprimirOS = () => {
+    if (!osResumoData || !selectedAgenda || !selectedDate) return;
+    const { atividades, modalidade, descricao, deslocamento, totalHoras } = osResumoData;
+    const agora = new Date().toLocaleString("pt-BR");
+    const dataFormatada = new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR");
+
+    const linhas = atividades.map((a: any) => `
+      <tr>
+        <td>${a.atividade_codigo}</td>
+        <td>${a.atividade_descricao}</td>
+        <td class="r">${Number(a.horas).toFixed(1)}h</td>
+      </tr>`).join("");
+
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8">
+    <style>
+      body{font-family:Arial,sans-serif;padding:30px;color:#222}
+      .header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:20px;padding-bottom:10px;border-bottom:2px solid #185FA5}
+      .brand{font-size:22px;font-weight:700;color:#185FA5}
+      .brand-sub{font-size:10px;color:#888}
+      .title{font-size:14px;font-weight:700;color:#185FA5;text-align:right}
+      .meta{font-size:10px;color:#888;text-align:right}
+      .info-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:16px;background:#f8f8f8;padding:10px;border-radius:6px}
+      .info-label{font-size:8px;color:#888;text-transform:uppercase}
+      .info-value{font-size:11px;font-weight:700}
+      table{width:100%;border-collapse:collapse;margin-top:10px}
+      thead tr{background:#185FA5}
+      thead th{color:#fff;padding:6px 8px;text-align:left;font-size:9px}
+      th.r,td.r{text-align:right}
+      tbody td{padding:5px 8px;border-bottom:1px solid #eee;font-size:10px}
+      tbody tr:nth-child(even) td{background:#f8f8f8}
+      .total-row td{background:#E6F1FB;font-weight:700;border-top:2px solid #185FA5}
+      .footer{margin-top:20px;padding-top:10px;border-top:1px solid #eee;font-size:8px;color:#888;display:flex;justify-content:space-between}
+      @media print{body{padding:20px}@page{size:A4;margin:1.5cm}}
+    </style></head><body>
+    <div class="header">
+      <div><div class="brand">ACEEX</div><div class="brand-sub">Grupo ACEEX — Sistema de Gestão</div></div>
+      <div><div class="title">Ordem de Serviço</div><div class="meta">Emissão: ${agora}</div></div>
+    </div>
+    <div class="info-grid">
+      <div><div class="info-label">Cliente</div><div class="info-value">${selectedAgenda.cliente}</div></div>
+      <div><div class="info-label">Data</div><div class="info-value">${dataFormatada}</div></div>
+      <div><div class="info-label">Modalidade</div><div class="info-value">${modalidade}</div></div>
+    </div>
+    ${descricao ? `<p style="font-size:10px;color:#555;margin-bottom:10px"><strong>Observações:</strong> ${descricao}</p>` : ""}
+    <table>
+      <thead><tr><th>Código</th><th>Atividade</th><th class="r">Horas</th></tr></thead>
+      <tbody>
+        ${linhas}
+        ${deslocamento > 0 ? `<tr><td>—</td><td>Deslocamento</td><td class="r">${deslocamento.toFixed(1)}h</td></tr>` : ""}
+        <tr class="total-row"><td colspan="2"><strong>TOTAL</strong></td><td class="r"><strong>${totalHoras.toFixed(1)}h</strong></td></tr>
+      </tbody>
+    </table>
+    <div class="footer"><span>Gerado pelo Sistema ACEEX — Documento de uso interno</span><span>${agora}</span></div>
+    </body></html>`;
+
+    const printWin = window.open("", "_blank");
+    if (printWin) {
+      printWin.document.write(html);
+      printWin.document.close();
+      setTimeout(() => printWin.print(), 400);
+    }
   };
 
   const handleEnviarOSRedundante = async () => {
@@ -977,12 +1071,12 @@ export default function ConsultorDashboard() {
     }
     await supabase.from("agendas").update({ status: "aguardando_cancelamento" }).eq("id", selectedAgenda.id);
 
-    // Sync Monday — fire-and-forget
+    // Sync Monday ??? fire-and-forget
     supabase.functions.invoke("monday-agenda-sync", {
       body: { action: "update", agenda_id: selectedAgenda.id },
     }).catch(() => {});
 
-    toast({ title: "Solicitação enviada", description: "Aguardando aprovação do administrador." });
+    toast({ title: "Solicita????o enviada", description: "Aguardando aprova????o do administrador." });
     setCancelAgendaOpen(false);
     setCancelJustificativa("");
     await loadData();
@@ -1015,7 +1109,7 @@ export default function ConsultorDashboard() {
     if (error) {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
     } else {
-      toast({ title: "Requisição enviada!" });
+      toast({ title: "Requisi????o enviada!" });
       setReqOpen(false);
       setReqData(""); setReqCliente(""); setReqHoras(""); setReqCoordenador(""); setReqAtividade(""); setReqAtividades([]); setReqModalidade("Remoto");
       setReqDescricaoAtividade(""); setReqJustificativa("");
@@ -1059,7 +1153,7 @@ export default function ConsultorDashboard() {
   const handleDespesaValorChange = (val: string) => {
     if (despValorMaximo !== null && parseFloat(val) > despValorMaximo) {
       setDespValor(despValorMaximo.toString());
-      toast({ title: "Valor ajustado", description: `Valor máximo para esta despesa é R$ ${despValorMaximo.toFixed(2)}` });
+      toast({ title: "Valor ajustado", description: `Valor m??ximo para esta despesa ?? R$ ${despValorMaximo.toFixed(2)}` });
     } else {
       setDespValor(val);
     }
@@ -1080,7 +1174,7 @@ export default function ConsultorDashboard() {
       });
       localLancamento = `${pos.coords.latitude.toFixed(6)}, ${pos.coords.longitude.toFixed(6)}`;
     } catch {
-      localLancamento = "Localização indisponível";
+      localLancamento = "Localiza????o indispon??vel";
     }
 
     let fotoUrl: string | null = null;
@@ -1134,7 +1228,7 @@ export default function ConsultorDashboard() {
     setDespLoading(false);
   };
 
-  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
+  const weekDays = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "S??b"];
   const firstDayOffset = getDay(startOfMonth(currentMonth));
   const canRequestCancel = selectedAgenda && (selectedAgenda.status === "confirmada" || selectedAgenda.status === "pendente");
 
@@ -1153,7 +1247,7 @@ export default function ConsultorDashboard() {
     const start = format(startOfMonth(currentMonth), "yyyy-MM-dd");
     const end = format(endOfMonth(currentMonth), "yyyy-MM-dd");
 
-    // Buscar agendas confirmadas do mês
+    // Buscar agendas confirmadas do m??s
     const { data: agendasMes } = await supabase
       .from("agendas")
       .select("id, data, cliente, status")
@@ -1165,7 +1259,7 @@ export default function ConsultorDashboard() {
     const totalAgendadas = (agendasMes || []).length;
     setTsAgendadas(totalAgendadas);
 */
-    // Total agendadas = confirmadas + já apontadas (todos os status ativos do mês)
+    // Total agendadas = confirmadas + j?? apontadas (todos os status ativos do m??s)
   const { data: todasAgendasMes } = await supabase
   .from("agendas")
   .select("id, data, cliente")
@@ -1187,7 +1281,7 @@ setTsAgendadas(totalAgendadas);
 
     setTsApontadas((agendasApontadas || []).length);
 
-    // Calcular semanas do mês
+    // Calcular semanas do m??s
     const diasDoMes = eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) });
     const semanas: { label: string; agendadas: number; apontadas: number }[] = [];
     let semanaAtual = 1;
@@ -1216,12 +1310,12 @@ setTsAgendadas(totalAgendadas);
     }
     setTsProjetos(Object.entries(projetoMap).map(([cliente, horas]) => ({ cliente, horas })));
 
-    // Visão geral
+    // Vis??o geral
     setVgAgendasConfirmadas(totalAgendadas);
     setVgAgendasApontadas((agendasApontadas || []).length);
     setVgProjetos(new Set([...(agendasMes || []), ...(agendasApontadas || [])].map(a => a.cliente)).size);
 
-    // Dias livres = dias úteis do mês sem agenda confirmada nem apontada
+    // Dias livres = dias ??teis do m??s sem agenda confirmada nem apontada
     const todasAgendas = new Set([
       //...(agendasMes || []).map(a => a.data),
       ...(todasAgendasMes || []).map(a => a.data),
@@ -1259,7 +1353,7 @@ setTsAgendadas(totalAgendadas);
 
       <main className="mx-auto w-full flex-1 overflow-y-auto p-4 space-y-4" style={{ maxWidth: isMobile ? '32rem' : '80rem' }}>
         {isMobile ? (
-          /* ── MOBILE: conteúdo empilhado atual (sem alteração) ── */
+          /* ?????? MOBILE: conte??do empilhado atual (sem altera????o) ?????? */
           <div className="flex flex-col min-h-[calc(100vh-57px)]">
             <div className="flex-1 space-y-4 pb-20">
               {mobileTab === "agenda" && (
@@ -1351,16 +1445,16 @@ setTsAgendadas(totalAgendadas);
                         {/* Atividade com hierarquia visual */}
                         <div className="mt-1 space-y-0.5">
                           <div className="flex items-center gap-1">
-                            <span className="text-[10px] text-muted-foreground opacity-50">↳</span>
+                            <span className="text-[10px] text-muted-foreground opacity-50">???</span>
                             <span className="text-xs font-medium text-foreground">
                               {a.atividade}
-                              {a.atividade_descricao ? ` — ${a.atividade_descricao}` : ""}
+                              {a.atividade_descricao ? ` ??? ${a.atividade_descricao}` : ""}
                             </span>
                           </div>
 
                           {a.item_cronograma && (
                             <div className="flex items-center gap-1 pl-3">
-                              <span className="text-[10px] text-muted-foreground opacity-45">↳</span>
+                              <span className="text-[10px] text-muted-foreground opacity-45">???</span>
                               <span className="text-[11px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
                                 {a.item_cronograma}
                               </span>
@@ -1373,7 +1467,7 @@ setTsAgendadas(totalAgendadas);
                 </div>
               )}
 
-              {/* Requisições pendentes — visual only */}
+              {/* Requisi????es pendentes ??? visual only */}
               {selectedRequisicoes.length > 0 && (
                 <div className="space-y-2">
                   {selectedRequisicoes.map((r) => (
@@ -1385,8 +1479,8 @@ setTsAgendadas(totalAgendadas);
                         <p className="font-medium text-sm">{r.cliente}</p>
                         <Badge className="text-xs bg-amber-500 text-white">Aguard. Aprov.</Badge>
                       </div>
-                      <p className="text-xs text-muted-foreground">{r.atividade || "—"}</p>
-                      <p className="text-xs text-muted-foreground">{r.total_horas}h • {r.modalidade}</p>
+                      <p className="text-xs text-muted-foreground">{r.atividade || "???"}</p>
+                      <p className="text-xs text-muted-foreground">{r.total_horas}h ??? {r.modalidade}</p>
                     </div>
                   ))}
                 </div>
@@ -1402,9 +1496,9 @@ setTsAgendadas(totalAgendadas);
                     className="w-full h-12 text-base font-semibold gap-2"
                   >
                     {isProjetoNaoLiberado ? (
-                      <>Projeto não liberado</>
+                      <>Projeto n??o liberado</>
                     ) : isDateFuture ? (
-                      <>Data futura — não permitido</>
+                      <>Data futura ??? n??o permitido</>
                     ) : isApontamentoDone ? (
                       <>Apontamento Registrado</>
                     ) : (
@@ -1416,16 +1510,48 @@ setTsAgendadas(totalAgendadas);
                   </Button>
 
                   {/* Enviar OS (reenvio) */}
-                  {isApontamentoDone && (
-                    <Button
-                      onClick={handleEnviarOSRedundante}
-                      variant="outline"
-                      className="w-full h-12 text-base font-semibold gap-2 border-primary text-primary hover:bg-primary/10"
-                    >
-                      <Receipt className="h-5 w-5" />
-                      ENVIAR OS
-                    </Button>
-                  )}
+                  {isApontamentoDone && (() => {
+                    const projeto = offProjetos.find((p) => p.nome_cliente === selectedAgenda?.cliente);
+                    return (
+                      <>
+                        <Button
+                          onClick={handleVerOSResumo}
+                          variant="outline"
+                          className="w-full h-12 text-base font-semibold gap-2 border-primary text-primary hover:bg-primary/10"
+                        >
+                          <Receipt className="h-5 w-5" />
+                          ENVIAR OS
+                        </Button>
+                        {/* Links rápidos dos apps do projeto */}
+                        {(projeto?.monday_board_url || projeto?.sharepoint_pasta_url) && (
+                          <div className="flex gap-2">
+                            {projeto?.monday_board_url && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 gap-1 text-xs"
+                                onClick={() => window.open(projeto.monday_board_url!, "_blank")}
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                Monday
+                              </Button>
+                            )}
+                            {projeto?.sharepoint_pasta_url && (
+                              <Button
+                                variant="outline"
+                                size="sm"
+                                className="flex-1 gap-1 text-xs"
+                                onClick={() => window.open(projeto.sharepoint_pasta_url!, "_blank")}
+                              >
+                                <ExternalLink className="h-3 w-3" />
+                                SharePoint
+                              </Button>
+                            )}
+                          </div>
+                        )}
+                      </>
+                    );
+                  })()}
 
                   {/* Solicitar cancelamento de agenda */}
                   {canRequestCancel && (
@@ -1441,12 +1567,12 @@ setTsAgendadas(totalAgendadas);
                     DESPESAS
                   </Button>
 
-                  {/* Despesas já lançadas */}
+                  {/* Despesas j?? lan??adas */}
                   {despesasLancadas.length > 0 && (
                     <div className="mt-3">
                       <p className="text-xs font-medium text-muted-foreground mb-2 flex items-center gap-1">
                         <Receipt className="h-3 w-3" />
-                        Despesas Lançadas ({despesasLancadas.length})
+                        Despesas Lan??adas ({despesasLancadas.length})
                       </p>
                       <div className="rounded-lg border overflow-hidden">
                         <table className="w-full text-xs">
@@ -1498,10 +1624,10 @@ setTsAgendadas(totalAgendadas);
               {/* ABA: TIMESHEET */}
               {mobileTab === "timesheet" && (
                 <div className="space-y-4">
-                  {/* Visão Geral */}
+                  {/* Vis??o Geral */}
                   <Card>
                     <CardHeader className="pb-2">
-                      <CardTitle className="text-sm font-bold">Visão Geral</CardTitle>
+                      <CardTitle className="text-sm font-bold">Vis??o Geral</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <div className="grid grid-cols-2 gap-2">
@@ -1535,9 +1661,9 @@ setTsAgendadas(totalAgendadas);
                             <div className="w-4 h-4 rounded bg-amber-600 flex items-center justify-center">
                               <FileStack className="h-2.5 w-2.5 text-white" />
                             </div>
-                            <span className="text-[10px] font-bold text-amber-700">Pendências</span>
+                            <span className="text-[10px] font-bold text-amber-700">Pend??ncias</span>
                           </div>
-                          <div className="text-xl font-bold text-amber-900 leading-none">—</div>
+                          <div className="text-xl font-bold text-amber-900 leading-none">???</div>
                           <div className="text-[9px] text-amber-600">documentos PMO</div>
                         </div>
 
@@ -1593,7 +1719,7 @@ setTsAgendadas(totalAgendadas);
                             (tsApontadas / tsAgendadas) >= 0.8 ? "text-emerald-600" :
                             (tsApontadas / tsAgendadas) >= 0.5 ? "text-amber-600" : "text-red-600"
                           }`}>
-                            {tsAgendadas === 0 ? "—" : `${Math.round((tsApontadas / tsAgendadas) * 100)}%`}
+                            {tsAgendadas === 0 ? "???" : `${Math.round((tsApontadas / tsAgendadas) * 100)}%`}
                           </div>
                         </div>
                       </div>
@@ -1640,7 +1766,7 @@ setTsAgendadas(totalAgendadas);
                         <ListTodo className="h-7 w-7 text-violet-400" />
                       </div>
                       <p className="text-sm font-semibold text-muted-foreground">Backlog do Projeto</p>
-                      <p className="text-xs text-muted-foreground/60">Em desenvolvimento — BL-004</p>
+                      <p className="text-xs text-muted-foreground/60">Em desenvolvimento ??? BL-004</p>
                       <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-violet-100 text-violet-700">em breve</Badge>
                     </div>
                   </CardContent>
@@ -1656,7 +1782,7 @@ setTsAgendadas(totalAgendadas);
                         <FileStack className="h-7 w-7 text-amber-400" />
                       </div>
                       <p className="text-sm font-semibold text-muted-foreground">Entregas do Projeto</p>
-                      <p className="text-xs text-muted-foreground/60">Em desenvolvimento — BL-006 / BL-013</p>
+                      <p className="text-xs text-muted-foreground/60">Em desenvolvimento ??? BL-006 / BL-013</p>
                       <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700">em breve</Badge>
                     </div>
                   </CardContent>
@@ -1715,11 +1841,11 @@ setTsAgendadas(totalAgendadas);
             </nav>
           </div>
         ) : (
-          /* ── DESKTOP: grid 60/40 ── */
+          /* ?????? DESKTOP: grid 60/40 ?????? */
           <div className="grid grid-cols-5 gap-6">
-            {/* Coluna esquerda — operacional */}
+            {/* Coluna esquerda ??? operacional */}
             <div className="col-span-3 space-y-4">
-              {/* ── CARD 1: MINHA AGENDA (Calendário) ── */}
+              {/* ?????? CARD 1: MINHA AGENDA (Calend??rio) ?????? */}
               <Card>
                 <CardHeader className="pb-2 bg-muted/30">
                   <div className="flex items-center gap-3">
@@ -1775,7 +1901,7 @@ setTsAgendadas(totalAgendadas);
                 </CardContent>
               </Card>
 
-              {/* ── CARD 2: PROJETOS DO DIA ── */}
+              {/* ?????? CARD 2: PROJETOS DO DIA ?????? */}
               <Card>
                 <CardHeader className="pb-2 bg-muted/30">
                   <div className="flex items-center gap-3">
@@ -1784,11 +1910,11 @@ setTsAgendadas(totalAgendadas);
                     </div>
                     <div>
                       <CardTitle className="text-sm font-bold">
-                        Projetos{selectedDate ? ` — ${format(parseISO(selectedDate), "dd 'de' MMMM", { locale: ptBR })}` : ""}
+                        Projetos{selectedDate ? ` ??? ${format(parseISO(selectedDate), "dd 'de' MMMM", { locale: ptBR })}` : ""}
                       </CardTitle>
                       {selectedDate && (
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {selectedAgendas.length} agenda(s) · selecione para agir
+                          {selectedAgendas.length} agenda(s) ?? selecione para agir
                         </p>
                       )}
                     </div>
@@ -1796,7 +1922,7 @@ setTsAgendadas(totalAgendadas);
                 </CardHeader>
                 <CardContent className="pt-3">
                   {!selectedDate ? (
-                    <p className="text-xs text-muted-foreground text-center py-4">Selecione um dia no calendário</p>
+                    <p className="text-xs text-muted-foreground text-center py-4">Selecione um dia no calend??rio</p>
                   ) : selectedAgendas.length === 0 && selectedRequisicoes.length === 0 ? (
                     <p className="text-xs text-muted-foreground text-center py-4">Nenhuma agenda para este dia.</p>
                   ) : (
@@ -1818,15 +1944,15 @@ setTsAgendadas(totalAgendadas);
                               <Badge className={`text-[10px] ${statusDisplay.color}`}>{statusDisplay.label}</Badge>
                             </div>
                             <div className="flex items-center gap-1">
-                              <span className="text-[10px] text-muted-foreground opacity-50">↳</span>
+                              <span className="text-[10px] text-muted-foreground opacity-50">???</span>
                               <span className="text-xs font-medium text-foreground">
                                 {a.atividade}
-                                {a.atividade_descricao ? ` — ${a.atividade_descricao}` : ""}
+                                {a.atividade_descricao ? ` ??? ${a.atividade_descricao}` : ""}
                               </span>
                             </div>
                             {a.item_cronograma && (
                               <div className="flex items-center gap-1 pl-3">
-                                <span className="text-[10px] text-muted-foreground opacity-45">↳</span>
+                                <span className="text-[10px] text-muted-foreground opacity-45">???</span>
                                 <span className="text-[10px] text-muted-foreground bg-muted rounded px-1.5 py-0.5">
                                   {a.item_cronograma}
                                 </span>
@@ -1844,8 +1970,8 @@ setTsAgendadas(totalAgendadas);
                             <p className="font-bold text-sm">{r.cliente}</p>
                             <Badge className="text-[10px] bg-amber-500 text-white">Aguard. Aprov.</Badge>
                           </div>
-                          <p className="text-xs text-muted-foreground">{r.atividade || "—"}</p>
-                          <p className="text-xs text-muted-foreground">{r.total_horas}h • {r.modalidade}</p>
+                          <p className="text-xs text-muted-foreground">{r.atividade || "???"}</p>
+                          <p className="text-xs text-muted-foreground">{r.total_horas}h ??? {r.modalidade}</p>
                         </div>
                       ))}
                     </div>
@@ -1853,7 +1979,7 @@ setTsAgendadas(totalAgendadas);
                 </CardContent>
               </Card>
 
-              {/* ── CARD 3: REGISTRAR (dinâmico) ── */}
+              {/* ?????? CARD 3: REGISTRAR (din??mico) ?????? */}
               <Card>
                 <CardHeader className="pb-2 bg-muted/30">
                   <div className="flex items-center gap-3">
@@ -1864,7 +1990,7 @@ setTsAgendadas(totalAgendadas);
                       <CardTitle className="text-sm font-bold">Registrar</CardTitle>
                       {selectedAgenda ? (
                         <p className="text-[10px] text-muted-foreground mt-0.5">
-                          {selectedAgenda.cliente} · {selectedAgenda.atividade}
+                          {selectedAgenda.cliente} ?? {selectedAgenda.atividade}
                         </p>
                       ) : (
                         <p className="text-[10px] text-muted-foreground mt-0.5">Nenhum projeto selecionado</p>
@@ -1876,7 +2002,7 @@ setTsAgendadas(totalAgendadas);
                   {!selectedAgenda || selectedAgenda.status === "aguardando_cancelamento" ? (
                     <div className="space-y-3">
                       <div className="flex items-center gap-2 bg-muted/50 rounded-lg px-3 py-2">
-                        <span className="text-xs text-muted-foreground">Selecione um projeto acima para ver as ações disponíveis</span>
+                        <span className="text-xs text-muted-foreground">Selecione um projeto acima para ver as a????es dispon??veis</span>
                       </div>
                       <Button variant="outline" className="w-full gap-2 text-sm" onClick={() => { if (selectedDate) setReqData(selectedDate); setReqOpen(true); }}>
                         <PlusCircle className="h-4 w-4" />
@@ -1890,8 +2016,8 @@ setTsAgendadas(totalAgendadas);
                         disabled={isApontamentoDone || isDateFuture || isProjetoNaoLiberado}
                         className="w-full h-11 text-sm font-bold gap-2"
                       >
-                        {isProjetoNaoLiberado ? <>Projeto não liberado</> :
-                         isDateFuture ? <>Data futura — não permitido</> :
+                        {isProjetoNaoLiberado ? <>Projeto n??o liberado</> :
+                         isDateFuture ? <>Data futura ??? n??o permitido</> :
                          isApontamentoDone ? <>Apontamento Registrado</> : (
                           <><ClipboardEdit className="h-4 w-4" />APONTAMENTO</>
                         )}
@@ -1929,7 +2055,7 @@ setTsAgendadas(totalAgendadas);
                 </CardContent>
               </Card>
 
-              {/* ── CARD 4: BACKLOG (placeholder) ── */}
+              {/* ?????? CARD 4: BACKLOG (placeholder) ?????? */}
               <Card>
                 <CardHeader className="pb-2 bg-muted/30">
                   <div className="flex items-center gap-3">
@@ -1954,16 +2080,16 @@ setTsAgendadas(totalAgendadas);
               </Card>
             </div>
 
-            {/* Coluna direita — gerencial */}
+            {/* Coluna direita ??? gerencial */}
             <div className="col-span-2 space-y-4">
-              {/* ── CARD 1: VISÃO GERAL ── */}
+              {/* ?????? CARD 1: VIS??O GERAL ?????? */}
               <Card>
                 <CardHeader className="pb-2 bg-muted/30">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-gray-500 flex items-center justify-center flex-shrink-0">
                       <BarChart2 className="h-4 w-4 text-white" />
                     </div>
-                    <CardTitle className="text-sm font-bold">Visão Geral</CardTitle>
+                    <CardTitle className="text-sm font-bold">Vis??o Geral</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-3">
@@ -1995,17 +2121,17 @@ setTsAgendadas(totalAgendadas);
                       <div className="text-2xl font-bold text-emerald-900 dark:text-emerald-100 leading-none">
                         {vgDiasLivres}
                       </div>
-                      <div className="text-[9px] text-emerald-600 dark:text-emerald-400">dias livres no mês</div>
+                      <div className="text-[9px] text-emerald-600 dark:text-emerald-400">dias livres no m??s</div>
                     </div>
-                    {/* Pendências */}
+                    {/* Pend??ncias */}
                     <div className="rounded-xl bg-amber-50 border border-amber-200 dark:bg-amber-950/30 dark:border-amber-800 p-3 flex flex-col gap-1.5">
                       <div className="flex items-center gap-2">
                         <div className="w-5 h-5 rounded-md bg-amber-600 flex items-center justify-center flex-shrink-0">
                           <FileStack className="h-3 w-3 text-white" />
                         </div>
-                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">Pendências</span>
+                        <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">Pend??ncias</span>
                       </div>
-                      <div className="text-2xl font-bold text-amber-900 dark:text-amber-100 leading-none">—</div>
+                      <div className="text-2xl font-bold text-amber-900 dark:text-amber-100 leading-none">???</div>
                       <div className="text-[9px] text-amber-600 dark:text-amber-400">documentos PMO</div>
                     </div>
                     {/* Projetos */}
@@ -2025,7 +2151,7 @@ setTsAgendadas(totalAgendadas);
                 </CardContent>
               </Card>
 
-              {/* ── CARD 2: CONTROLE DE HORAS ── */}
+              {/* ?????? CARD 2: CONTROLE DE HORAS ?????? */}
               <Card>
                 <CardHeader className="pb-2 bg-muted/30">
                   <div className="flex items-center justify-between">
@@ -2069,7 +2195,7 @@ setTsAgendadas(totalAgendadas);
                         (tsApontadas / tsAgendadas) >= 0.8 ? "text-emerald-600" :
                         (tsApontadas / tsAgendadas) >= 0.5 ? "text-amber-600" : "text-red-600"
                       }`}>
-                        {tsAgendadas === 0 ? "—" : `${Math.round((tsApontadas / tsAgendadas) * 100)}%`}
+                        {tsAgendadas === 0 ? "???" : `${Math.round((tsApontadas / tsAgendadas) * 100)}%`}
                       </div>
                     </div>
                   </div>
@@ -2095,7 +2221,7 @@ setTsAgendadas(totalAgendadas);
                       );
                     })}
                     {tsSemanas.length === 0 && (
-                      <p className="text-xs text-muted-foreground text-center py-2">Nenhuma agenda no mês</p>
+                      <p className="text-xs text-muted-foreground text-center py-2">Nenhuma agenda no m??s</p>
                     )}
                   </div>
                   {/* Breakdown por projeto */}
@@ -2111,7 +2237,7 @@ setTsAgendadas(totalAgendadas);
                 </CardContent>
               </Card>
 
-              {/* ── CARD 3: ENTREGAS DO PROJETO (placeholder) ── */}
+              {/* ?????? CARD 3: ENTREGAS DO PROJETO (placeholder) ?????? */}
               <Card>
                 <CardHeader className="pb-2 bg-muted/30">
                   <div className="flex items-center gap-3">
@@ -2139,7 +2265,59 @@ setTsAgendadas(totalAgendadas);
         )}
       </main>
 
-      {/* ── DIALOGS GLOBAIS — funcionam em mobile e desktop ── */}
+      {/* ?????? DIALOGS GLOBAIS ??? funcionam em mobile e desktop ?????? */}
+
+      {/* Modal Resumo OS */}
+      <Dialog open={osResumoOpen} onOpenChange={setOsResumoOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Resumo da OS — {selectedAgenda?.cliente}</DialogTitle>
+          </DialogHeader>
+          {osResumoData && (
+            <div className="space-y-4">
+              <div className="grid grid-cols-2 gap-2 text-sm">
+                <div><span className="text-muted-foreground">Data:</span> <strong>{selectedDate && new Date(selectedDate + "T12:00:00").toLocaleDateString("pt-BR")}</strong></div>
+                <div><span className="text-muted-foreground">Modalidade:</span> <strong>{osResumoData.modalidade}</strong></div>
+              </div>
+              {osResumoData.descricao && <p className="text-sm text-muted-foreground">{osResumoData.descricao}</p>}
+              <table className="w-full text-sm border rounded-lg overflow-hidden">
+                <thead className="bg-primary text-primary-foreground">
+                  <tr><th className="text-left p-2">Atividade</th><th className="text-right p-2">Horas</th></tr>
+                </thead>
+                <tbody>
+                  {osResumoData.atividades.map((a: any, i: number) => (
+                    <tr key={i} className="border-t">
+                      <td className="p-2">{a.atividade_codigo} — {a.atividade_descricao}</td>
+                      <td className="p-2 text-right">{Number(a.horas).toFixed(1)}h</td>
+                    </tr>
+                  ))}
+                  {osResumoData.deslocamento > 0 && (
+                    <tr className="border-t"><td className="p-2">Deslocamento</td><td className="p-2 text-right">{osResumoData.deslocamento.toFixed(1)}h</td></tr>
+                  )}
+                  <tr className="border-t bg-muted font-bold">
+                    <td className="p-2">TOTAL</td>
+                    <td className="p-2 text-right">{osResumoData.totalHoras.toFixed(1)}h</td>
+                  </tr>
+                </tbody>
+              </table>
+              <div className="flex gap-2 pt-2">
+                <Button variant="outline" className="flex-1 gap-2" onClick={handleImprimirOS}>
+                  <Printer className="h-4 w-4" /> Imprimir
+                </Button>
+                <Button className="flex-1 gap-2" disabled={osEnviando} onClick={async () => {
+                  setOsEnviando(true);
+                  await handleEnviarOSRedundante();
+                  setOsEnviando(false);
+                  setOsResumoOpen(false);
+                }}>
+                  {osEnviando ? <Loader2 className="h-4 w-4 animate-spin" /> : <Receipt className="h-4 w-4" />}
+                  Enviar por Email
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Cancelamento de Agenda */}
       <Dialog open={cancelAgendaOpen} onOpenChange={setCancelAgendaOpen}>
@@ -2149,7 +2327,7 @@ setTsAgendadas(totalAgendadas);
           </DialogHeader>
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Cliente: <strong>{selectedAgenda?.cliente}</strong> — {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}
+              Cliente: <strong>{selectedAgenda?.cliente}</strong> ??? {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}
             </p>
             <div className="space-y-1">
               <Label className="text-xs">Justificativa</Label>
@@ -2168,7 +2346,7 @@ setTsAgendadas(totalAgendadas);
               onClick={handleSolicitarCancelamento}
               disabled={!cancelJustificativa.trim()}
             >
-              Enviar Solicitação
+              Enviar Solicita????o
             </Button>
           </div>
         </DialogContent>
@@ -2182,7 +2360,7 @@ setTsAgendadas(totalAgendadas);
           </DialogHeader>
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-3">
             <p className="text-sm text-muted-foreground">
-              Cliente: <strong>{selectedAgenda?.cliente}</strong> — {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}
+              Cliente: <strong>{selectedAgenda?.cliente}</strong> ??? {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}
             </p>
             <div className="space-y-1">
               <Label className="text-xs">Tipo de Despesa</Label>
@@ -2192,20 +2370,20 @@ setTsAgendadas(totalAgendadas);
                   <SelectContent>
                     {projetoDespesas.map((d) => (
                       <SelectItem key={d.id} value={d.tipo_despesa}>
-                        {d.tipo_despesa} (máx R$ {d.valor_maximo.toFixed(2)})
+                        {d.tipo_despesa} (m??x R$ {d.valor_maximo.toFixed(2)})
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               ) : (
-                <Input value={despDescricao} onChange={(e) => setDespDescricao(e.target.value)} placeholder="Ex: Almoço, Combustível..." />
+                <Input value={despDescricao} onChange={(e) => setDespDescricao(e.target.value)} placeholder="Ex: Almo??o, Combust??vel..." />
               )}
             </div>
             <div className="space-y-1">
               <Label className="text-xs">
                 Valor (R$)
                 {despValorMaximo !== null && (
-                  <span className="text-muted-foreground ml-1">— máx R$ {despValorMaximo.toFixed(2)}</span>
+                  <span className="text-muted-foreground ml-1">??? m??x R$ {despValorMaximo.toFixed(2)}</span>
                 )}
               </Label>
               <Input type="number" step="0.01" value={despValor} onChange={(e) => handleDespesaValorChange(e.target.value)} placeholder="0.00" />
@@ -2365,11 +2543,11 @@ setTsAgendadas(totalAgendadas);
             </div>
             <div className="border-t pt-1" />
             <div className="space-y-1">
-              <Label className="text-xs">Descrição da atividade</Label>
+              <Label className="text-xs">Descri????o da atividade</Label>
               <Textarea
                 value={reqDescricaoAtividade}
                 onChange={(e) => setReqDescricaoAtividade(e.target.value)}
-                placeholder="Descreva a atividade que será executada..."
+                placeholder="Descreva a atividade que ser?? executada..."
                 rows={3}
                 className="resize-none text-sm"
               />
@@ -2382,7 +2560,7 @@ setTsAgendadas(totalAgendadas);
               <Textarea
                 value={reqJustificativa}
                 onChange={(e) => setReqJustificativa(e.target.value)}
-                placeholder="Justificativa para a solicitação..."
+                placeholder="Justificativa para a solicita????o..."
                 rows={2}
                 className="resize-none text-sm"
               />
@@ -2390,7 +2568,7 @@ setTsAgendadas(totalAgendadas);
           </div>
           <div className="shrink-0 border-t px-4 py-3">
             <Button className="w-full" onClick={handleRequisitar} disabled={!reqAtividade}>
-              Enviar Requisição
+              Enviar Requisi????o
             </Button>
           </div>
         </DialogContent>
@@ -2400,11 +2578,11 @@ setTsAgendadas(totalAgendadas);
       <Dialog open={apontamentoOpen} onOpenChange={setApontamentoOpen}>
         <DialogContent className="flex flex-col gap-0 p-0 max-h-[90dvh] w-full max-w-lg">
           <DialogHeader className="shrink-0 border-b px-4 py-3">
-            <DialogTitle>Apontamento — {selectedAgenda?.cliente}</DialogTitle>
+            <DialogTitle>Apontamento ??? {selectedAgenda?.cliente}</DialogTitle>
           </DialogHeader>
           <div className="flex-1 overflow-y-auto px-4 py-4 space-y-4">
             <p className="text-sm text-muted-foreground">
-              Data: <strong>{selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}</strong> — Atividade planejada: <strong>{selectedAgenda?.atividade}</strong>
+              Data: <strong>{selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}</strong> ??? Atividade planejada: <strong>{selectedAgenda?.atividade}</strong>
             </p>
 
             {/* Selected activities for apontamento */}
@@ -2465,18 +2643,18 @@ setTsAgendadas(totalAgendadas);
                     </Button>
                     </div>
 
-                    {/* Feeling de conclusão */}
+                    {/* Feeling de conclus??o */}
                     <div className="rounded-lg bg-muted/50 p-3 space-y-2">
                       <div className="flex items-center justify-between">
                         <div>
                           <Label className="text-xs font-semibold">
-                            % de conclusão da atividade
+                            % de conclus??o da atividade
                             <span className="ml-2 text-[9px] font-bold text-destructive bg-destructive/10 px-1.5 py-0.5 rounded">
-                              obrigatório
+                              obrigat??rio
                             </span>
                           </Label>
                           <p className="text-[10px] text-muted-foreground mt-0.5">
-                            Seu feeling sobre o avanço desta atividade
+                            Seu feeling sobre o avan??o desta atividade
                           </p>
                         </div>
                         <div className={`min-w-[52px] h-10 rounded-lg flex flex-col items-center justify-center text-sm font-bold border ${
@@ -2485,7 +2663,7 @@ setTsAgendadas(totalAgendadas);
                           aa.percentual_feeling >= 40 ? "bg-amber-50 border-amber-300 text-amber-700" :
                           "bg-red-50 border-red-300 text-red-700"
                         }`}>
-                          {aa.percentual_feeling === null ? "—" : `${aa.percentual_feeling}%`}
+                          {aa.percentual_feeling === null ? "???" : `${aa.percentual_feeling}%`}
                           <span className="text-[9px] font-normal opacity-60 leading-none">feeling</span>
                         </div>
                       </div>
@@ -2521,7 +2699,7 @@ setTsAgendadas(totalAgendadas);
                           <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 mt-1">
                             <span className="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1 flex-shrink-0" />
                             <p className="text-[10px] text-amber-700 font-medium">
-                              Desvio de {desvio}pp detectado — feeling ({aa.percentual_feeling}%) abaixo do previsto ({previsto}%). O coordenador será notificado.
+                              Desvio de {desvio}pp detectado ??? feeling ({aa.percentual_feeling}%) abaixo do previsto ({previsto}%). O coordenador ser?? notificado.
                             </p>
                           </div>
                         );
@@ -2549,9 +2727,9 @@ setTsAgendadas(totalAgendadas);
               </Select>
             </div>
 
-            {/* Descrição */}
+            {/* Descri????o */}
             <div className="space-y-1">
-              <Label className="text-sm font-medium">Descrição das atividades realizadas</Label>
+              <Label className="text-sm font-medium">Descri????o das atividades realizadas</Label>
               <Textarea
                 value={apontDescricao}
                 onChange={(e) => setApontDescricao(e.target.value)}
@@ -2619,24 +2797,24 @@ setTsAgendadas(totalAgendadas);
 
             {apontDescricao && (
               <div className="space-y-1">
-                <Label className="text-xs font-medium">Descrição</Label>
+                <Label className="text-xs font-medium">Descri????o</Label>
                 <p className="text-sm text-muted-foreground whitespace-pre-wrap">{apontDescricao}</p>
               </div>
             )}
 
-            {/* Seção de documento */}
+            {/* Se????o de documento */}
             {cronogramaItemDoc && (
               <div className="border-t pt-3 space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground uppercase tracking-wide">Documento</span>
                   <span className={`text-xs px-2 py-0.5 rounded-full font-medium ${cronogramaItemDoc.doc_satisfeito ? "bg-emerald-100 text-emerald-700" : "bg-amber-100 text-amber-700"}`}>
-                    {cronogramaItemDoc.doc_satisfeito ? "✓ Entregue" : "Pendente"}
+                    {cronogramaItemDoc.doc_satisfeito ? "??? Entregue" : "Pendente"}
                   </span>
                 </div>
 
                 {cronogramaItemDoc.doc_satisfeito ? (
                   <p className="text-xs text-emerald-600 bg-emerald-50 rounded-lg px-3 py-2">
-                    Documento já entregue via Monday ou APP. Nenhuma ação necessária.
+                    Documento j?? entregue via Monday ou APP. Nenhuma a????o necess??ria.
                   </p>
                 ) : (
                   <>
@@ -2649,12 +2827,12 @@ setTsAgendadas(totalAgendadas);
                           <p className="text-xs font-medium text-blue-800 truncate">{docFile.name}</p>
                           <p className="text-xs text-blue-600">{(docFile.size / 1024).toFixed(0)} KB</p>
                         </div>
-                        <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-blue-600" onClick={() => setDocFile(null)}>✕</Button>
+                        <Button size="sm" variant="ghost" className="h-6 px-2 text-xs text-blue-600" onClick={() => setDocFile(null)}>???</Button>
                       </div>
                     ) : (
                       <label className="flex flex-col items-center gap-1 border-2 border-dashed border-muted-foreground/30 rounded-lg px-4 py-3 cursor-pointer hover:bg-muted/30 transition-colors">
                         <span className="text-xs font-medium text-muted-foreground">Clique para anexar documento</span>
-                        <span className="text-xs text-muted-foreground/60">PDF, Word, imagem — qualquer formato</span>
+                        <span className="text-xs text-muted-foreground/60">PDF, Word, imagem ??? qualquer formato</span>
                         <input type="file" className="hidden" onChange={(e) => setDocFile(e.target.files?.[0] || null)} />
                       </label>
                     )}
@@ -2665,7 +2843,7 @@ setTsAgendadas(totalAgendadas);
                       </Button>
                     )}
                     <p className="text-xs text-muted-foreground text-center">
-                      Opcional — você pode enviar depois pelo Monday ou APP
+                      Opcional ??? voc?? pode enviar depois pelo Monday ou APP
                     </p>
                   </>
                 )}
@@ -2694,7 +2872,7 @@ setTsAgendadas(totalAgendadas);
           <AlertDialogHeader>
             <AlertDialogTitle>Exportar PDF</AlertDialogTitle>
             <AlertDialogDescription>
-              Selecione o relatório de{" "}
+              Selecione o relat??rio de{" "}
               {format(currentMonth, "MMMM yyyy", { locale: ptBR })}:
             </AlertDialogDescription>
           </AlertDialogHeader>
@@ -2718,7 +2896,7 @@ setTsAgendadas(totalAgendadas);
               <CircleDollarSign className="h-5 w-5 text-emerald-600" />
               Resumo Financeiro
               <span className="text-sm font-normal text-muted-foreground capitalize">
-                — {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
+                ??? {format(currentMonth, "MMMM yyyy", { locale: ptBR })}
               </span>
             </DialogTitle>
           </DialogHeader>
@@ -2758,7 +2936,7 @@ setTsAgendadas(totalAgendadas);
                     </thead>
                     <tbody>
                       {rfAgendas.length === 0 ? (
-                        <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Nenhuma agenda no mês.</td></tr>
+                        <tr><td colSpan={6} className="p-4 text-center text-muted-foreground">Nenhuma agenda no m??s.</td></tr>
                       ) : rfAgendas.map((ag) => {
                         const hLinha = ag.horas_apontadas || ag.horas_planejadas;
                         const total = hLinha + ag.deslocamento;
@@ -2772,7 +2950,7 @@ setTsAgendadas(totalAgendadas);
                               </span>
                             </td>
                             <td className="p-2 text-right">{formatHoras(hLinha)}</td>
-                            <td className="p-2 text-right">{ag.deslocamento > 0 ? formatHoras(ag.deslocamento) : "—"}</td>
+                            <td className="p-2 text-right">{ag.deslocamento > 0 ? formatHoras(ag.deslocamento) : "???"}</td>
                             <td className="p-2 text-right font-medium">{formatHoras(total)}</td>
                           </tr>
                         );
@@ -2792,7 +2970,7 @@ setTsAgendadas(totalAgendadas);
                   }
                   return (
                     <div className="mt-4 space-y-3">
-                      <p className="text-xs font-semibold">Totalizadores do mês</p>
+                      <p className="text-xs font-semibold">Totalizadores do m??s</p>
                       <div className="space-y-1">
                         {Object.entries(porCliente).map(([cli, h]) => (
                           <div key={cli} className="flex justify-between text-xs">
@@ -2846,7 +3024,7 @@ setTsAgendadas(totalAgendadas);
                     </thead>
                     <tbody>
                       {rfDespesas.length === 0 ? (
-                        <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Nenhuma despesa no mês.</td></tr>
+                        <tr><td colSpan={5} className="p-4 text-center text-muted-foreground">Nenhuma despesa no m??s.</td></tr>
                       ) : rfDespesas.map((d) => (
                         <tr key={d.id} className="border-t">
                           <td className="p-2 whitespace-nowrap">{format(parseISO(d.data), "dd/MM/yyyy")}</td>
@@ -2872,7 +3050,7 @@ setTsAgendadas(totalAgendadas);
                   for (const d of rfDespesas) porCliente[d.cliente] = (porCliente[d.cliente] || 0) + d.valor;
                   return (
                     <div className="mt-4 space-y-3">
-                      <p className="text-xs font-semibold">Totalizadores do mês</p>
+                      <p className="text-xs font-semibold">Totalizadores do m??s</p>
                       <div className="space-y-1">
                         {Object.entries(porCliente).map(([cli, val]) => (
                           <div key={cli} className="flex justify-between text-xs">
@@ -2883,7 +3061,7 @@ setTsAgendadas(totalAgendadas);
                       </div>
                       <div className="grid grid-cols-2 gap-2 text-xs">
                         <div className="rounded-lg border p-2 text-center">
-                          <p className="text-muted-foreground">Lançamentos</p>
+                          <p className="text-muted-foreground">Lan??amentos</p>
                           <p className="font-semibold text-sm">{rfDespesas.length}</p>
                         </div>
                         <div className="rounded-lg border p-2 text-center">
