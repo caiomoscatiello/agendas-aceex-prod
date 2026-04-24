@@ -213,13 +213,13 @@ export default function AdminProjetos() {
   const [savingRisco, setSavingRisco] = useState(false);
   const [exibirEncerrados, setExibirEncerrados] = useState(false);
   const [rsDescricao, setRsDescricao] = useState("");
-  const [rsProbabilidade, setRsProbabilidade] = useState("M??dia");
-  const [rsImpacto, setRsImpacto] = useState("M??dio");
+  const [rsProbabilidade, setRsProbabilidade] = useState("Média");
+  const [rsImpacto, setRsImpacto] = useState("Médio");
   const [rsStatus, setRsStatus] = useState("Identificado");
   const [rsAcao, setRsAcao] = useState("");
   const [rsResponsavelId, setRsResponsavelId] = useState<string | null>(null);
 
-  // ?????? ALERTAS CONFIG ???????????????????????????????????????????????????????????????????????????????????????????????????????????????
+  // ── ALERTAS CONFIG ─────────────────────────────────────
   const [alertaConfig, setAlertaConfig] = useState({
     alerta_feeling_ativo: true,
     alerta_feeling_threshold: 20,
@@ -327,7 +327,7 @@ export default function AdminProjetos() {
     await loadStakeholders(projeto.id);
     await loadRiscos(projeto.id);
 
-    // ?????? Carregar config de alertas ??????
+    // ── Carregar config de alertas ──
     const { data: cfgData } = await supabase
       .from("projeto_alertas_config")
       .select("*")
@@ -409,14 +409,14 @@ export default function AdminProjetos() {
     );
     if (codigoDuplicado) {
       toast({
-        title: "C??digo duplicado",
-        description: `J?? existe uma atividade com o c??digo "${newAtivCodigo}". Use um c??digo ??nico.`,
+        title: "Código duplicado",
+        description: `Já existe uma atividade com o código "${newAtivCodigo}". Use um código único.`,
         variant: "destructive",
       });
       return;
     }
     if (newAtivDataInicio && newAtivDataFim && newAtivDataFim < newAtivDataInicio) {
-      toast({ title: "Erro", description: "Data fim deve ser igual ou posterior ?? data in??cio.", variant: "destructive" });
+      toast({ title: "Erro", description: "Data fim deve ser igual ou posterior à data início.", variant: "destructive" });
       return;
     }
     const novaHora = parseFloat(newAtivHoras);
@@ -447,8 +447,8 @@ export default function AdminProjetos() {
         .eq("cliente", nomeCliente);
       if (count && count > 0) {
         toast({
-          title: "Remo????o bloqueada",
-          description: `A atividade '${atividade.codigo} - ${atividade.descricao}' possui ${count} agenda(s) vinculada(s) e n??o pode ser removida.`,
+          title: "Remoção bloqueada",
+          description: `A atividade '${atividade.codigo} - ${atividade.descricao}' possui ${count} agenda(s) vinculada(s) e não pode ser removida.`,
           variant: "destructive",
         });
         return;
@@ -459,19 +459,19 @@ export default function AdminProjetos() {
 
   const handleSave = async () => {
     if (!nomeCliente.trim()) {
-      toast({ title: "Erro", description: "Nome do cliente ?? obrigat??rio.", variant: "destructive" });
+      toast({ title: "Erro", description: "Nome do cliente é obrigatório.", variant: "destructive" });
       return;
     }
 
     if (!codigoCliente.trim() || codigoCliente.trim().length !== 6 || !/^[A-Za-z0-9]{6}$/.test(codigoCliente.trim())) {
-      toast({ title: "Erro", description: "C??digo do cliente deve ter exatamente 6 caracteres alfanum??ricos.", variant: "destructive" });
+      toast({ title: "Erro", description: "Código do cliente deve ter exatamente 6 caracteres alfanuméricos.", variant: "destructive" });
       return;
     }
     
     if (contatoTelefone) {
       const rawPhone = contatoTelefone.replace(/\D/g, "");
       if (rawPhone.length !== 11 || rawPhone[2] !== "9") {
-        toast({ title: "Erro", description: "Telefone inv??lido. Use o formato (DDD) 9XXXX-XXXX.", variant: "destructive" });
+        toast({ title: "Erro", description: "Telefone inválido. Use o formato (DDD) 9XXXX-XXXX.", variant: "destructive" });
         return;
       }
     }
@@ -486,7 +486,7 @@ export default function AdminProjetos() {
     const hcValue = parseFloat(horasContratadas) || 0;
     const totalHorasAtividades = atividades.reduce((sum, a) => sum + a.horas, 0);
     if (hcValue > 0 && totalHorasAtividades !== hcValue) {
-      toast({ title: "Erro", description: `Total de horas das atividades (${totalHorasAtividades}h) deve ser igual ??s horas contratadas (${hcValue}h).`, variant: "destructive" });
+      toast({ title: "Erro", description: `Total de horas das atividades (${totalHorasAtividades}h) deve ser igual às horas contratadas (${hcValue}h).`, variant: "destructive" });
       setSaving(false);
       return;
     }
@@ -714,7 +714,7 @@ export default function AdminProjetos() {
 
       const { error: syncError } = await supabase.functions.invoke("monday-sync-project", { body: syncPayload });
       if (syncError) {
-        toast({ title: "Aviso ??? Monday", description: "Projeto salvo. Board Monday n??o sincronizado." });
+        toast({ title: "Aviso — Monday", description: "Projeto salvo. Board Monday não sincronizado." });
       }
     } catch {
       // Monday failure never blocks
@@ -741,7 +741,7 @@ export default function AdminProjetos() {
   };
 
   const getCoordenadorName = (id: string | null) => {
-    if (!id) return "???";
+    if (!id) return "—";
     const coord = coordenadores.find(c => c.user_id === id);
     return coord ? coord.name : "Desconhecido";
   };
@@ -777,7 +777,7 @@ export default function AdminProjetos() {
 
   const handleSaveStakeholder = async () => {
     if (!shNome.trim()) {
-      toast({ title: "Erro", description: "Nome ?? obrigat??rio.", variant: "destructive" });
+      toast({ title: "Erro", description: "Nome é obrigatório.", variant: "destructive" });
       return;
     }
     setSavingStakeholder(true);
@@ -800,7 +800,7 @@ export default function AdminProjetos() {
     } else {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || !authData?.user) {
-        toast({ title: "Erro de autentica????o", description: "Sess??o expirada. Fa??a login novamente.", variant: "destructive" });
+        toast({ title: "Erro de autenticação", description: "Sessão expirada. Faça login novamente.", variant: "destructive" });
         setSavingStakeholder(false);
         return;
       }
@@ -823,7 +823,7 @@ export default function AdminProjetos() {
 
   const openNewRisco = () => {
     setEditingRisco(null);
-    setRsDescricao(""); setRsProbabilidade("M??dia"); setRsImpacto("M??dio");
+    setRsDescricao(""); setRsProbabilidade("Média"); setRsImpacto("Médio");
     setRsStatus("Identificado"); setRsAcao(""); setRsResponsavelId(null);
     setRiscoDialogOpen(true);
   };
@@ -838,7 +838,7 @@ export default function AdminProjetos() {
 
   const handleSaveRisco = async () => {
     if (!rsDescricao.trim()) {
-      toast({ title: "Erro", description: "Descri????o ?? obrigat??ria.", variant: "destructive" });
+      toast({ title: "Erro", description: "Descrição é obrigatória.", variant: "destructive" });
       return;
     }
     setSavingRisco(true);
@@ -856,7 +856,7 @@ export default function AdminProjetos() {
     } else {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || !authData?.user) {
-        toast({ title: "Erro de autentica????o", description: "Sess??o expirada. Fa??a login novamente.", variant: "destructive" });
+        toast({ title: "Erro de autenticação", description: "Sessão expirada. Faça login novamente.", variant: "destructive" });
         setSavingRisco(false);
         return;
       }
@@ -879,8 +879,8 @@ export default function AdminProjetos() {
 
   const handleResetBoard = async (projeto: Projeto) => {
     if (!confirm(
-      `Isso ir?? arquivar o board Monday do projeto "${projeto.nome_cliente}" ` +
-      `e limpar os dados de sincroniza????o.\n\n` +
+      `Isso irá arquivar o board Monday do projeto "${projeto.nome_cliente}" ` +
+      `e limpar os dados de sincronização.\n\n` +
       `Permitido apenas em projetos sem agendas vinculadas.\n\n` +
       `Confirmar reset?`
     )) return;
@@ -893,13 +893,13 @@ export default function AdminProjetos() {
       );
       if (error) throw error;
       if (data?.success) {
-        toast({ title: "Reset conclu??do", description: "Board arquivado. Use 'Criar board' para recriar." });
+        toast({ title: "Reset concluído", description: "Board arquivado. Use 'Criar board' para recriar." });
         loadProjetos();
         setDetailProjeto(prev =>
           prev ? { ...prev, monday_board_id: null, monday_board_url: null, monday_status: "nao_criado" } as any : prev
         );
       } else {
-        toast({ title: "Reset n??o permitido", description: data?.error || "Erro ao resetar.", variant: "destructive" });
+        toast({ title: "Reset não permitido", description: data?.error || "Erro ao resetar.", variant: "destructive" });
       }
     } catch (err: any) {
       toast({ title: "Erro no reset", description: err.message, variant: "destructive" });
@@ -968,7 +968,7 @@ export default function AdminProjetos() {
           if (fresh) setDetailProjeto(fresh as any);
         }
       } else if (data?.skipped) {
-        toast({ title: "Integra????o desativada", description: "Ative em Settings ??? Integ. Monday.", variant: "destructive" });
+        toast({ title: "Integração desativada", description: "Ative em Settings → Integ. Monday.", variant: "destructive" });
       } else {
         throw new Error(data?.error || "Erro desconhecido");
       }
@@ -1011,18 +1011,18 @@ export default function AdminProjetos() {
       };
       const { error } = await supabase.functions.invoke("monday-sync-project", { body: payload });
       if (error) {
-        toast({ title: "Erro Monday", description: "N??o foi poss??vel criar o board.", variant: "destructive" });
+        toast({ title: "Erro Monday", description: "Não foi possível criar o board.", variant: "destructive" });
       } else {
         toast({ title: "Board Monday criado!" });
         loadProjetos();
       }
     } catch {
-      toast({ title: "Erro Monday", description: "Falha na sincroniza????o.", variant: "destructive" });
+      toast({ title: "Erro Monday", description: "Falha na sincronização.", variant: "destructive" });
     }
     setSyncingMondayId(null);
   };
 
-  // ????????? Shared sheet content ?????????
+  // ─── Shared sheet content ───
   const renderSheetBody = () => {
     const isEditable = sheetMode === "edit" || sheetMode === "new";
     const projeto = detailProjeto;
@@ -1062,14 +1062,14 @@ export default function AdminProjetos() {
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">Clique em Editar para modificar os dados.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><p className="text-[10px] text-muted-foreground">C??digo</p><p className="text-sm font-mono">{projeto.codigo_cliente}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground">Código</p><p className="text-sm font-mono">{projeto.codigo_cliente}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Nome do Projeto</p><p className="text-sm">{projeto.nome_cliente}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Coordenador</p><p className="text-sm">{getCoordenadorName(projeto.coordenador_id)}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground">Contato</p><p className="text-sm">{projeto.contato_nome || "???"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground">Telefone</p><p className="text-sm">{projeto.contato_telefone || "???"}</p></div>
-                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Endere??o</p><p className="text-sm">{projeto.endereco_cliente || "???"}</p></div>
-                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Site</p><p className="text-sm">{projeto.site_cliente || "???"}</p></div>
-                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Email do Contato</p><p className="text-sm">{projeto.email_contato || "???"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground">Contato</p><p className="text-sm">{projeto.contato_nome || "—"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground">Telefone</p><p className="text-sm">{projeto.contato_telefone || "—"}</p></div>
+                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Endereço</p><p className="text-sm">{projeto.endereco_cliente || "—"}</p></div>
+                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Site</p><p className="text-sm">{projeto.site_cliente || "—"}</p></div>
+                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Email do Contato</p><p className="text-sm">{projeto.email_contato || "—"}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Horas Contratadas</p><p className="text-sm">{projeto.horas_contratadas}h</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Deslocamento (horas)</p><p className="text-sm">{projeto.deslocamento}h</p></div>
                   <div>
@@ -1089,21 +1089,21 @@ export default function AdminProjetos() {
                 <p className="text-sm font-semibold text-muted-foreground">Dados do Cliente</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs">C??digo do Projeto *</Label>
+                    <Label className="text-xs">Código do Projeto *</Label>
                     <Input
                       value={codigoCliente}
                       onChange={(e) => setCodigoCliente(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase())}
                       placeholder="ABC123"
                       maxLength={6}
                     />
-                    <p className="text-[10px] text-muted-foreground">6 caracteres alfanum??ricos</p>
+                    <p className="text-[10px] text-muted-foreground">6 caracteres alfanuméricos</p>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Nome do Projeto *</Label>
                     <Input value={nomeCliente} onChange={(e) => setNomeCliente(e.target.value)} placeholder="Nome do cliente" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Coordenador Respons??vel *</Label>
+                    <Label className="text-xs">Coordenador Responsável *</Label>
                     <Select value={selectedCoordenador} onValueChange={setSelectedCoordenador}>
                       <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
@@ -1136,8 +1136,8 @@ export default function AdminProjetos() {
                     <p className="text-[10px] text-muted-foreground">Formato: (DDD) 9XXXX-XXXX</p>
                   </div>
                   <div className="space-y-1 sm:col-span-2">
-                    <Label className="text-xs">Endere??o</Label>
-                    <Input value={enderecoCliente} onChange={(e) => setEnderecoCliente(e.target.value)} placeholder="Endere??o completo" />
+                    <Label className="text-xs">Endereço</Label>
+                    <Input value={enderecoCliente} onChange={(e) => setEnderecoCliente(e.target.value)} placeholder="Endereço completo" />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs">Site</Label>
@@ -1173,9 +1173,9 @@ export default function AdminProjetos() {
                     <Select value={statusProjeto} onValueChange={setStatusProjeto}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Em planejamento">???? Em planejamento</SelectItem>
-                        <SelectItem value="Liberado">???? Liberado</SelectItem>
-                        <SelectItem value="Encerrado">???? Encerrado</SelectItem>
+                        <SelectItem value="Em planejamento">🟡 Em planejamento</SelectItem>
+                        <SelectItem value="Liberado">🟢 Liberado</SelectItem>
+                        <SelectItem value="Encerrado">🔴 Encerrado</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1224,8 +1224,8 @@ export default function AdminProjetos() {
                       <span className="font-mono text-xs font-medium bg-primary text-primary-foreground px-2 py-0.5 rounded">{a.codigo}</span>
                       <span className="text-sm flex-1 font-medium">{a.descricao}</span>
                       <span className="text-xs text-muted-foreground">
-                        {a.data_inicio ? a.data_inicio.split("-").reverse().join("/") : "???"}
-                        {a.data_fim ? ` ??? ${a.data_fim.split("-").reverse().join("/")}` : ""}
+                        {a.data_inicio ? a.data_inicio.split("-").reverse().join("/") : "—"}
+                        {a.data_fim ? ` → ${a.data_fim.split("-").reverse().join("/")}` : ""}
                       </span>
                       <Badge variant="outline" className="text-xs font-mono">{a.horas}h</Badge>
                     </div>
@@ -1246,7 +1246,7 @@ export default function AdminProjetos() {
                                     : "border-amber-500 text-amber-700 dark:text-amber-400"
                                 )}
                               >
-                                {item.doc_satisfeito ? "??? Doc" : "??? Doc"}
+                                {item.doc_satisfeito ? "✓ Doc" : "⚠ Doc"}
                               </Badge>
                             )}
                           </div>
@@ -1268,7 +1268,7 @@ export default function AdminProjetos() {
                               const limite = parseFloat(horasContratadas) || 0;
                               const total = atividades.reduce((s, at) => s + at.horas, 0);
                               if (limite > 0 && total > limite) {
-                                toast({ title: "Aten????o", description: `Total de horas (${total}h) excede as contratadas (${limite}h).`, variant: "destructive" });
+                                toast({ title: "Atenção", description: `Total de horas (${total}h) excede as contratadas (${limite}h).`, variant: "destructive" });
                               }
                             }}
                           />
@@ -1303,19 +1303,19 @@ export default function AdminProjetos() {
             {isEditable && (
               <div className="mt-4 grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
                 <div className="w-full sm:w-24 space-y-1">
-                  <Label className="text-xs">C??digo</Label>
+                  <Label className="text-xs">Código</Label>
                   <Input value={newAtivCodigo} onChange={(e) => setNewAtivCodigo(e.target.value)} placeholder="A01" />
                 </div>
                 <div className="col-span-2 sm:flex-1 space-y-1">
-                  <Label className="text-xs">Descri????o</Label>
-                  <Input value={newAtivDescricao} onChange={(e) => setNewAtivDescricao(e.target.value)} placeholder="Descri????o da atividade" />
+                  <Label className="text-xs">Descrição</Label>
+                  <Input value={newAtivDescricao} onChange={(e) => setNewAtivDescricao(e.target.value)} placeholder="Descrição da atividade" />
                 </div>
                 <div className="w-full sm:w-20 space-y-1">
                   <Label className="text-xs">Horas</Label>
                   <Input type="number" value={newAtivHoras} onChange={(e) => setNewAtivHoras(e.target.value)} placeholder="0" />
                 </div>
                 <div className="w-full sm:w-32 space-y-1">
-                  <Label className="text-[10px]">Data in??cio</Label>
+                  <Label className="text-[10px]">Data início</Label>
                   <Input type="date" className="h-8 text-xs" value={newAtivDataInicio} onChange={(e) => setNewAtivDataInicio(e.target.value)} />
                 </div>
                 <div className="w-full sm:w-32 space-y-1">
@@ -1343,7 +1343,7 @@ export default function AdminProjetos() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tipo</TableHead>
-                      <TableHead>Valor M??ximo</TableHead>
+                      <TableHead>Valor Máximo</TableHead>
                       {isEditable && <TableHead className="w-10"></TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -1369,10 +1369,10 @@ export default function AdminProjetos() {
               <div className="flex gap-2 items-end mt-3">
                 <div className="flex-1 space-y-1">
                   <Label className="text-xs">Tipo</Label>
-                  <Input value={newDespTipo} onChange={(e) => setNewDespTipo(e.target.value)} placeholder="Ex: Alimenta????o" />
+                  <Input value={newDespTipo} onChange={(e) => setNewDespTipo(e.target.value)} placeholder="Ex: Alimentação" />
                 </div>
                 <div className="w-32 space-y-1">
-                  <Label className="text-xs">Valor M??x.</Label>
+                  <Label className="text-xs">Valor Máx.</Label>
                   <Input type="number" step="0.01" value={newDespValor} onChange={(e) => setNewDespValor(e.target.value)} placeholder="0.00" />
                 </div>
                 <Button variant="outline" size="icon" onClick={addDespesaLocal}><Plus className="h-4 w-4" /></Button>
@@ -1410,8 +1410,8 @@ export default function AdminProjetos() {
                           {stakeholders.filter(s => s.tipo === "Interno").map((s) => (
                             <TableRow key={s.id}>
                               <TableCell className="text-sm font-medium">{s.nome}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || "???"}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.email || "???"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || "—"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.email || "—"}</TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1">
                                   <Badge variant="default" className="text-[10px]">{s.tipo}</Badge>
@@ -1451,9 +1451,9 @@ export default function AdminProjetos() {
                           {stakeholders.filter(s => s.tipo === "Externo").map((s) => (
                             <TableRow key={s.id}>
                               <TableCell className="text-sm font-medium">{s.nome}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || "???"}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.empresa || "???"}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.email || "???"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || "—"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.empresa || "—"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.email || "—"}</TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1">
                                   <Badge variant="secondary" className="text-[10px]">{s.tipo}</Badge>
@@ -1510,12 +1510,12 @@ export default function AdminProjetos() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Descri????o</TableHead>
+                        <TableHead>Descrição</TableHead>
                         <TableHead>Probabilidade</TableHead>
                         <TableHead>Impacto</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="hidden sm:table-cell">Respons??vel</TableHead>
-                        <TableHead className="hidden sm:table-cell">A????o Mitigadora</TableHead>
+                        <TableHead className="hidden sm:table-cell">Responsável</TableHead>
+                        <TableHead className="hidden sm:table-cell">Ação Mitigadora</TableHead>
                         <TableHead className="w-[80px]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1526,20 +1526,20 @@ export default function AdminProjetos() {
                           <TableRow key={r.id}>
                             <TableCell className="text-sm font-medium">{r.descricao}</TableCell>
                             <TableCell>
-                              <Badge variant={r.probabilidade === "Alta" ? "destructive" : r.probabilidade === "M??dia" ? "default" : "secondary"} className="text-xs">{r.probabilidade}</Badge>
+                              <Badge variant={r.probabilidade === "Alta" ? "destructive" : r.probabilidade === "Média" ? "default" : "secondary"} className="text-xs">{r.probabilidade}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={r.impacto === "Alto" ? "destructive" : r.impacto === "M??dio" ? "default" : "secondary"} className="text-xs">{r.impacto}</Badge>
+                              <Badge variant={r.impacto === "Alto" ? "destructive" : r.impacto === "Médio" ? "default" : "secondary"} className="text-xs">{r.impacto}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={r.status === "Encerrado" ? "secondary" : r.status === "Em Mitiga????o" ? "default" : "outline"} className="text-xs">{r.status}</Badge>
+                              <Badge variant={r.status === "Encerrado" ? "secondary" : r.status === "Em Mitigação" ? "default" : "outline"} className="text-xs">{r.status}</Badge>
                             </TableCell>
                             <TableCell className="hidden sm:table-cell text-sm">
                               {responsavel
-                                ? `${responsavel.nome}${responsavel.cargo ? ` ?? ${responsavel.cargo}` : ""}`
-                                : "???"}
+                                ? `${responsavel.nome}${responsavel.cargo ? ` · ${responsavel.cargo}` : ""}`
+                                : "—"}
                             </TableCell>
-                            <TableCell className="hidden sm:table-cell text-sm">{r.acao_mitigadora || "???"}</TableCell>
+                            <TableCell className="hidden sm:table-cell text-sm">{r.acao_mitigadora || "—"}</TableCell>
                             <TableCell>
                               <div className="flex gap-1">
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditRisco(r)}>
@@ -1572,10 +1572,10 @@ export default function AdminProjetos() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs">Vers??o</TableHead>
-                      <TableHead className="text-xs">Descri????o</TableHead>
+                      <TableHead className="text-xs">Versão</TableHead>
+                      <TableHead className="text-xs">Descrição</TableHead>
                       <TableHead className="text-xs">Salvo em</TableHead>
-                      <TableHead className="text-xs w-24">A????es</TableHead>
+                      <TableHead className="text-xs w-24">Ações</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1585,7 +1585,7 @@ export default function AdminProjetos() {
                       return (
                         <TableRow key={b.id}>
                           <TableCell className="text-sm font-medium">{b.versao}</TableCell>
-                          <TableCell className="text-sm">{b.descricao || "???"}</TableCell>
+                          <TableCell className="text-sm">{b.descricao || "—"}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{fmt}</TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setBaselineComparando(b)}>
@@ -1603,7 +1603,7 @@ export default function AdminProjetos() {
 
           {/* TAB CONFIG */}
           <TabsContent value="config" className="mt-0">
-            <p className="text-sm font-semibold mb-3">Integra????es</p>
+            <p className="text-sm font-semibold mb-3">Integrações</p>
             {(() => {
               const integracoes: IntegracaoConfig[] = [
                 {
@@ -1617,10 +1617,10 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: detailProjeto?.monday_board_id ? "criado" : "nao_criado",
-                  statusLabel: detailProjeto?.monday_board_id ? "??? Criado" : "N??o criado",
+                  statusLabel: detailProjeto?.monday_board_id ? "✓ Criado" : "Não criado",
                   sub: detailProjeto?.monday_board_id
                     ? `${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
-                    : "Board Monday n??o vinculado a este projeto",
+                    : "Board Monday não vinculado a este projeto",
                   acoes: detailProjeto?.monday_board_id ? (
                     <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => window.open(detailProjeto.monday_board_url!, "_blank")}>
                       <ExternalLink className="h-3 w-3" /> Abrir board
@@ -1639,7 +1639,7 @@ export default function AdminProjetos() {
                           {resettingBoard === detailProjeto?.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
                           Reset board
                         </Button>
-                        <span className="text-[9px] text-muted-foreground">arquiva e remove v??nculo</span>
+                        <span className="text-[9px] text-muted-foreground">arquiva e remove vínculo</span>
                       </div>
                     </div>
                   ) : null,
@@ -1653,8 +1653,8 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: "ativo",
-                  statusLabel: "??? Ativo",
-                  sub: `C??digo cliente: ${detailProjeto?.codigo_cliente ?? "???"}`,
+                  statusLabel: "✓ Ativo",
+                  sub: `Código cliente: ${detailProjeto?.codigo_cliente ?? "—"}`,
                 },
                 {
                   key: "sharepoint",
@@ -1669,13 +1669,13 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: detailProjeto?.sharepoint_pasta_url ? "ativo" : "disponivel",
-                  statusLabel: detailProjeto?.sharepoint_pasta_url ? "??? Ativo" : "Dispon??vel",
+                  statusLabel: detailProjeto?.sharepoint_pasta_url ? "✓ Ativo" : "Disponível",
                   sub: detailProjeto?.sharepoint_pasta_url
                     ? `Documentos/${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
                     : "Nenhum documento enviado ainda para este projeto.",
                   help: detailProjeto?.sharepoint_pasta_url
                     ? undefined
-                    : "A pasta deste projeto no SharePoint ?? criada automaticamente no primeiro envio de documento. O status passa para Ativo assim que isso ocorrer.",
+                    : "A pasta deste projeto no SharePoint é criada automaticamente no primeiro envio de documento. O status passa para Ativo assim que isso ocorrer.",
                   acoes: detailProjeto?.sharepoint_pasta_url ? (
                     <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => window.open(detailProjeto.sharepoint_pasta_url!, "_blank")}>
                       <ExternalLink className="h-3 w-3" /> Abrir pasta
@@ -1692,7 +1692,7 @@ export default function AdminProjetos() {
                   ),
                   status: "detalhamento",
                   statusLabel: "Em detalhamento",
-                  sub: "Versionamento e automa????es ??? em breve",
+                  sub: "Versionamento e automações — em breve",
                 },
                 {
                   key: "autentique",
@@ -1703,13 +1703,13 @@ export default function AdminProjetos() {
                     </div>
                   ),
                   status: detailProjeto?.autentique_folder_id ? "ativo" : "disponivel",
-                  statusLabel: detailProjeto?.autentique_folder_id ? "??? Ativo" : "Dispon??vel",
+                  statusLabel: detailProjeto?.autentique_folder_id ? "✓ Ativo" : "Disponível",
                   sub: detailProjeto?.autentique_folder_id
                     ? `${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
                     : "Nenhum envelope de assinatura criado ainda para este projeto.",
                   help: detailProjeto?.autentique_folder_id
                     ? undefined
-                    : "A pasta e o envelope no Autentique s??o criados automaticamente quando o coordenador aciona o envio para assinatura em um item do cronograma. O status passa para Ativo assim que isso ocorrer.",
+                    : "A pasta e o envelope no Autentique são criados automaticamente quando o coordenador aciona o envio para assinatura em um item do cronograma. O status passa para Ativo assim que isso ocorrer.",
                   acoes: detailProjeto?.autentique_folder_url ? (
                     <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => window.open(detailProjeto.autentique_folder_url!, "_blank")}>
                       <ExternalLink className="h-3 w-3" /> Abrir pasta
@@ -1755,15 +1755,15 @@ export default function AdminProjetos() {
               );
             })()}
 
-            {/* ?????? ALERTAS PROATIVOS ?????? */}
+            {/* ── ALERTAS PROATIVOS ── */}
             <p className="text-sm font-semibold mt-5 mb-3">Alertas Proativos</p>
             <Card>
               <CardContent className="p-4 space-y-4">
                 {([
-                  { key: "feeling",     icon: "????", label: "Desvio de Feeling",     ativoKey: "alerta_feeling_ativo",     valorKey: "alerta_feeling_threshold",  valorLabel: "Desvio m??nimo (pp):",       min: 5,  max: 50  },
-                  { key: "apontamento", icon: "????", label: "Agenda s/ Apontamento", ativoKey: "alerta_apontamento_ativo", valorKey: "alerta_apontamento_dias",    valorLabel: "Dias sem apontamento:",     min: 1,  max: 30  },
-                  { key: "consumo",     icon: "???",  label: "Consumo de Horas",      ativoKey: "alerta_consumo_ativo",     valorKey: "alerta_consumo_threshold",  valorLabel: "Threshold de consumo (%):", min: 50, max: 100 },
-                  { key: "parada",      icon: "???",  label: "Atividade Parada",      ativoKey: "alerta_parada_ativo",      valorKey: "alerta_parada_dias",        valorLabel: "Dias ??teis sem agenda:",    min: 1,  max: 30  },
+                  { key: "feeling",     icon: "📉", label: "Desvio de Feeling",     ativoKey: "alerta_feeling_ativo",     valorKey: "alerta_feeling_threshold",  valorLabel: "Desvio mínimo (pp):",       min: 5,  max: 50  },
+                  { key: "apontamento", icon: "📋", label: "Agenda s/ Apontamento", ativoKey: "alerta_apontamento_ativo", valorKey: "alerta_apontamento_dias",    valorLabel: "Dias sem apontamento:",     min: 1,  max: 30  },
+                  { key: "consumo",     icon: "⏱",  label: "Consumo de Horas",      ativoKey: "alerta_consumo_ativo",     valorKey: "alerta_consumo_threshold",  valorLabel: "Threshold de consumo (%):", min: 50, max: 100 },
+                  { key: "parada",      icon: "⏸",  label: "Atividade Parada",      ativoKey: "alerta_parada_ativo",      valorKey: "alerta_parada_dias",        valorLabel: "Dias úteis sem agenda:",    min: 1,  max: 30  },
                 ] as const).map((item, idx) => (
                   <div key={item.key}>
                     {idx > 0 && <div className="border-t border-dashed mb-4" />}
@@ -1807,14 +1807,14 @@ export default function AdminProjetos() {
                     if (error) {
                       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
                     } else {
-                      toast({ title: "Configura????o de alertas salva!" });
+                      toast({ title: "Configuração de alertas salva!" });
                     }
                     setSavingAlertaConfig(false);
                   }}
                   disabled={savingAlertaConfig}
                 >
                   {savingAlertaConfig ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                  Salvar configura????o de alertas
+                  Salvar configuração de alertas
                 </Button>
               </CardContent>
             </Card>
@@ -1824,13 +1824,13 @@ export default function AdminProjetos() {
     );
   };
 
-  // ????????? Desktop list ?????????
+  // ─── Desktop list ───
   const renderDesktopList = () => (
     <div className="flex flex-col h-full">
       <div className="flex items-center border-b">
         <input
           className="flex-1 px-3 py-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
-          placeholder="Buscar cliente ou c??digo..."
+          placeholder="Buscar cliente ou código..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -1871,7 +1871,7 @@ export default function AdminProjetos() {
               <span className={cn("inline-block h-2 w-2 rounded-full shrink-0", p.status === "Liberado" ? "bg-emerald-500" : p.status === "Encerrado" ? "bg-red-500" : "bg-yellow-500")} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium truncate">{p.nome_cliente}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{p.codigo_cliente} ?? {getCoordenadorName(p.coordenador_id)}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{p.codigo_cliente} · {getCoordenadorName(p.coordenador_id)}</p>
               </div>
               {p.monday_board_id ? (
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">Monday</span>
@@ -1932,7 +1932,7 @@ export default function AdminProjetos() {
 
       <div className="flex items-center border rounded-lg overflow-hidden">
         <input className="flex-1 px-3 py-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
-          placeholder="Buscar cliente ou c??digo..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          placeholder="Buscar cliente ou código..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         <button className="w-10 h-10 flex items-center justify-center border-l text-primary hover:bg-muted/50 transition-colors shrink-0 text-lg font-light"
           title="Novo projeto" onClick={() => { openNew(); setSheetMode("new"); setSheetOpen(true); }}>+</button>
       </div>
@@ -1964,7 +1964,7 @@ export default function AdminProjetos() {
                 <span className={cn("inline-block h-2.5 w-2.5 rounded-full shrink-0", p.status === "Liberado" ? "bg-emerald-500" : p.status === "Encerrado" ? "bg-red-500" : "bg-yellow-500")} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{p.nome_cliente}</p>
-                  <p className="text-xs text-muted-foreground truncate">{p.codigo_cliente} ?? {getCoordenadorName(p.coordenador_id)}</p>
+                  <p className="text-xs text-muted-foreground truncate">{p.codigo_cliente} · {getCoordenadorName(p.coordenador_id)}</p>
                 </div>
                 {p.monday_board_id ? (
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">Monday</span>
@@ -1988,8 +1988,8 @@ export default function AdminProjetos() {
           </h2>
           {sheetMode !== "new" && detailProjeto && (
             <p className="text-xs text-muted-foreground truncate">
-              {detailProjeto.codigo_cliente} ?? {getCoordenadorName(detailProjeto.coordenador_id)} ?? {detailProjeto.status}
-              {detailProjeto.monday_board_id && " ?? Monday vinculado"}
+              {detailProjeto.codigo_cliente} · {getCoordenadorName(detailProjeto.coordenador_id)} · {detailProjeto.status}
+              {detailProjeto.monday_board_id && " · Monday vinculado"}
             </p>
           )}
         </div>
@@ -1997,7 +1997,7 @@ export default function AdminProjetos() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs shrink-0">
-                Outras a????es <ChevronDown className="h-3 w-3" />
+                Outras ações <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -2027,7 +2027,7 @@ export default function AdminProjetos() {
         <Button variant="outline" onClick={() => { setSheetMode("view"); if (sheetMode === "new") setSheetOpen(false); }}>Cancelar</Button>
         <Button className="gap-2" onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {sheetMode === "new" ? "Cadastrar Projeto" : "Salvar Altera????es"}
+          {sheetMode === "new" ? "Cadastrar Projeto" : "Salvar Alterações"}
         </Button>
       </div>
     );
@@ -2058,9 +2058,9 @@ export default function AdminProjetos() {
             <div className="grid grid-cols-4 gap-3">
               {[
                 { label: "Total de projetos", value: projetos.length, sub: "cadastrados", color: "" },
-                { label: "Liberados", value: countByStatus.liberado, sub: "em execu????o", color: "text-emerald-600" },
-                { label: "Em planejamento", value: countByStatus.planejamento, sub: "aguardando in??cio", color: "text-yellow-600" },
-                { label: "Sem board Monday", value: projetos.filter(p => !p.monday_board_id).length, sub: "pendente cria????o", color: "text-red-500" },
+                { label: "Liberados", value: countByStatus.liberado, sub: "em execução", color: "text-emerald-600" },
+                { label: "Em planejamento", value: countByStatus.planejamento, sub: "aguardando início", color: "text-yellow-600" },
+                { label: "Sem board Monday", value: projetos.filter(p => !p.monday_board_id).length, sub: "pendente criação", color: "text-red-500" },
               ].map(({ label, value, sub, color }) => (
                 <Card key={label} className="bg-muted/30">
                   <CardContent className="p-4">
@@ -2113,9 +2113,9 @@ export default function AdminProjetos() {
             </div>
             {shTipo === "Interno" && (
               <div className="col-span-2 space-y-1">
-                <Label className="text-xs">Vincular usu??rio do sistema</Label>
+                <Label className="text-xs">Vincular usuário do sistema</Label>
                 <Select value={shProfileUserId || ""} onValueChange={handleSelectUsuarioInterno}>
-                  <SelectTrigger><SelectValue placeholder="Selecione um usu??rio..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione um usuário..." /></SelectTrigger>
                   <SelectContent>{allUsers.map((u) => (<SelectItem key={u.user_id} value={u.user_id}>{u.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
@@ -2128,7 +2128,7 @@ export default function AdminProjetos() {
             <div className="space-y-1"><Label className="text-xs">Departamento</Label><Input value={shDepartamento} onChange={(e) => setShDepartamento(e.target.value)} placeholder="Departamento" /></div>
             <div className="space-y-1"><Label className="text-xs">Empresa</Label><Input value={shEmpresa} onChange={(e) => setShEmpresa(e.target.value)} placeholder="Empresa" disabled={shProfileUserId !== null} className={shProfileUserId !== null ? "bg-muted text-muted-foreground cursor-not-allowed" : ""} /></div>
             <div className="space-y-1">
-              <Label className="text-xs">N??vel Hier??rquico</Label>
+              <Label className="text-xs">Nível Hierárquico</Label>
               <Select value={shNivel} onValueChange={setShNivel}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
@@ -2146,7 +2146,7 @@ export default function AdminProjetos() {
               <Input value={shTelefone} onChange={(e) => { const raw = e.target.value.replace(/\D/g, "").slice(0, 11); let f = ""; if (raw.length > 0) f = `(${raw.slice(0, 2)}`; if (raw.length >= 3) f += `) ${raw.slice(2, 7)}`; if (raw.length >= 8) f += `-${raw.slice(7)}`; setShTelefone(raw.length === 0 ? "" : f); }} placeholder="(11) 99999-9999" type="tel" maxLength={15} disabled={shProfileUserId !== null} className={shProfileUserId !== null ? "bg-muted text-muted-foreground cursor-not-allowed" : ""} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Tipo de Influ??ncia</Label>
+              <Label className="text-xs">Tipo de Influência</Label>
               <Select value={shInfluencia} onValueChange={setShInfluencia}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -2173,21 +2173,21 @@ export default function AdminProjetos() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingRisco ? "Editar Risco" : "Novo Risco"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1"><Label className="text-xs">Descri????o *</Label><Textarea rows={2} value={rsDescricao} onChange={(e) => setRsDescricao(e.target.value)} placeholder="Descreva o risco..." /></div>
-            <div className="space-y-1"><Label className="text-xs">Probabilidade</Label><Select value={rsProbabilidade} onValueChange={setRsProbabilidade}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Baixa">Baixa</SelectItem><SelectItem value="M??dia">M??dia</SelectItem><SelectItem value="Alta">Alta</SelectItem></SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Impacto</Label><Select value={rsImpacto} onValueChange={setRsImpacto}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Baixo">Baixo</SelectItem><SelectItem value="M??dio">M??dio</SelectItem><SelectItem value="Alto">Alto</SelectItem></SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Status</Label><Select value={rsStatus} onValueChange={setRsStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Identificado">Identificado</SelectItem><SelectItem value="Em Mitiga????o">Em Mitiga????o</SelectItem><SelectItem value="Encerrado">Encerrado</SelectItem></SelectContent></Select></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Descrição *</Label><Textarea rows={2} value={rsDescricao} onChange={(e) => setRsDescricao(e.target.value)} placeholder="Descreva o risco..." /></div>
+            <div className="space-y-1"><Label className="text-xs">Probabilidade</Label><Select value={rsProbabilidade} onValueChange={setRsProbabilidade}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Baixa">Baixa</SelectItem><SelectItem value="Média">Média</SelectItem><SelectItem value="Alta">Alta</SelectItem></SelectContent></Select></div>
+            <div className="space-y-1"><Label className="text-xs">Impacto</Label><Select value={rsImpacto} onValueChange={setRsImpacto}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Baixo">Baixo</SelectItem><SelectItem value="Médio">Médio</SelectItem><SelectItem value="Alto">Alto</SelectItem></SelectContent></Select></div>
+            <div className="space-y-1"><Label className="text-xs">Status</Label><Select value={rsStatus} onValueChange={setRsStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Identificado">Identificado</SelectItem><SelectItem value="Em Mitigação">Em Mitigação</SelectItem><SelectItem value="Encerrado">Encerrado</SelectItem></SelectContent></Select></div>
             <div className="space-y-1">
-              <Label className="text-xs">Respons??vel</Label>
+              <Label className="text-xs">Responsável</Label>
               <Select value={rsResponsavelId || "none"} onValueChange={(v) => setRsResponsavelId(v === "none" ? null : v)}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sem respons??vel</SelectItem>
-                  {stakeholders.map((s) => (<SelectItem key={s.id} value={s.id}>{s.nome}{s.cargo ? ` ?? ${s.cargo}` : ""}</SelectItem>))}
+                  <SelectItem value="none">Sem responsável</SelectItem>
+                  {stakeholders.map((s) => (<SelectItem key={s.id} value={s.id}>{s.nome}{s.cargo ? ` · ${s.cargo}` : ""}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2 space-y-1"><Label className="text-xs">A????o Mitigadora</Label><Textarea rows={2} value={rsAcao} onChange={(e) => setRsAcao(e.target.value)} placeholder="Descreva a a????o mitigadora..." /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Ação Mitigadora</Label><Textarea rows={2} value={rsAcao} onChange={(e) => setRsAcao(e.target.value)} placeholder="Descreva a ação mitigadora..." /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRiscoDialogOpen(false)}>Cancelar</Button>
@@ -2205,7 +2205,7 @@ export default function AdminProjetos() {
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-base font-semibold">Comparativo de Baseline</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-1">
-                {baselineComparando?.versao}{baselineComparando?.descricao ? ` ?? ${baselineComparando.descricao}` : ""}{" ?? "}
+                {baselineComparando?.versao}{baselineComparando?.descricao ? ` · ${baselineComparando.descricao}` : ""}{" · "}
                 {baselineComparando?.created_at ? new Date(baselineComparando.created_at).toLocaleDateString("pt-BR") : ""}{" vs. estado atual"}
               </DialogDescription>
             </div>
@@ -2220,7 +2220,7 @@ export default function AdminProjetos() {
             const atualCodigos = new Set(atividades.map(a => a.codigo));
             const novas = atividades.filter(a => !blMap[a.codigo]);
             const removidas = blAtivs.filter((b: any) => !atualCodigos.has(b.codigo));
-            const fmtD = (d: string | null) => d ? d.split("-").reverse().join("/") : "???";
+            const fmtD = (d: string | null) => d ? d.split("-").reverse().join("/") : "—";
 
             return (
               <div className="space-y-3">
@@ -2228,7 +2228,7 @@ export default function AdminProjetos() {
                   {atividades.filter(a => blMap[a.codigo]).map(a => {
                     const bl = blMap[a.codigo];
                     const diffH = a.horas - bl.horas;
-                    let desvio = 0; let desvioLabel = "???"; let desvioBg = "bg-emerald-100 text-emerald-800";
+                    let desvio = 0; let desvioLabel = "—"; let desvioBg = "bg-emerald-100 text-emerald-800";
                     if (a.data_fim && bl.data_fim) {
                       desvio = Math.round((new Date(a.data_fim).getTime() - new Date(bl.data_fim).getTime()) / 86400000);
                       if (desvio <= 0) { desvioLabel = "No prazo"; desvioBg = "bg-emerald-100 text-emerald-800"; }
@@ -2244,7 +2244,7 @@ export default function AdminProjetos() {
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                           <span className="text-muted-foreground">Horas BL</span><span className="text-muted-foreground">Horas Atual</span>
                           <span>{bl.horas}h</span><span className={cn(diffH > 0 ? "text-red-600" : diffH < 0 ? "text-emerald-600" : "")}>{a.horas}h {diffH !== 0 && `(${diffH > 0 ? "+" : ""}${diffH}h)`}</span>
-                          <span className="text-muted-foreground">In??cio BL</span><span className="text-muted-foreground">In??cio Atual</span>
+                          <span className="text-muted-foreground">Início BL</span><span className="text-muted-foreground">Início Atual</span>
                           <span>{fmtD(bl.data_inicio)}</span><span>{fmtD(a.data_inicio)}</span>
                           <span className="text-muted-foreground">Fim BL</span><span className="text-muted-foreground">Fim Atual</span>
                           <span>{fmtD(bl.data_fim)}</span><span>{fmtD(a.data_fim)}</span>
@@ -2254,14 +2254,14 @@ export default function AdminProjetos() {
                   })}
                   {removidas.map((b: any) => (
                     <div key={b.id} className="rounded-md border p-3 text-muted-foreground">
-                      <div className="flex items-center justify-between gap-2"><span className="text-xs">{b.codigo} ?? {b.descricao}</span><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></div>
-                      <p className="text-xs mt-1">BL: {b.horas}h ?? {fmtD(b.data_inicio)} ??? {fmtD(b.data_fim)}</p>
+                      <div className="flex items-center justify-between gap-2"><span className="text-xs">{b.codigo} · {b.descricao}</span><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></div>
+                      <p className="text-xs mt-1">BL: {b.horas}h · {fmtD(b.data_inicio)} → {fmtD(b.data_fim)}</p>
                     </div>
                   ))}
                   {novas.map(a => (
                     <div key={a.id} className="rounded-md border p-3">
-                      <div className="flex items-center justify-between gap-2"><span className="text-xs">{a.codigo} ?? {a.descricao}</span><Badge className="text-[10px] bg-blue-100 text-blue-800">Nova</Badge></div>
-                      <p className="text-xs mt-1 text-muted-foreground">Atual: {a.horas}h ?? {fmtD(a.data_inicio)} ??? {fmtD(a.data_fim)}</p>
+                      <div className="flex items-center justify-between gap-2"><span className="text-xs">{a.codigo} · {a.descricao}</span><Badge className="text-[10px] bg-blue-100 text-blue-800">Nova</Badge></div>
+                      <p className="text-xs mt-1 text-muted-foreground">Atual: {a.horas}h · {fmtD(a.data_inicio)} → {fmtD(a.data_fim)}</p>
                     </div>
                   ))}
                 </div>
@@ -2270,10 +2270,10 @@ export default function AdminProjetos() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">C??digo</TableHead><TableHead className="text-xs">Descri????o</TableHead>
+                        <TableHead className="text-xs">Código</TableHead><TableHead className="text-xs">Descrição</TableHead>
                         <TableHead className="text-xs text-right">Horas BL</TableHead><TableHead className="text-xs text-right">Horas Atual</TableHead>
-                        <TableHead className="text-xs text-right">Diff</TableHead><TableHead className="text-xs">In??cio BL</TableHead>
-                        <TableHead className="text-xs">In??cio Atual</TableHead><TableHead className="text-xs">Fim BL</TableHead>
+                        <TableHead className="text-xs text-right">Diff</TableHead><TableHead className="text-xs">Início BL</TableHead>
+                        <TableHead className="text-xs">Início Atual</TableHead><TableHead className="text-xs">Fim BL</TableHead>
                         <TableHead className="text-xs">Fim Atual</TableHead><TableHead className="text-xs">Desvio</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -2281,7 +2281,7 @@ export default function AdminProjetos() {
                       {atividades.filter(a => blMap[a.codigo]).map(a => {
                         const bl = blMap[a.codigo];
                         const diffH = a.horas - bl.horas;
-                        let desvio = 0; let desvioLabel = "???";
+                        let desvio = 0; let desvioLabel = "—";
                         if (a.data_fim && bl.data_fim) {
                           desvio = Math.round((new Date(a.data_fim).getTime() - new Date(bl.data_fim).getTime()) / 86400000);
                           if (desvio <= 0) desvioLabel = "No prazo";
@@ -2302,18 +2302,18 @@ export default function AdminProjetos() {
                       {removidas.map((b: any) => (
                         <TableRow key={b.id} className="text-muted-foreground">
                           <TableCell className="text-xs font-mono">{b.codigo}</TableCell><TableCell className="text-xs">{b.descricao}</TableCell>
-                          <TableCell className="text-xs text-right">{b.horas}h</TableCell><TableCell className="text-xs text-right">???</TableCell>
-                          <TableCell className="text-xs text-right">???</TableCell><TableCell className="text-xs">{fmtD(b.data_inicio)}</TableCell>
-                          <TableCell className="text-xs">???</TableCell><TableCell className="text-xs">{fmtD(b.data_fim)}</TableCell>
-                          <TableCell className="text-xs">???</TableCell><TableCell><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></TableCell>
+                          <TableCell className="text-xs text-right">{b.horas}h</TableCell><TableCell className="text-xs text-right">—</TableCell>
+                          <TableCell className="text-xs text-right">—</TableCell><TableCell className="text-xs">{fmtD(b.data_inicio)}</TableCell>
+                          <TableCell className="text-xs">—</TableCell><TableCell className="text-xs">{fmtD(b.data_fim)}</TableCell>
+                          <TableCell className="text-xs">—</TableCell><TableCell><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></TableCell>
                         </TableRow>
                       ))}
                       {novas.map(a => (
                         <TableRow key={a.id}>
                           <TableCell className="text-xs font-mono">{a.codigo}</TableCell><TableCell className="text-xs">{a.descricao}</TableCell>
-                          <TableCell className="text-xs text-right">???</TableCell><TableCell className="text-xs text-right">{a.horas}h</TableCell>
-                          <TableCell className="text-xs text-right">???</TableCell><TableCell className="text-xs">???</TableCell>
-                          <TableCell className="text-xs">{fmtD(a.data_inicio)}</TableCell><TableCell className="text-xs">???</TableCell>
+                          <TableCell className="text-xs text-right">—</TableCell><TableCell className="text-xs text-right">{a.horas}h</TableCell>
+                          <TableCell className="text-xs text-right">—</TableCell><TableCell className="text-xs">—</TableCell>
+                          <TableCell className="text-xs">{fmtD(a.data_inicio)}</TableCell><TableCell className="text-xs">—</TableCell>
                           <TableCell className="text-xs">{fmtD(a.data_fim)}</TableCell><TableCell><Badge className="text-[10px] bg-blue-100 text-blue-800">Nova</Badge></TableCell>
                         </TableRow>
                       ))}
