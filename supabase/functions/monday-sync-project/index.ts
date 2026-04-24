@@ -149,7 +149,8 @@ async function handleCreate(supabase: any, apiKey: string, workspaceId: string, 
   try {
     const webhookRes = await mondayQuery(
       apiKey,
-      `mutation { create_webhook(board_id: ${boardId}, url: "https://mgkpvctvkkfvvornexuq.supabase.co/functions/v1/monday-webhook-receiver", event: change_column_value) { id } }`,
+      //`mutation { create_webhook(board_id: ${boardId}, url: "https://mgkpvctvkkfvvornexuq.supabase.co/functions/v1/monday-webhook-receiver", event: change_column_value) { id } }`,
+      `mutation { create_webhook(board_id: ${boardId}, url: "${Deno.env.get("SUPABASE_URL")}/functions/v1/monday-webhook-receiver", event: change_column_value) { id } }`,
     );
     webhookId = String(webhookRes.data?.create_webhook?.id || "");
     console.log("Webhook criado:", webhookId);
