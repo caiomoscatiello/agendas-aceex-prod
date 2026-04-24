@@ -1,5 +1,5 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-//versão 1.20
+//vers??o 1.20
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -7,7 +7,7 @@ const corsHeaders = {
 
 const AUTENTIQUE_API = "https://api.autentique.com.br/v2/graphql";
 
-// ─── Chamar API Autentique (JSON) ─────────────────────────────────────────────
+// ????????? Chamar API Autentique (JSON) ???????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 async function gql(apiKey: string, query: string, variables?: any) {
   const res = await fetch(AUTENTIQUE_API, {
     method: "POST",
@@ -17,7 +17,7 @@ async function gql(apiKey: string, query: string, variables?: any) {
   return await res.json();
 }
 
-// ─── Obter ou criar pasta do cliente no Autentique ────────────────────────────
+// ????????? Obter ou criar pasta do cliente no Autentique ????????????????????????????????????????????????????????????????????????????????????
 async function getOrCreateFolder(
   apiKey: string,
   supabase: any,
@@ -25,7 +25,7 @@ async function getOrCreateFolder(
   codigoCliente: string,
   nomeCliente: string,
 ): Promise<{ folder_id: string; folder_url: string }> {
-  // Verificar se projeto já tem pasta
+  // Verificar se projeto j?? tem pasta
   const { data: proj } = await supabase
     .from("projetos")
     .select("autentique_folder_id, autentique_folder_url")
@@ -49,7 +49,7 @@ async function getOrCreateFolder(
   );
 
   const folderId = result?.data?.createFolder?.id;
-  const folderUrl = folderId ? `https://painel.autentique.com.br/pasta/${folderId}` : "";
+  const folderUrl = folderId ? `https://painel.autentique.com.br/pastas/${folderId}/documentos` : "";
 
   if (!folderId) throw new Error(`Erro ao criar pasta Autentique: ${JSON.stringify(result)}`);
 
@@ -63,7 +63,7 @@ async function getOrCreateFolder(
   return { folder_id: folderId, folder_url: folderUrl };
 }
 
-// ─── HANDLER PRINCIPAL ────────────────────────────────────────────────────────
+// ????????? HANDLER PRINCIPAL ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -78,12 +78,12 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     const apiKey = settingRow?.value?.trim();
-    if (!apiKey) throw new Error("autentique_api_key não configurada em app_settings");
+    if (!apiKey) throw new Error("autentique_api_key n??o configurada em app_settings");
 
     const body = await req.json();
     const { agenda_id, cronograma_item_id } = body;
 
-    if (!agenda_id && !cronograma_item_id) throw new Error("agenda_id ou cronograma_item_id obrigatório");
+    if (!agenda_id && !cronograma_item_id) throw new Error("agenda_id ou cronograma_item_id obrigat??rio");
 
     // Buscar dados da agenda e consultor
     let ciId = cronograma_item_id;
@@ -97,7 +97,7 @@ Deno.serve(async (req: Request) => {
         .eq("id", agenda_id)
         .single();
 
-      if (!agenda) throw new Error("Agenda não encontrada");
+      if (!agenda) throw new Error("Agenda n??o encontrada");
 
       // Buscar perfil do consultor
       const { data: agendaFull } = await supabase.from("agendas").select("user_id").eq("id", agenda_id).single();
@@ -130,14 +130,14 @@ Deno.serve(async (req: Request) => {
       .eq("id", ciId)
       .single();
 
-    if (!ci) throw new Error("Item de cronograma não encontrado");
-    if (!ci.doc_referencia) throw new Error("Documento não enviado ao SharePoint. Faça o upload primeiro.");
+    if (!ci) throw new Error("Item de cronograma n??o encontrado");
+    if (!ci.doc_referencia) throw new Error("Documento n??o enviado ao SharePoint. Fa??a o upload primeiro.");
     if (ci.autentique_envelope_id) {
       return new Response(
         JSON.stringify({
           success: true,
           skipped: true,
-          reason: "Já enviado ao Autentique",
+          reason: "J?? enviado ao Autentique",
           envelope_id: ci.autentique_envelope_id,
         }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } },
@@ -157,7 +157,7 @@ Deno.serve(async (req: Request) => {
       .eq("id", atv?.projeto_id)
       .single();
 
-    if (!projeto) throw new Error("Projeto não encontrado");
+    if (!projeto) throw new Error("Projeto n??o encontrado");
 
     // Buscar coordenador do projeto
     const { data: coordProfile } = await supabase
@@ -166,7 +166,7 @@ Deno.serve(async (req: Request) => {
       .eq("user_id", projeto.coordenador_id)
       .single();
 
-    if (!coordProfile?.email) throw new Error("Email do coordenador não encontrado");
+    if (!coordProfile?.email) throw new Error("Email do coordenador n??o encontrado");
 
     // Obter ou criar pasta do cliente no Autentique
     const { folder_id } = await getOrCreateFolder(
@@ -179,7 +179,7 @@ Deno.serve(async (req: Request) => {
 
     // Baixar documento do SharePoint via Microsoft Graph (autenticado)
     // Buscar credenciais SharePoint
-    // Buscar credenciais SharePoint — incluindo drive_id já salvo no banco
+    // Buscar credenciais SharePoint ??? incluindo drive_id j?? salvo no banco
     const { data: spSettings } = await supabase
       .from("app_settings")
       .select("key, value")
@@ -194,7 +194,7 @@ Deno.serve(async (req: Request) => {
     const sp: Record<string, string> = {};
     (spSettings || []).forEach((r: any) => { sp[r.key] = r.value; });
 
-    if (!sp.sharepoint_drive_id) throw new Error("sharepoint_drive_id não configurado em app_settings");
+    if (!sp.sharepoint_drive_id) throw new Error("sharepoint_drive_id n??o configurado em app_settings");
 
     // Obter token Azure
     const tokenRes = await fetch(`https://login.microsoftonline.com/${sp.sharepoint_tenant_id}/oauth2/v2.0/token`, {
@@ -212,17 +212,17 @@ Deno.serve(async (req: Request) => {
 
     // Extrair caminho relativo da URL do SharePoint
     // URL formato: https://aceexcombr.sharepoint.com/sites/projeto/Shared%20Documents/Documentos/...
-    // O drive já tem raiz em "Shared Documents" — remover esse prefixo do path
+    // O drive j?? tem raiz em "Shared Documents" ??? remover esse prefixo do path
     const fileUrl = new URL(ci.doc_referencia);
     const siteUrl = new URL(sp.sharepoint_site_url);
     const fullRelative = decodeURIComponent(fileUrl.pathname.replace(siteUrl.pathname, "").replace(/^\//, ""));
-    // Remove "Shared Documents/" do início pois o drive já aponta para essa raiz
+    // Remove "Shared Documents/" do in??cio pois o drive j?? aponta para essa raiz
     const relativePath = fullRelative.replace(/^Shared\s+Documents\//i, "");
     const fileName = relativePath.split("/").pop() || `${ci.codigo}.pdf`;
 
     console.log("DEBUG SharePoint path", { fullRelative, relativePath, driveId: sp.sharepoint_drive_id });
 
-    // Buscar metadata do arquivo usando drive_id do banco (sem roundtrips desnecessários)
+    // Buscar metadata do arquivo usando drive_id do banco (sem roundtrips desnecess??rios)
     const encodedPath = relativePath.split("/").map(encodeURIComponent).join("/");
     const metaRes = await fetch(
       `https://graph.microsoft.com/v1.0/drives/${sp.sharepoint_drive_id}/root:/${encodedPath}`,
@@ -230,17 +230,17 @@ Deno.serve(async (req: Request) => {
     );
     if (!metaRes.ok) {
       const errText = await metaRes.text();
-      throw new Error(`Erro ao buscar metadata do arquivo: ${metaRes.status} — ${errText.slice(0, 300)}`);
+      throw new Error(`Erro ao buscar metadata do arquivo: ${metaRes.status} ??? ${errText.slice(0, 300)}`);
     }
     const metaData = await metaRes.json();
     const preSignedUrl = metaData["@microsoft.graph.downloadUrl"];
-    if (!preSignedUrl) throw new Error("downloadUrl não disponível no metadata");
+    if (!preSignedUrl) throw new Error("downloadUrl n??o dispon??vel no metadata");
 
     const downloadRes = await fetch(preSignedUrl);
     if (!downloadRes.ok) throw new Error(`Erro ao baixar documento: ${downloadRes.status}`);
     const fileBuffer = await downloadRes.arrayBuffer();
 
-    // Montar signatários
+    // Montar signat??rios
     const signers: { email: string; name: string }[] = [{ email: coordProfile.email, name: coordProfile.name }];
     if (agendaEmail) signers.push({ email: agendaEmail, name: agendaConsultor || "Consultor" });
     if (projeto.email_contato)
@@ -258,7 +258,7 @@ Deno.serve(async (req: Request) => {
 
     const variables = {
       document: {
-        name: `${ci.codigo} - ${ci.descricao || "Documento"} — ${projeto.nome_cliente}`,
+        name: `${ci.codigo} - ${ci.descricao || "Documento"} ??? ${projeto.nome_cliente}`,
         refusable: true,
         sortable: false,
       },
@@ -283,7 +283,7 @@ Deno.serve(async (req: Request) => {
     if (result.errors) throw new Error(`Autentique API error: ${JSON.stringify(result.errors)}`);
 
     const doc = result.data?.createDocument;
-    if (!doc?.id) throw new Error("Documento não criado no Autentique");
+    if (!doc?.id) throw new Error("Documento n??o criado no Autentique");
 
     // Salvar envelope_id no banco
     await supabase
@@ -295,7 +295,7 @@ Deno.serve(async (req: Request) => {
     await supabase.from("integration_logs").insert({
       codigo: "AUTENTIQUE-SEND",
       status: "success",
-      message: `Documento enviado: ${doc.name} — ${signers.length} signatário(s) — pasta: ${projeto.codigo_cliente} - ${projeto.nome_cliente}`,
+      message: `Documento enviado: ${doc.name} ??? ${signers.length} signat??rio(s) ??? pasta: ${projeto.codigo_cliente} - ${projeto.nome_cliente}`,
       http_status: 200,
       payload: {
         envelope_id: doc.id,
