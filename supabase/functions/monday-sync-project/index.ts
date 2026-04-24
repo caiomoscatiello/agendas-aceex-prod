@@ -147,6 +147,8 @@ async function handleCreate(supabase: any, apiKey: string, workspaceId: string, 
   // A EF monday-webhook-receiver filtra internamente pela coluna documento_anexo
   let webhookId: string | null = null;
   try {
+    const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/monday-webhook-receiver`;
+    console.log("Webhook URL:", webhookUrl);  
     const webhookRes = await mondayQuery(
       apiKey,
       //`mutation { create_webhook(board_id: ${boardId}, url: "https://mgkpvctvkkfvvornexuq.supabase.co/functions/v1/monday-webhook-receiver", event: change_column_value) { id } }`,
