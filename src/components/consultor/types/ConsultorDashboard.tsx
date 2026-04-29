@@ -10,7 +10,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { LogOut, Loader2, XCircle, PlusCircle, ChevronLeft, ChevronRight, Ban, Receipt, Camera, Settings, ChevronsUpDown, Check, ClipboardEdit, Plus, Trash2, CircleDollarSign, FileDown, Clock, LayoutDashboard, FileText, CalendarDays, ListTodo, BarChart2, FileStack, Printer, ExternalLink } from "lucide-react";
+import { LogOut, Loader2, XCircle, PlusCircle, ChevronLeft, ChevronRight, Ban, Receipt, Camera, Settings, ChevronsUpDown, Check, ClipboardEdit, Plus, Trash2, CircleDollarSign, FileDown, Clock, LayoutDashboard, FileText, CalendarDays, ListTodo, BarChart2, FileStack, AlertCircle, Printer, ExternalLink, ArrowRight, CheckCircle2 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
@@ -22,6 +22,10 @@ import aceexLogo from "@/assets/aceex_logo.jpg";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
+import { usePendencias } from "@/components/consultor/hooks/usePendencias";
+import { VisaoGeralCard } from "@/components/consultor/ui/VisaoGeralCard";
+import { TimesheetCard } from "@/components/consultor/ui/TimesheetCard";
+import { PendenciasPMOCard } from "@/components/consultor/ui/PendenciasPMOCard";
 
 type Agenda = {
   id: string;
@@ -121,7 +125,10 @@ export default function ConsultorDashboard() {
   const isMobile = useIsMobile();
 
   // Aba ativa no mobile (nav bar inferior)
-  const [mobileTab, setMobileTab] = useState<"agenda" | "timesheet" | "backlog" | "docs">("agenda");
+  const [mobileTab, setMobileTab] = useState<"agenda" | "timesheet" | "backlog" | "pendencias">("agenda");
+
+  // BL-019 — Pendências PMO
+  const { pendencias, totalPendencias, porTipo, loadingPendencias, loadPendencias } = usePendencias(user?.id);
 
   // Dados do timesheet
   const [tsAgendadas, setTsAgendadas] = useState(0);
@@ -139,6 +146,7 @@ export default function ConsultorDashboard() {
     if (user) {
       loadData();
       loadProjetos();
+      loadPendencias();
     }
   }, [user, currentMonth]);
 
@@ -1559,8 +1567,8 @@ setTsAgendadas(totalAgendadas);
                             </div>
                             <span className="text-[10px] font-bold text-amber-700">Pendências</span>
                           </div>
-                          <div className="text-xl font-bold text-amber-900 leading-none">—</div>
-                          <div className="text-[9px] text-amber-600">documentos PMO</div>
+                          <div className={`text-xl font-bold leading-none ${totalPendencias > 0 ? "text-amber-900" : "text-muted-foreground"}`}>{totalPendencias}</div>
+                          <div className="text-[9px] text-amber-600">{totalPendencias === 0 ? "nenhuma pendência" : "pendências ativas"}</div>
                         </div>
 
                         <div className="rounded-xl bg-violet-50 border border-violet-200 dark:bg-violet-950/30 p-3 flex flex-col gap-1">
@@ -1669,20 +1677,22 @@ setTsAgendadas(totalAgendadas);
                 </Card>
               )}
 
-              {/* ABA: DOCS */}
-              {mobileTab === "docs" && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-                      <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
-                        <FileStack className="h-7 w-7 text-amber-400" />
-                      </div>
-                      <p className="text-sm font-semibold text-muted-foreground">Entregas do Projeto</p>
-                      <p className="text-xs text-muted-foreground/60">Em desenvolvimento — BL-006 / BL-013</p>
-                      <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-amber-100 text-amber-700">em breve</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
+              {/* ABA: PENDÊNCIAS PMO — BL-019 */}
+              {mobileTab === "pendencias" && (
+                <PendenciasPMOCard
+                  pendencias={pendencias}
+                  totalPendencias={totalPendencias}
+                  loadingPendencias={loadingPendencias}
+                  onNavigateToDate={(data, agendaId) => {
+                    setSelectedDate(data);
+                    if (agendaId) setSelectedClienteId(agendaId);
+                    setMobileTab("agenda");
+                  }}
+                  onOpenUpload={(agendaId, itemCronograma) => {
+                    setSelectedClienteId(agendaId);
+                    setApontamentoOpen(true);
+                  }}
+                />
               )}
 
             </div>
@@ -1724,14 +1734,19 @@ setTsAgendadas(totalAgendadas);
                 </button>
 
                 <button
-                  onClick={() => setMobileTab("docs")}
-                  className={`flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-colors ${
-                    mobileTab === "docs" ? "text-amber-600" : "text-muted-foreground"
+                  onClick={() => setMobileTab("pendencias")}
+                  className={`relative flex flex-col items-center gap-0.5 px-4 py-2 rounded-xl transition-colors ${
+                    mobileTab === "pendencias" ? "text-amber-600" : "text-muted-foreground"
                   }`}
                 >
-                  <FileStack className="h-5 w-5" />
-                  <span className="text-[10px] font-medium">Docs</span>
-                  {mobileTab === "docs" && <span className="w-1 h-1 rounded-full bg-amber-600" />}
+                  <AlertCircle className="h-5 w-5" />
+                  {totalPendencias > 0 && (
+                    <span className="absolute -top-0.5 right-2 w-4 h-4 rounded-full bg-red-500 text-white text-[8px] font-bold flex items-center justify-center">
+                      {totalPendencias > 9 ? "9+" : totalPendencias}
+                    </span>
+                  )}
+                  <span className="text-[10px] font-medium">Pendências</span>
+                  {mobileTab === "pendencias" && <span className="w-1 h-1 rounded-full bg-amber-600" />}
                 </button>
               </div>
             </nav>
@@ -2048,8 +2063,8 @@ setTsAgendadas(totalAgendadas);
                         </div>
                         <span className="text-[10px] font-bold text-amber-700 dark:text-amber-300">Pendências</span>
                       </div>
-                      <div className="text-2xl font-bold text-amber-900 dark:text-amber-100 leading-none">—</div>
-                      <div className="text-[9px] text-amber-600 dark:text-amber-400">documentos PMO</div>
+                      <div className={`text-2xl font-bold leading-none ${totalPendencias > 0 ? "text-amber-900 dark:text-amber-100" : "text-muted-foreground"}`}>{totalPendencias}</div>
+                      <div className="text-[9px] text-amber-600 dark:text-amber-400">{totalPendencias === 0 ? "nenhuma pendência" : "pendências ativas"}</div>
                     </div>
                     {/* Projetos */}
                     <div className="rounded-xl bg-violet-50 border border-violet-200 dark:bg-violet-950/30 dark:border-violet-800 p-3 flex flex-col gap-1.5">
@@ -2154,29 +2169,20 @@ setTsAgendadas(totalAgendadas);
                 </CardContent>
               </Card>
 
-              {/* ── CARD 3: ENTREGAS DO PROJETO (placeholder) ── */}
-              <Card>
-                <CardHeader className="pb-2 bg-muted/30">
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 rounded-lg bg-amber-700 flex items-center justify-center flex-shrink-0">
-                      <FileStack className="h-4 w-4 text-white" />
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-sm font-bold">Entregas do Projeto</CardTitle>
-                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0.5 bg-violet-100 text-violet-700">em breve</Badge>
-                    </div>
-                  </div>
-                </CardHeader>
-                <CardContent className="pt-3">
-                  <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                      <FileStack className="h-5 w-5 text-muted-foreground/40" />
-                    </div>
-                    <p className="text-xs text-muted-foreground font-medium">Em desenvolvimento</p>
-                    <p className="text-[10px] text-muted-foreground/60">BL-006 / BL-013</p>
-                  </div>
-                </CardContent>
-              </Card>
+              {/* ── CARD 3: PENDÊNCIAS PMO — BL-019 ── */}
+              <PendenciasPMOCard
+                pendencias={pendencias}
+                totalPendencias={totalPendencias}
+                loadingPendencias={loadingPendencias}
+                onNavigateToDate={(data, agendaId) => {
+                  setSelectedDate(data);
+                  if (agendaId) setSelectedClienteId(agendaId);
+                }}
+                onOpenUpload={(agendaId, itemCronograma) => {
+                  setSelectedClienteId(agendaId);
+                  setApontamentoOpen(true);
+                }}
+              />
             </div>
           </div>
         )}
