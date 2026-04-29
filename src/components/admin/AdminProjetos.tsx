@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle } from "lucide-react";
+import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle, Activity, TrendingUp, TrendingDown, Minus, Sliders } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -119,6 +119,41 @@ type IntegracaoConfig = {
   help?: string;
   acoes?: React.ReactNode;
   zonaRisco?: React.ReactNode;
+};
+
+type HealthConfig = {
+  peso_prazo: number;
+  peso_custo: number;
+  peso_feeling: number;
+  peso_alertas: number;
+  idp_verde: number;
+  idp_amarelo: number;
+  idc_verde: number;
+  idc_amarelo: number;
+  feeling_verde: number;
+  feeling_amarelo: number;
+  penalidade_critico: number;
+  penalidade_alto: number;
+  penalidade_moderado: number;
+  score_verde: number;
+  score_amarelo: number;
+};
+
+type HealthSnapshot = {
+  data_calculo: string;
+  score_total: number;
+  score_prazo: number;
+  score_custo: number;
+  score_feeling: number;
+  score_alertas: number;
+  idp_valor: number;
+  idc_valor: number;
+  feeling_medio: number | null;
+  alertas_criticos: number;
+  alertas_altos: number;
+  alertas_moderados: number;
+  semaforo: string;
+  pesos_snapshot: Record<string, any>;
 };
 
 export default function AdminProjetos() {
@@ -232,12 +267,71 @@ export default function AdminProjetos() {
   });
   const [savingAlertaConfig, setSavingAlertaConfig] = useState(false);
 
+  // ── HEALTH SCORE ───────────────────────────────────────
+  const [healthOpen, setHealthOpen] = useState(false);
+  const [healthConfig, setHealthConfig] = useState<HealthConfig | null>(null);
+  const [healthHistorico, setHealthHistorico] = useState<HealthSnapshot[]>([]);
+  const [healthLoading, setHealthLoading] = useState(false);
+  const [healthSaving, setHealthSaving] = useState(false);
+  const [healthRecalculating, setHealthRecalculating] = useState(false);
+  const [healthConfigEdit, setHealthConfigEdit] = useState<HealthConfig | null>(null);
+
   useEffect(() => {
     loadProjetos();
     loadCoordenadores();
     loadAllUsers();
     loadTiposDocumento();
   }, []);
+
+  // ── HEALTH SCORE FUNCTIONS ──────────────────────────────
+  const loadHealthScore = async (projetoId: string) => {
+    setHealthLoading(true);
+    const defaultConfig: HealthConfig = {
+      peso_prazo: 25, peso_custo: 25, peso_feeling: 25, peso_alertas: 25,
+      idp_verde: 1.00, idp_amarelo: 0.80,
+      idc_verde: 1.00, idc_amarelo: 0.80,
+      feeling_verde: 70, feeling_amarelo: 50,
+      penalidade_critico: 20, penalidade_alto: 10, penalidade_moderado: 5,
+      score_verde: 75, score_amarelo: 50,
+    };
+    const [configRes, historicoRes] = await Promise.all([
+      supabase.from("projeto_health_config").select("*").eq("projeto_id", projetoId).maybeSingle(),
+      supabase.from("projeto_health_historico").select("*").eq("projeto_id", projetoId).order("data_calculo", { ascending: false }).limit(8),
+    ]);
+    const cfg = configRes.data ? { ...defaultConfig, ...configRes.data } : defaultConfig;
+    setHealthConfig(cfg);
+    setHealthConfigEdit({ ...cfg });
+    setHealthHistorico((historicoRes.data || []) as HealthSnapshot[]);
+    setHealthLoading(false);
+  };
+
+  const saveHealthConfig = async () => {
+    if (!healthConfigEdit || !detailProjeto) return;
+    setHealthSaving(true);
+    await supabase.from("projeto_health_config").upsert(
+      { projeto_id: detailProjeto.id, ...healthConfigEdit },
+      { onConflict: "projeto_id" }
+    );
+    setHealthConfig({ ...healthConfigEdit });
+    toast({ title: "Configuração salva!" });
+    setHealthSaving(false);
+  };
+
+  const recalcularAgora = async () => {
+    if (!detailProjeto) return;
+    setHealthRecalculating(true);
+    const { data, error } = await supabase.functions.invoke("health-score-calculator", {
+      body: { projeto_id: detailProjeto.id },
+    });
+    if (error) {
+      toast({ title: "Erro ao recalcular", description: error.message, variant: "destructive" });
+    } else {
+      const score = data?.resultados?.[0]?.score ?? "—";
+      toast({ title: "Score recalculado!", description: `Score atual: ${score}` });
+      await loadHealthScore(detailProjeto.id);
+    }
+    setHealthRecalculating(false);
+  };
 
   const loadTiposDocumento = async () => {
     const { data } = await supabase
@@ -2005,6 +2099,13 @@ export default function AdminProjetos() {
                 <Edit className="h-3.5 w-3.5" /> Editar projeto
               </DropdownMenuItem>
               <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="gap-2 text-sm"
+                onClick={() => { if (detailProjeto) { loadHealthScore(detailProjeto.id); setHealthOpen(true); } }}
+              >
+                <Activity className="h-3.5 w-3.5" /> Health Score Analytics
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2 text-sm text-destructive focus:text-destructive" onClick={() => { if (detailProjeto) handleDelete(detailProjeto.id); }}>
                 <Trash2 className="h-3.5 w-3.5" /> Excluir projeto
               </DropdownMenuItem>
@@ -2323,6 +2424,238 @@ export default function AdminProjetos() {
               </div>
             );
           })()}
+        </DialogContent>
+      </Dialog>
+
+      {/* ── DIALOG HEALTH SCORE ANALYTICS ── */}
+      <Dialog open={healthOpen} onOpenChange={setHealthOpen}>
+        <DialogContent className="flex flex-col gap-0 p-0 max-h-[90dvh] w-full max-w-2xl">
+          <DialogHeader className="shrink-0 border-b px-5 py-4">
+            <DialogTitle className="flex items-center gap-2 text-base">
+              <Activity className="h-5 w-5 text-violet-600" />
+              Health Score Analytics
+              {detailProjeto && (
+                <span className="text-sm font-normal text-muted-foreground">— {detailProjeto.nome_cliente}</span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          {healthLoading ? (
+            <div className="flex items-center justify-center py-16">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : (
+            <Tabs defaultValue="score" className="flex-1 flex flex-col overflow-hidden">
+              <TabsList className="mx-5 mt-4 shrink-0 w-fit">
+                <TabsTrigger value="score">Score Atual</TabsTrigger>
+                <TabsTrigger value="historico">Histórico</TabsTrigger>
+                <TabsTrigger value="config">Configuração</TabsTrigger>
+              </TabsList>
+
+              {/* ── ABA SCORE ── */}
+              <TabsContent value="score" className="flex-1 overflow-y-auto px-5 pb-5 space-y-4 mt-3">
+                {healthHistorico.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
+                    <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
+                      <Activity className="h-7 w-7 text-muted-foreground/40" />
+                    </div>
+                    <p className="text-sm font-semibold text-muted-foreground">Nenhum cálculo disponível</p>
+                    <p className="text-xs text-muted-foreground/60">Clique em "Recalcular agora" para gerar o primeiro score</p>
+                    <Button size="sm" onClick={recalcularAgora} disabled={healthRecalculating} className="gap-2 mt-1">
+                      {healthRecalculating && <Loader2 className="h-3 w-3 animate-spin" />}
+                      Recalcular agora
+                    </Button>
+                  </div>
+                ) : (() => {
+                  const snap = healthHistorico[0];
+                  const semaforoCor = snap.semaforo === "verde" ? "text-emerald-600" : snap.semaforo === "amarelo" ? "text-amber-600" : "text-red-600";
+                  const semaforoBg  = snap.semaforo === "verde" ? "bg-emerald-50 border-emerald-200" : snap.semaforo === "amarelo" ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200";
+                  const semaforoEmoji = snap.semaforo === "verde" ? "🟢" : snap.semaforo === "amarelo" ? "🟡" : "🔴";
+                  const dimensoes = [
+                    { label: "Prazo (IDP)", valor: snap.score_prazo,   detalhe: `IDP: ${Number(snap.idp_valor).toFixed(2)}`, cor: "bg-blue-500" },
+                    { label: "Custo (IDC)", valor: snap.score_custo,   detalhe: `IDC: ${Number(snap.idc_valor).toFixed(2)}`, cor: "bg-violet-500" },
+                    { label: "Feeling",     valor: snap.score_feeling, detalhe: snap.feeling_medio !== null ? `Média: ${snap.feeling_medio}%` : "Sem dados", cor: "bg-amber-500" },
+                    { label: "Alertas",     valor: snap.score_alertas, detalhe: `${snap.alertas_criticos}C · ${snap.alertas_altos}A · ${snap.alertas_moderados}M`, cor: "bg-red-500" },
+                  ];
+                  return (
+                    <>
+                      <div className={`rounded-xl border p-5 flex items-center justify-between ${semaforoBg}`}>
+                        <div>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Score de Saúde</div>
+                          <div className={`text-5xl font-black leading-none ${semaforoCor}`}>{snap.score_total}</div>
+                          <div className="text-sm text-muted-foreground mt-1">
+                            {semaforoEmoji} {snap.semaforo.charAt(0).toUpperCase() + snap.semaforo.slice(1)}
+                          </div>
+                        </div>
+                        <div className="text-right text-xs text-muted-foreground">
+                          <div>Calculado em</div>
+                          <div className="font-semibold">
+                            {new Date(snap.data_calculo + "T12:00:00").toLocaleDateString("pt-BR")}
+                          </div>
+                          <Button size="sm" variant="outline" className="mt-2 gap-1 text-xs" onClick={recalcularAgora} disabled={healthRecalculating}>
+                            {healthRecalculating ? <Loader2 className="h-3 w-3 animate-spin" /> : <TrendingUp className="h-3 w-3" />}
+                            Recalcular
+                          </Button>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        {dimensoes.map((d) => (
+                          <div key={d.label} className="rounded-xl border bg-card p-3 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-semibold text-muted-foreground">{d.label}</span>
+                              <span className="text-base font-bold">{d.valor}</span>
+                            </div>
+                            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+                              <div className={`h-full rounded-full ${d.cor}`} style={{ width: `${d.valor}%` }} />
+                            </div>
+                            <div className="text-[10px] text-muted-foreground">{d.detalhe}</div>
+                          </div>
+                        ))}
+                      </div>
+                    </>
+                  );
+                })()}
+              </TabsContent>
+
+              {/* ── ABA HISTÓRICO ── */}
+              <TabsContent value="historico" className="flex-1 overflow-y-auto px-5 pb-5 mt-3">
+                {healthHistorico.length === 0 ? (
+                  <p className="text-sm text-muted-foreground text-center py-8">Nenhum histórico disponível.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {healthHistorico.map((snap, i) => {
+                      const anterior = healthHistorico[i + 1];
+                      const tendencia = anterior ? snap.score_total - anterior.score_total : 0;
+                      const semaforoCor = snap.semaforo === "verde"
+                        ? "text-emerald-600 bg-emerald-50"
+                        : snap.semaforo === "amarelo"
+                        ? "text-amber-600 bg-amber-50"
+                        : "text-red-600 bg-red-50";
+                      const barCor = snap.semaforo === "verde" ? "bg-emerald-500" : snap.semaforo === "amarelo" ? "bg-amber-500" : "bg-red-500";
+                      return (
+                        <div key={snap.data_calculo} className="flex items-center gap-3 rounded-xl border p-3">
+                          <div className="text-xs text-muted-foreground w-20 shrink-0">
+                            {new Date(snap.data_calculo + "T12:00:00").toLocaleDateString("pt-BR")}
+                          </div>
+                          <div className={`text-sm font-bold px-2 py-0.5 rounded-lg ${semaforoCor}`}>
+                            {snap.score_total}
+                          </div>
+                          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div className={`h-full rounded-full ${barCor}`} style={{ width: `${snap.score_total}%` }} />
+                          </div>
+                          <div className="w-12 text-right">
+                            {tendencia > 0 ? (
+                              <span className="text-emerald-600 text-xs font-semibold flex items-center justify-end gap-0.5">
+                                <TrendingUp className="h-3 w-3" />+{tendencia}
+                              </span>
+                            ) : tendencia < 0 ? (
+                              <span className="text-red-600 text-xs font-semibold flex items-center justify-end gap-0.5">
+                                <TrendingDown className="h-3 w-3" />{tendencia}
+                              </span>
+                            ) : (
+                              <span className="text-muted-foreground text-xs flex items-center justify-end">
+                                <Minus className="h-3 w-3" />
+                              </span>
+                            )}
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </TabsContent>
+
+              {/* ── ABA CONFIGURAÇÃO ── */}
+              <TabsContent value="config" className="flex-1 overflow-y-auto px-5 pb-5 mt-3 space-y-5">
+                {healthConfigEdit && (
+                  <>
+                    <div className="space-y-3">
+                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pesos das Dimensões</div>
+                      <p className="text-xs text-muted-foreground">Soma deve ser 100%. Cada dimensão: 0% a 50%.</p>
+                      {([
+                        { label: "Prazo (IDP)", key: "peso_prazo" },
+                        { label: "Custo (IDC)", key: "peso_custo" },
+                        { label: "Feeling",     key: "peso_feeling" },
+                        { label: "Alertas",     key: "peso_alertas" },
+                      ] as { label: string; key: keyof HealthConfig }[]).map((d) => (
+                        <div key={d.key} className="flex items-center gap-3">
+                          <span className="text-xs text-muted-foreground w-24 shrink-0">{d.label}</span>
+                          <input
+                            type="range" min={0} max={50} step={5}
+                            value={healthConfigEdit[d.key] as number}
+                            onChange={(e) => setHealthConfigEdit((prev) => prev ? { ...prev, [d.key]: parseInt(e.target.value) } : null)}
+                            className="flex-1 accent-violet-600"
+                          />
+                          <span className="text-xs font-bold w-8 text-right">{healthConfigEdit[d.key]}%</span>
+                        </div>
+                      ))}
+                      <div className={`text-xs font-semibold ${
+                        (healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas) === 100
+                          ? "text-emerald-600" : "text-red-600"
+                      }`}>
+                        Total: {healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas}%
+                        {(healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas) !== 100 && " — deve somar 100%"}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 border-t pt-4">
+                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Semáforo Final</div>
+                      <div className="grid grid-cols-2 gap-3">
+                        {([
+                          { label: "Score mínimo Verde",   key: "score_verde" },
+                          { label: "Score mínimo Amarelo", key: "score_amarelo" },
+                        ] as { label: string; key: keyof HealthConfig }[]).map((f) => (
+                          <div key={f.key} className="space-y-1">
+                            <label className="text-xs text-muted-foreground">{f.label}</label>
+                            <Input
+                              type="number" min={0} max={100}
+                              value={healthConfigEdit[f.key] as number}
+                              onChange={(e) => setHealthConfigEdit((prev) => prev ? { ...prev, [f.key]: parseInt(e.target.value) || 0 } : null)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div className="space-y-3 border-t pt-4">
+                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Penalidades por Alerta</div>
+                      <div className="grid grid-cols-3 gap-3">
+                        {([
+                          { label: "Crítico",  key: "penalidade_critico" },
+                          { label: "Alto",     key: "penalidade_alto" },
+                          { label: "Moderado", key: "penalidade_moderado" },
+                        ] as { label: string; key: keyof HealthConfig }[]).map((f) => (
+                          <div key={f.key} className="space-y-1">
+                            <label className="text-xs text-muted-foreground">{f.label}</label>
+                            <Input
+                              type="number" min={0} max={50}
+                              value={healthConfigEdit[f.key] as number}
+                              onChange={(e) => setHealthConfigEdit((prev) => prev ? { ...prev, [f.key]: parseInt(e.target.value) || 0 } : null)}
+                              className="h-8 text-sm"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
+                    <Button
+                      className="w-full gap-2"
+                      onClick={saveHealthConfig}
+                      disabled={
+                        healthSaving ||
+                        (healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas) !== 100
+                      }
+                    >
+                      {healthSaving && <Loader2 className="h-4 w-4 animate-spin" />}
+                      Salvar Configuração
+                    </Button>
+                  </>
+                )}
+              </TabsContent>
+            </Tabs>
+          )}
         </DialogContent>
       </Dialog>
     </div>

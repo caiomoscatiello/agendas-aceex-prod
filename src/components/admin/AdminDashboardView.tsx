@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, Activity, TrendingUp, TrendingDown } from "lucide-react";
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -82,6 +82,20 @@ type Alerta = {
   detalhe: string;
   status: string;
   created_at: string;
+};
+
+type HealthSnapshot = {
+  projeto_id: string;
+  score_total: number;
+  score_prazo: number;
+  score_custo: number;
+  score_feeling: number;
+  score_alertas: number;
+  idp_valor: number;
+  idc_valor: number;
+  feeling_medio: number | null;
+  semaforo: string;
+  data_calculo: string;
 };
 
 
@@ -211,6 +225,7 @@ export default function AdminDashboardView() {
   const [showFeeling, setShowFeeling] = useState(false);
   const [profilesMap, setProfilesMap] = useState<Record<string, string>>({});
   const [resolvendo, setResolvendo] = useState<string | null>(null);
+  const [healthScores, setHealthScores] = useState<Record<string, HealthSnapshot>>({});
 
   const periodos = [
     { label: "7 dias", days: 7 },
@@ -269,6 +284,22 @@ export default function AdminDashboardView() {
   useEffect(() => {
     if (projetos.length > 0 && !selectedProjetoId) {
       loadAlertas();
+      // Carregar último health score de cada projeto
+      const projetoIds = projetos.map((p) => p.id);
+      supabase
+        .from("projeto_health_historico")
+        .select("projeto_id, score_total, score_prazo, score_custo, score_feeling, score_alertas, idp_valor, idc_valor, feeling_medio, semaforo, data_calculo")
+        .in("projeto_id", projetoIds)
+        .order("data_calculo", { ascending: false })
+        .then(({ data: scores }) => {
+          if (scores) {
+            const map: Record<string, HealthSnapshot> = {};
+            for (const s of scores as HealthSnapshot[]) {
+              if (!map[s.projeto_id]) map[s.projeto_id] = s;
+            }
+            setHealthScores(map);
+          }
+        });
     }
   }, [projetos]);
 
@@ -601,6 +632,43 @@ export default function AdminDashboardView() {
           </Card>
         )}
 
+        {/* Health Score — visão consolidada por projeto */}
+        {projetos.length > 0 && Object.keys(healthScores).length > 0 && (
+          <Card>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-violet-600" />
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Health Score dos Projetos</span>
+              </div>
+              <div className="space-y-2">
+                {projetos
+                  .filter((p) => healthScores[p.id])
+                  .sort((a, b) => (healthScores[a.id]?.score_total ?? 100) - (healthScores[b.id]?.score_total ?? 100))
+                  .map((p) => {
+                    const hs = healthScores[p.id];
+                    const semaforoCor = hs.semaforo === "verde" ? "text-emerald-600" : hs.semaforo === "amarelo" ? "text-amber-600" : "text-red-600";
+                    const barCor = hs.semaforo === "verde" ? "bg-emerald-500" : hs.semaforo === "amarelo" ? "bg-amber-500" : "bg-red-500";
+                    const emoji = hs.semaforo === "verde" ? "🟢" : hs.semaforo === "amarelo" ? "🟡" : "🔴";
+                    return (
+                      <div
+                        key={p.id}
+                        className="flex items-center gap-3 rounded-lg border px-3 py-2 cursor-pointer hover:bg-accent/50 transition-colors"
+                        onClick={() => setSelectedProjetoId(p.id)}
+                      >
+                        <span className="text-xs font-semibold w-28 truncate">{p.nome_cliente}</span>
+                        <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
+                          <div className={`h-full rounded-full ${barCor}`} style={{ width: `${hs.score_total}%` }} />
+                        </div>
+                        <span className={`text-sm font-black w-8 text-right ${semaforoCor}`}>{hs.score_total}</span>
+                        <span className="text-sm">{emoji}</span>
+                      </div>
+                    );
+                  })}
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
         {/* Listagem por severidade */}
         {alertas.length === 0 ? (
           <Card>
@@ -709,6 +777,56 @@ export default function AdminDashboardView() {
           <div className="text-xs text-slate-400">Coordenador: {coordenadorName}</div>
         </div>
       </div>
+
+      {/* Bloco Health Score — projeto selecionado */}
+      {selectedProjetoId && healthScores[selectedProjetoId] && (() => {
+        const hs = healthScores[selectedProjetoId];
+        const semaforoCor = hs.semaforo === "verde" ? "text-emerald-600" : hs.semaforo === "amarelo" ? "text-amber-600" : "text-red-600";
+        const semaforoBg  = hs.semaforo === "verde" ? "bg-emerald-50 border-emerald-200" : hs.semaforo === "amarelo" ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200";
+        const emoji = hs.semaforo === "verde" ? "🟢" : hs.semaforo === "amarelo" ? "🟡" : "🔴";
+        const dimensoes = [
+          { label: "Prazo", valor: hs.score_prazo,   sub: `IDP ${Number(hs.idp_valor).toFixed(2)}`, cor: "bg-blue-500" },
+          { label: "Custo", valor: hs.score_custo,   sub: `IDC ${Number(hs.idc_valor).toFixed(2)}`, cor: "bg-violet-500" },
+          { label: "Feeling", valor: hs.score_feeling, sub: hs.feeling_medio !== null ? `${hs.feeling_medio}%` : "s/d", cor: "bg-amber-500" },
+          { label: "Alertas", valor: hs.score_alertas, sub: "penalização", cor: "bg-red-500" },
+        ];
+        return (
+          <div className={`rounded-xl border p-4 space-y-3 ${semaforoBg}`}>
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Activity className="h-4 w-4 text-violet-600" />
+                <span className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Health Score</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <span className={`text-2xl font-black ${semaforoCor}`}>{hs.score_total}</span>
+                <span>{emoji}</span>
+              </div>
+            </div>
+            <div className="grid grid-cols-4 gap-2">
+              {dimensoes.map((d) => (
+                <div key={d.label} className="bg-white/70 rounded-lg p-2 space-y-1">
+                  <div className="text-[9px] font-semibold text-muted-foreground uppercase">{d.label}</div>
+                  <div className="text-sm font-bold">{d.valor}</div>
+                  <div className="h-1 bg-muted rounded-full overflow-hidden">
+                    <div className={`h-full rounded-full ${d.cor}`} style={{ width: `${d.valor}%` }} />
+                  </div>
+                  <div className="text-[9px] text-muted-foreground">{d.sub}</div>
+                </div>
+              ))}
+            </div>
+            <div className="text-[10px] text-muted-foreground text-right">
+              Calculado em {new Date(hs.data_calculo + "T12:00:00").toLocaleDateString("pt-BR")}
+              {" · "}
+              <span
+                className="underline cursor-pointer"
+                onClick={() => setLoadKey((k) => k + 1)}
+              >
+                atualizar
+              </span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Bloco de alertas do projeto — colapsado por padrão */}
       {alertas.length > 0 && (() => {
