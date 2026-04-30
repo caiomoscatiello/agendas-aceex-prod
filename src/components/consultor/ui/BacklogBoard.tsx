@@ -1,4 +1,4 @@
-// src/components/consultor/ui/BacklogBoard.tsx
+﻿// src/components/consultor/ui/BacklogBoard.tsx
 // BL-004-B — Board Kanban do Backlog
 
 import { useState, useEffect, useRef } from "react";
@@ -1052,6 +1052,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     </>
   );
 }
+
 
 
 
