@@ -611,3 +611,4 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     </>
   );
 }
+
