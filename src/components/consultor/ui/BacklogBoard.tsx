@@ -20,7 +20,8 @@ import {
 } from "lucide-react";
 import { format, parseISO, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useBacklog, BacklogItem, BacklogColuna, BacklogComentario, BacklogHistorico } from "../hooks/useBacklog";
+import { supabase } from "@/integrations/supabase/client";
+import { useBacklog, BacklogItem, BacklogColuna, BacklogComentario, BacklogHistorico, BacklogParticipante } from "../hooks/useBacklog";
 
 // ── TIPOS ─────────────────────────────────────────────────────────────────────
 
@@ -320,6 +321,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     colunas, items, loadingBoard, savingItem,
     loadBoard, moverItem, criarItem, salvarItem, adicionarComentario,
     loadComentarios, loadHistorico,
+    criarColuna, renomearColuna, excluirColuna, reordenarColunas,
+    loadParticipantes, adicionarParticipante, removerParticipante,
     itemsPorColuna, filhosDoItem, temBoard,
   } = useBacklog(projetoId, userId);
 
@@ -341,6 +344,19 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [savingComentario, setSavingComentario] = useState(false);
   const [editando, setEditando] = useState(false);
   const [editForm, setEditForm] = useState<Partial<BacklogItem>>({});
+  // BL-004-D — Colunas e participantes
+  const [configColunasOpen, setConfigColunasOpen] = useState(false);
+  const [novaColunaNome, setNovaColunaNome] = useState("");
+  const [novaColunaCor, setNovaColunaCor] = useState("#6366f1");
+  const [savingColuna, setSavingColuna] = useState(false);
+  const [editandoColuna, setEditandoColuna] = useState<string | null>(null);
+  const [editColunaNome, setEditColunaNome] = useState("");
+  const [editColunaCor, setEditColunaCor] = useState("");
+  const [participantes, setParticipantes] = useState<BacklogParticipante[]>([]);
+  const [loadingParticipantes, setLoadingParticipantes] = useState(false);
+  const [profilesDisponiveis, setProfilesDisponiveis] = useState<{user_id: string; name: string}[]>([]);
+  const [novoPartUserId, setNovoPartUserId] = useState("");
+  const [novoPartPapel, setNovoPartPapel] = useState("observador");
 
   const abrirDetalhe = async (item: BacklogItem) => {
     setItemDetalhado(item);
@@ -348,13 +364,59 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     setEditando(false);
     setEditForm({});
     setLoadingDetalhe(true);
-    const [coms, hist] = await Promise.all([
+    setLoadingParticipantes(true);
+    const [coms, hist, parts] = await Promise.all([
       loadComentarios(item.id),
       loadHistorico(item.id),
+      loadParticipantes(item.id),
     ]);
     setComentarios(coms);
     setHistorico(hist);
+    setParticipantes(parts);
     setLoadingDetalhe(false);
+    setLoadingParticipantes(false);
+    const { data: profiles } = await supabase.from("profiles").select("user_id, name").order("name");
+    setProfilesDisponiveis(profiles || []);
+  };
+
+  const handleCriarColuna = async () => {
+    if (!novaColunaNome.trim()) return;
+    setSavingColuna(true);
+    await criarColuna(novaColunaNome.trim(), novaColunaCor);
+    setNovaColunaNome("");
+    setNovaColunaCor("#6366f1");
+    setSavingColuna(false);
+    toast({ title: "Coluna criada!" });
+  };
+
+  const handleRenomearColuna = async (colunaId: string) => {
+    if (!editColunaNome.trim()) return;
+    await renomearColuna(colunaId, editColunaNome.trim(), editColunaCor);
+    setEditandoColuna(null);
+    toast({ title: "Coluna atualizada!" });
+  };
+
+  const handleExcluirColuna = async (colunaId: string) => {
+    const ok = await excluirColuna(colunaId);
+    if (!ok) {
+      toast({ title: "Não é possível excluir", description: "Coluna protegida ou com itens.", variant: "destructive" });
+    } else {
+      toast({ title: "Coluna excluída!" });
+    }
+  };
+
+  const handleAdicionarParticipante = async () => {
+    if (!itemDetalhado || !novoPartUserId) return;
+    await adicionarParticipante(itemDetalhado.id, novoPartUserId, novoPartPapel);
+    const parts = await loadParticipantes(itemDetalhado.id);
+    setParticipantes(parts);
+    setNovoPartUserId("");
+    toast({ title: "Participante adicionado!" });
+  };
+
+  const handleRemoverParticipante = async (partId: string) => {
+    await removerParticipante(partId);
+    setParticipantes(prev => prev.filter(p => p.id !== partId));
   };
 
   const handleSalvarEdicao = async () => {
@@ -578,6 +640,15 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             >
               <List className="h-3.5 w-3.5" />
             </button>
+            {isCoordinator && (
+              <button
+                onClick={() => setConfigColunasOpen(true)}
+                className="p-1.5 rounded-lg border border-transparent text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                title="Configurar colunas"
+              >
+                <Settings2 className="h-3.5 w-3.5" />
+              </button>
+            )}
             <Button size="sm" className="gap-1.5 h-7 text-xs" onClick={() => { setNovoItemColuna(undefined); setNovoItemOpen(true); }}>
               <Plus className="h-3.5 w-3.5" />
               Novo item
@@ -652,6 +723,10 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             <Tabs value={detalheTab} onValueChange={setDetalheTab} className="flex-1 flex flex-col overflow-hidden">
               <TabsList className="mx-5 mt-3 shrink-0 w-fit">
                 <TabsTrigger value="info" className="text-xs gap-1"><Tag className="h-3 w-3" />Detalhe</TabsTrigger>
+                <TabsTrigger value="participantes" className="text-xs gap-1">
+                  <Users className="h-3 w-3" />Participantes
+                  {participantes.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{participantes.length}</span>}
+                </TabsTrigger>
                 <TabsTrigger value="comentarios" className="text-xs gap-1">
                   <MessageSquare className="h-3 w-3" />Comentários
                   {comentarios.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{comentarios.length}</span>}
@@ -767,6 +842,65 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 )}
               </TabsContent>
 
+              {/* ── ABA PARTICIPANTES ── */}
+              <TabsContent value="participantes" className="flex-1 overflow-y-auto px-5 pb-4 mt-3 space-y-4">
+                {loadingParticipantes ? (
+                  <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                ) : (
+                  <>
+                    <div className="space-y-2">
+                      {participantes.length === 0 ? (
+                        <div className="flex flex-col items-center gap-2 py-6 text-center">
+                          <Users className="h-6 w-6 text-muted-foreground/30" />
+                          <p className="text-xs text-muted-foreground">Nenhum participante adicionado</p>
+                        </div>
+                      ) : participantes.map(p => (
+                        <div key={p.id} className="flex items-center gap-3 rounded-xl border px-3 py-2">
+                          <div className="w-7 h-7 rounded-full bg-violet-100 text-violet-700 text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                            {(p.nome || "?").split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <p className="text-xs font-semibold truncate">{p.nome}</p>
+                            <p className="text-[9px] text-muted-foreground capitalize">{p.papel}</p>
+                          </div>
+                          {isCoordinator && (
+                            <Button size="sm" variant="ghost" className="h-6 w-6 p-0 text-muted-foreground hover:text-destructive" onClick={() => handleRemoverParticipante(p.id)}>
+                              <X className="h-3 w-3" />
+                            </Button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {isCoordinator && (
+                      <div className="border-t pt-3 space-y-2">
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Adicionar participante</p>
+                        <div className="grid grid-cols-2 gap-2">
+                          <Select value={novoPartUserId} onValueChange={setNovoPartUserId}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar usuário" /></SelectTrigger>
+                            <SelectContent>
+                              {profilesDisponiveis.filter(p => !participantes.find(pt => pt.user_id === p.user_id)).map(p => (
+                                <SelectItem key={p.user_id} value={p.user_id}>{p.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <Select value={novoPartPapel} onValueChange={setNovoPartPapel}>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="observador">Observador</SelectItem>
+                              <SelectItem value="revisor">Revisor</SelectItem>
+                              <SelectItem value="aprovador">Aprovador</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <Button size="sm" className="w-full gap-1.5 h-7 text-xs" onClick={handleAdicionarParticipante} disabled={!novoPartUserId}>
+                          <UserPlus className="h-3 w-3" /> Adicionar
+                        </Button>
+                      </div>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+
               {/* ── ABA COMENTÁRIOS ── */}
               <TabsContent value="comentarios" className="flex-1 flex flex-col overflow-hidden mt-3">
                 <div className="flex-1 overflow-y-auto px-5 space-y-3 pb-3">
@@ -856,8 +990,68 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           </DialogContent>
         </Dialog>
       )}
+      {/* Dialog configuração de colunas — BL-004-D */}
+      {isCoordinator && (
+        <Dialog open={configColunasOpen} onOpenChange={setConfigColunasOpen}>
+          <DialogContent className="flex flex-col gap-0 p-0 max-h-[85dvh] w-full max-w-md">
+            <DialogHeader className="shrink-0 border-b px-5 py-4">
+              <div className="flex items-center gap-2 pr-8">
+                <Settings2 className="h-5 w-5 text-violet-600" />
+                <DialogTitle className="text-base">Configurar colunas — {projetoNome}</DialogTitle>
+              </div>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
+              <div className="space-y-2">
+                {[...colunas].sort((a, b) => a.ordem - b.ordem).map((col, idx, arr) => (
+                  <div key={col.id} className="rounded-xl border px-3 py-2.5 space-y-2">
+                    {editandoColuna === col.id ? (
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-2">
+                          <input type="color" value={editColunaCor} onChange={e => setEditColunaCor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
+                          <Input value={editColunaNome} onChange={e => setEditColunaNome(e.target.value)} className="h-7 text-xs flex-1" autoFocus />
+                        </div>
+                        <div className="flex gap-2">
+                          <Button size="sm" className="h-6 text-xs gap-1" onClick={() => handleRenomearColuna(col.id)}><Save className="h-3 w-3" />Salvar</Button>
+                          <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => setEditandoColuna(null)}>Cancelar</Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: col.cor }} />
+                        <span className="text-xs font-medium flex-1">{col.nome}</span>
+                        {col.status_sistema && <span className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full">protegida</span>}
+                        <div className="flex items-center gap-1">
+                          <button onClick={() => reordenarColunas(col.id, "esquerda")} disabled={idx === 0 || col.status_sistema === "cancelado"} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronLeft className="h-3 w-3" /></button>
+                          <button onClick={() => reordenarColunas(col.id, "direita")} disabled={idx === arr.length - 1 || col.status_sistema === "cancelado"} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronRight className="h-3 w-3" /></button>
+                          <button onClick={() => { setEditandoColuna(col.id); setEditColunaNome(col.nome); setEditColunaCor(col.cor); }} className="p-1 text-muted-foreground hover:text-foreground"><Edit2 className="h-3 w-3" /></button>
+                          {!col.status_sistema && <button onClick={() => handleExcluirColuna(col.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <div className="border-t pt-3 space-y-2">
+                <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Nova coluna</p>
+                <div className="flex items-center gap-2">
+                  <input type="color" value={novaColunaCor} onChange={e => setNovaColunaCor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent flex-shrink-0" />
+                  <Input value={novaColunaNome} onChange={e => setNovaColunaNome(e.target.value)} placeholder="Nome da coluna..." className="h-8 text-xs flex-1" onKeyDown={e => { if (e.key === "Enter") handleCriarColuna(); }} />
+                  <Button size="sm" onClick={handleCriarColuna} disabled={savingColuna || !novaColunaNome.trim()} className="h-8 gap-1 text-xs shrink-0">
+                    {savingColuna ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}Criar
+                  </Button>
+                </div>
+                <p className="text-[9px] text-muted-foreground">Nova coluna inserida antes de Cancelado. Colunas protegidas podem ser renomeadas mas não excluídas.</p>
+              </div>
+            </div>
+            <DialogFooter className="shrink-0 border-t px-5 py-3">
+              <Button variant="outline" size="sm" onClick={() => setConfigColunasOpen(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+      )}
     </>
   );
 }
+
 
 
