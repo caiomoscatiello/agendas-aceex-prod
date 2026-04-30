@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle, Activity, TrendingUp, TrendingDown, Minus, Sliders } from "lucide-react";
+import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle, Activity, TrendingUp, TrendingDown, Minus, Sliders, ListTodo } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -1130,23 +1130,30 @@ export default function AdminProjetos() {
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="geral">Geral</SelectItem>
-              <SelectItem value="atividades">Atividades</SelectItem>
               <SelectItem value="despesas">Despesas</SelectItem>
+              <SelectItem value="atividades">Atividades</SelectItem>
+              <SelectItem value="backlog">Backlog</SelectItem>
               <SelectItem value="stakeholders">Stakeholders</SelectItem>
               <SelectItem value="riscos">Riscos</SelectItem>
               <SelectItem value="baseline">Baseline</SelectItem>
-              <SelectItem value="config">Config.</SelectItem>
             </SelectContent>
           </Select>
         </div>
-        <TabsList className="hidden sm:grid w-full grid-cols-7">
-          <TabsTrigger value="geral">Geral</TabsTrigger>
-          <TabsTrigger value="atividades">Atividades</TabsTrigger>
-          <TabsTrigger value="despesas">Despesas</TabsTrigger>
-          <TabsTrigger value="stakeholders">Stakeholders</TabsTrigger>
-          <TabsTrigger value="riscos">Riscos</TabsTrigger>
-          <TabsTrigger value="baseline">Baseline</TabsTrigger>
-          <TabsTrigger value="config">Config.</TabsTrigger>
+        <TabsList className="hidden sm:flex w-full">
+          {/* Administrativo */}
+          <TabsTrigger value="geral" className="flex-1 text-xs">Geral</TabsTrigger>
+          <TabsTrigger value="despesas" className="flex-1 text-xs">Despesas</TabsTrigger>
+          <div className="w-px bg-border mx-1 self-stretch" />
+          {/* Execução */}
+          <TabsTrigger value="atividades" className="flex-1 text-xs">Atividades</TabsTrigger>
+          <TabsTrigger value="backlog" className="flex-1 text-xs gap-1">
+            <ListTodo className="h-3 w-3" />Backlog
+          </TabsTrigger>
+          <div className="w-px bg-border mx-1 self-stretch" />
+          {/* Governança */}
+          <TabsTrigger value="stakeholders" className="flex-1 text-xs">Stakeholders</TabsTrigger>
+          <TabsTrigger value="riscos" className="flex-1 text-xs">Riscos</TabsTrigger>
+          <TabsTrigger value="baseline" className="flex-1 text-xs">Baseline</TabsTrigger>
         </TabsList>
 
         <div className="flex-1 overflow-y-auto mt-3 space-y-0">
@@ -1693,6 +1700,26 @@ export default function AdminProjetos() {
                 </Table>
               </div>
             )}
+          </TabsContent>
+
+          {/* TAB CONFIG */}
+          {/* TAB BACKLOG — BL-004-A Placeholder */}
+          <TabsContent value="backlog" className="mt-0">
+            <div className="flex flex-col items-center justify-center gap-4 py-16 text-center">
+              <div className="w-16 h-16 rounded-2xl bg-violet-100 dark:bg-violet-950/30 flex items-center justify-center">
+                <ListTodo className="h-8 w-8 text-violet-500" />
+              </div>
+              <div>
+                <p className="text-sm font-semibold text-foreground">Backlog do Projeto</p>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Tabelas criadas — board em implementação
+                </p>
+              </div>
+              <div className="flex items-center gap-2 text-xs text-muted-foreground bg-muted/50 rounded-lg px-4 py-2">
+                <span className="w-2 h-2 rounded-full bg-violet-400 animate-pulse" />
+                BL-004-B em desenvolvimento
+              </div>
+            </div>
           </TabsContent>
 
           {/* TAB CONFIG */}
