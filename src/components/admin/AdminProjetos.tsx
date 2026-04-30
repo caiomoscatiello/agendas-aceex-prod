@@ -2118,7 +2118,7 @@ export default function AdminProjetos() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs shrink-0">
-                Outras aÃ§Ãµes <ChevronDown className="h-3 w-3" />
+                Outras ações <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -2688,4 +2688,5 @@ export default function AdminProjetos() {
     </div>
   );
 }
+
 
