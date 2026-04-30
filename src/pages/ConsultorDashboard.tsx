@@ -26,6 +26,7 @@ import { usePendencias } from "@/components/consultor/hooks/usePendencias";
 import { VisaoGeralCard } from "@/components/consultor/ui/VisaoGeralCard";
 import { TimesheetCard } from "@/components/consultor/ui/TimesheetCard";
 import { PendenciasPMOCard } from "@/components/consultor/ui/PendenciasPMOCard";
+import { BacklogBoard } from "@/components/consultor/ui/BacklogBoard";
 
 type Agenda = {
   id: string;
@@ -1662,20 +1663,38 @@ setTsAgendadas(totalAgendadas);
               )}
 
               {/* ABA: BACKLOG */}
-              {mobileTab === "backlog" && (
-                <Card>
-                  <CardContent className="pt-6">
-                    <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
-                      <div className="w-14 h-14 rounded-full bg-violet-100 flex items-center justify-center">
-                        <ListTodo className="h-7 w-7 text-violet-400" />
+              {/* ABA: BACKLOG — BL-004-B */}
+              {mobileTab === "backlog" && (() => {
+                const projetoSelecionado = selectedAgenda
+                  ? offProjetos.find(p => p.nome_cliente === selectedAgenda.cliente)
+                  : null;
+                return projetoSelecionado ? (
+                  <Card>
+                    <CardContent className="pt-4">
+                      <BacklogBoard
+                        projetoId={projetoSelecionado.id}
+                        projetoNome={projetoSelecionado.nome_cliente}
+                        userId={user?.id || ""}
+                        isCoordinator={false}
+                        agendaData={selectedDate || undefined}
+                        agendaCliente={selectedAgenda?.cliente}
+                      />
+                    </CardContent>
+                  </Card>
+                ) : (
+                  <Card>
+                    <CardContent className="pt-6">
+                      <div className="flex flex-col items-center justify-center gap-3 py-10 text-center">
+                        <div className="w-14 h-14 rounded-full bg-violet-100 flex items-center justify-center">
+                          <ListTodo className="h-7 w-7 text-violet-400" />
+                        </div>
+                        <p className="text-sm font-semibold text-muted-foreground">Backlog do Projeto</p>
+                        <p className="text-xs text-muted-foreground/60">Selecione uma agenda no calendário para ver o backlog do projeto</p>
                       </div>
-                      <p className="text-sm font-semibold text-muted-foreground">Backlog do Projeto</p>
-                      <p className="text-xs text-muted-foreground/60">Em desenvolvimento — BL-004</p>
-                      <Badge variant="secondary" className="text-[10px] px-2 py-0.5 bg-violet-100 text-violet-700">em breve</Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+                    </CardContent>
+                  </Card>
+                );
+              })()}
 
               {/* ABA: PENDÊNCIAS PMO — BL-019 */}
               {mobileTab === "pendencias" && (
@@ -1987,27 +2006,40 @@ setTsAgendadas(totalAgendadas);
                 </CardContent>
               </Card>
 
-              {/* ── CARD 4: BACKLOG (placeholder) ── */}
+              {/* ── CARD 4: BACKLOG — BL-004-B ── */}
               <Card>
                 <CardHeader className="pb-2 bg-muted/30">
                   <div className="flex items-center gap-3">
                     <div className="w-8 h-8 rounded-lg bg-violet-600 flex items-center justify-center flex-shrink-0">
                       <ListTodo className="h-4 w-4 text-white" />
                     </div>
-                    <div className="flex items-center gap-2">
-                      <CardTitle className="text-sm font-bold">Backlog</CardTitle>
-                      <Badge variant="secondary" className="text-[9px] px-1.5 py-0.5 bg-violet-100 text-violet-700">em breve</Badge>
-                    </div>
+                    <CardTitle className="text-sm font-bold">Backlog</CardTitle>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-3">
-                  <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
-                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
-                      <ListTodo className="h-5 w-5 text-muted-foreground/40" />
-                    </div>
-                    <p className="text-xs text-muted-foreground font-medium">Em desenvolvimento</p>
-                    <p className="text-[10px] text-muted-foreground/60">BL-004</p>
-                  </div>
+                  {(() => {
+                    const projetoSelecionado = selectedAgenda
+                      ? offProjetos.find(p => p.nome_cliente === selectedAgenda.cliente)
+                      : null;
+                    return projetoSelecionado ? (
+                      <BacklogBoard
+                        projetoId={projetoSelecionado.id}
+                        projetoNome={projetoSelecionado.nome_cliente}
+                        userId={user?.id || ""}
+                        isCoordinator={false}
+                        agendaData={selectedDate || undefined}
+                        agendaCliente={selectedAgenda?.cliente}
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center gap-2 py-6 text-center">
+                        <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center">
+                          <ListTodo className="h-5 w-5 text-muted-foreground/40" />
+                        </div>
+                        <p className="text-xs text-muted-foreground font-medium">Selecione uma agenda no calendário</p>
+                        <p className="text-[10px] text-muted-foreground/60">O backlog do projeto será exibido aqui</p>
+                      </div>
+                    );
+                  })()}
                 </CardContent>
               </Card>
             </div>
