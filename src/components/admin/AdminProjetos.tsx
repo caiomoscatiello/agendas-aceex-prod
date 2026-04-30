@@ -257,7 +257,7 @@ export default function AdminProjetos() {
   const [rsAcao, setRsAcao] = useState("");
   const [rsResponsavelId, setRsResponsavelId] = useState<string | null>(null);
 
-  // â”€â”€ ALERTAS CONFIG â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ ALERTAS CONFIG â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const [alertaConfig, setAlertaConfig] = useState({
     alerta_feeling_ativo: true,
     alerta_feeling_threshold: 20,
@@ -270,7 +270,7 @@ export default function AdminProjetos() {
   });
   const [savingAlertaConfig, setSavingAlertaConfig] = useState(false);
 
-  // â”€â”€ HEALTH SCORE â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ HEALTH SCORE â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const [healthOpen, setHealthOpen] = useState(false);
   const [healthConfig, setHealthConfig] = useState<HealthConfig | null>(null);
   const [healthHistorico, setHealthHistorico] = useState<HealthSnapshot[]>([]);
@@ -286,7 +286,7 @@ export default function AdminProjetos() {
     loadTiposDocumento();
   }, []);
 
-  // â”€â”€ HEALTH SCORE FUNCTIONS â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+  // â"€â"€ HEALTH SCORE FUNCTIONS â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const loadHealthScore = async (projetoId: string) => {
     setHealthLoading(true);
     const defaultConfig: HealthConfig = {
@@ -329,7 +329,7 @@ export default function AdminProjetos() {
     if (error) {
       toast({ title: "Erro ao recalcular", description: error.message, variant: "destructive" });
     } else {
-      const score = data?.resultados?.[0]?.score ?? ""”";
+      const score = data?.resultados?.[0]?.score ?? "";
       toast({ title: "Score recalculado!", description: `Score atual: ${score}` });
       await loadHealthScore(detailProjeto.id);
     }
@@ -424,7 +424,7 @@ export default function AdminProjetos() {
     await loadStakeholders(projeto.id);
     await loadRiscos(projeto.id);
 
-    // â”€â”€ Carregar config de alertas â”€â”€
+    // â"€â"€ Carregar config de alertas â"€â"€
     const { data: cfgData } = await supabase
       .from("projeto_alertas_config")
       .select("*")
@@ -811,7 +811,7 @@ export default function AdminProjetos() {
 
       const { error: syncError } = await supabase.functions.invoke("monday-sync-project", { body: syncPayload });
       if (syncError) {
-        toast({ title: "Aviso "” Monday", description: "Projeto salvo. Board Monday não sincronizado." });
+        toast({ title: "Aviso "" Monday", description: "Projeto salvo. Board Monday não sincronizado." });
       }
     } catch {
       // Monday failure never blocks
@@ -838,7 +838,7 @@ export default function AdminProjetos() {
   };
 
   const getCoordenadorName = (id: string | null) => {
-    if (!id) return ""”";
+    if (!id) return """";
     const coord = coordenadores.find(c => c.user_id === id);
     return coord ? coord.name : "Desconhecido";
   };
@@ -1065,7 +1065,7 @@ export default function AdminProjetos() {
           if (fresh) setDetailProjeto(fresh as any);
         }
       } else if (data?.skipped) {
-        toast({ title: "Integração desativada", description: "Ative em Settings â†’ Integ. Monday.", variant: "destructive" });
+        toast({ title: "Integração desativada", description: "Ative em Settings â†' Integ. Monday.", variant: "destructive" });
       } else {
         throw new Error(data?.error || "Erro desconhecido");
       }
@@ -1119,7 +1119,7 @@ export default function AdminProjetos() {
     setSyncingMondayId(null);
   };
 
-  // â”€â”€â”€ Shared sheet content â”€â”€â”€
+  // â"€â"€â"€ Shared sheet content â"€â"€â"€
   const renderSheetBody = () => {
     const isEditable = sheetMode === "edit" || sheetMode === "new";
     const projeto = detailProjeto;
@@ -1169,11 +1169,11 @@ export default function AdminProjetos() {
                   <div><p className="text-[10px] text-muted-foreground">Código</p><p className="text-sm font-mono">{projeto.codigo_cliente}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Nome do Projeto</p><p className="text-sm">{projeto.nome_cliente}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Coordenador</p><p className="text-sm">{getCoordenadorName(projeto.coordenador_id)}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground">Contato</p><p className="text-sm">{projeto.contato_nome || ""”"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground">Telefone</p><p className="text-sm">{projeto.contato_telefone || ""”"}</p></div>
-                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Endereço</p><p className="text-sm">{projeto.endereco_cliente || ""”"}</p></div>
-                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Site</p><p className="text-sm">{projeto.site_cliente || ""”"}</p></div>
-                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Email do Contato</p><p className="text-sm">{projeto.email_contato || ""”"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground">Contato</p><p className="text-sm">{projeto.contato_nome || """"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground">Telefone</p><p className="text-sm">{projeto.contato_telefone || """"}</p></div>
+                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Endereço</p><p className="text-sm">{projeto.endereco_cliente || """"}</p></div>
+                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Site</p><p className="text-sm">{projeto.site_cliente || """"}</p></div>
+                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Email do Contato</p><p className="text-sm">{projeto.email_contato || """"}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Horas Contratadas</p><p className="text-sm">{projeto.horas_contratadas}h</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Deslocamento (horas)</p><p className="text-sm">{projeto.deslocamento}h</p></div>
                   <div>
@@ -1279,7 +1279,7 @@ export default function AdminProjetos() {
                       <SelectContent>
                         <SelectItem value="Em planejamento">ðŸŸ¡ Em planejamento</SelectItem>
                         <SelectItem value="Liberado">ðŸŸ¢ Liberado</SelectItem>
-                        <SelectItem value="Encerrado">ðŸ”´ Encerrado</SelectItem>
+                        <SelectItem value="Encerrado">ðŸ"´ Encerrado</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1328,8 +1328,8 @@ export default function AdminProjetos() {
                       <span className="font-mono text-xs font-medium bg-primary text-primary-foreground px-2 py-0.5 rounded">{a.codigo}</span>
                       <span className="text-sm flex-1 font-medium">{a.descricao}</span>
                       <span className="text-xs text-muted-foreground">
-                        {a.data_inicio ? a.data_inicio.split("-").reverse().join("/") : ""”"}
-                        {a.data_fim ? ` â†’ ${a.data_fim.split("-").reverse().join("/")}` : ""}
+                        {a.data_inicio ? a.data_inicio.split("-").reverse().join("/") : """"}
+                        {a.data_fim ? ` â†' ${a.data_fim.split("-").reverse().join("/")}` : ""}
                       </span>
                       <Badge variant="outline" className="text-xs font-mono">{a.horas}h</Badge>
                     </div>
@@ -1350,7 +1350,7 @@ export default function AdminProjetos() {
                                     : "border-amber-500 text-amber-700 dark:text-amber-400"
                                 )}
                               >
-                                {item.doc_satisfeito ? "âœ“ Doc" : "âš  Doc"}
+                                {item.doc_satisfeito ? "âœ" Doc" : "âš  Doc"}
                               </Badge>
                             )}
                           </div>
@@ -1514,8 +1514,8 @@ export default function AdminProjetos() {
                           {stakeholders.filter(s => s.tipo === "Interno").map((s) => (
                             <TableRow key={s.id}>
                               <TableCell className="text-sm font-medium">{s.nome}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || ""”"}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.email || ""”"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || """"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.email || """"}</TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1">
                                   <Badge variant="default" className="text-[10px]">{s.tipo}</Badge>
@@ -1555,9 +1555,9 @@ export default function AdminProjetos() {
                           {stakeholders.filter(s => s.tipo === "Externo").map((s) => (
                             <TableRow key={s.id}>
                               <TableCell className="text-sm font-medium">{s.nome}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || ""”"}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.empresa || ""”"}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.email || ""”"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || """"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.empresa || """"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.email || """"}</TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1">
                                   <Badge variant="secondary" className="text-[10px]">{s.tipo}</Badge>
@@ -1641,9 +1641,9 @@ export default function AdminProjetos() {
                             <TableCell className="hidden sm:table-cell text-sm">
                               {responsavel
                                 ? `${responsavel.nome}${responsavel.cargo ? ` Â· ${responsavel.cargo}` : ""}`
-                                : ""”"}
+                                : """"}
                             </TableCell>
-                            <TableCell className="hidden sm:table-cell text-sm">{r.acao_mitigadora || ""”"}</TableCell>
+                            <TableCell className="hidden sm:table-cell text-sm">{r.acao_mitigadora || """"}</TableCell>
                             <TableCell>
                               <div className="flex gap-1">
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditRisco(r)}>
@@ -1689,7 +1689,7 @@ export default function AdminProjetos() {
                       return (
                         <TableRow key={b.id}>
                           <TableCell className="text-sm font-medium">{b.versao}</TableCell>
-                          <TableCell className="text-sm">{b.descricao || ""”"}</TableCell>
+                          <TableCell className="text-sm">{b.descricao || """"}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{fmt}</TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setBaselineComparando(b)}>
@@ -1706,7 +1706,7 @@ export default function AdminProjetos() {
           </TabsContent>
 
           {/* TAB CONFIG */}
-          {/* TAB BACKLOG "” BL-004-B */}
+          {/* TAB BACKLOG "" BL-004-B */}
           <TabsContent value="backlog" className="mt-0">
             {detailProjeto ? (
               <BacklogBoard
@@ -1738,7 +1738,7 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: detailProjeto?.monday_board_id ? "criado" : "nao_criado",
-                  statusLabel: detailProjeto?.monday_board_id ? "âœ“ Criado" : "Não criado",
+                  statusLabel: detailProjeto?.monday_board_id ? "âœ" Criado" : "Não criado",
                   sub: detailProjeto?.monday_board_id
                     ? `${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
                     : "Board Monday não vinculado a este projeto",
@@ -1774,8 +1774,8 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: "ativo",
-                  statusLabel: "âœ“ Ativo",
-                  sub: `Código cliente: ${detailProjeto?.codigo_cliente ?? ""”"}`,
+                  statusLabel: "âœ" Ativo",
+                  sub: `Código cliente: ${detailProjeto?.codigo_cliente ?? """"}`,
                 },
                 {
                   key: "sharepoint",
@@ -1790,7 +1790,7 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: detailProjeto?.sharepoint_pasta_url ? "ativo" : "disponivel",
-                  statusLabel: detailProjeto?.sharepoint_pasta_url ? "âœ“ Ativo" : "Disponível",
+                  statusLabel: detailProjeto?.sharepoint_pasta_url ? "âœ" Ativo" : "Disponível",
                   sub: detailProjeto?.sharepoint_pasta_url
                     ? `Documentos/${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
                     : "Nenhum documento enviado ainda para este projeto.",
@@ -1813,7 +1813,7 @@ export default function AdminProjetos() {
                   ),
                   status: "detalhamento",
                   statusLabel: "Em detalhamento",
-                  sub: "Versionamento e automações "” em breve",
+                  sub: "Versionamento e automações "" em breve",
                 },
                 {
                   key: "autentique",
@@ -1824,7 +1824,7 @@ export default function AdminProjetos() {
                     </div>
                   ),
                   status: detailProjeto?.autentique_folder_id ? "ativo" : "disponivel",
-                  statusLabel: detailProjeto?.autentique_folder_id ? "âœ“ Ativo" : "Disponível",
+                  statusLabel: detailProjeto?.autentique_folder_id ? "âœ" Ativo" : "Disponível",
                   sub: detailProjeto?.autentique_folder_id
                     ? `${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
                     : "Nenhum envelope de assinatura criado ainda para este projeto.",
@@ -1876,13 +1876,13 @@ export default function AdminProjetos() {
               );
             })()}
 
-            {/* â”€â”€ ALERTAS PROATIVOS â”€â”€ */}
+            {/* â"€â"€ ALERTAS PROATIVOS â"€â"€ */}
             <p className="text-sm font-semibold mt-5 mb-3">Alertas Proativos</p>
             <Card>
               <CardContent className="p-4 space-y-4">
                 {([
-                  { key: "feeling",     icon: "ðŸ“‰", label: "Desvio de Feeling",     ativoKey: "alerta_feeling_ativo",     valorKey: "alerta_feeling_threshold",  valorLabel: "Desvio mínimo (pp):",       min: 5,  max: 50  },
-                  { key: "apontamento", icon: "ðŸ“‹", label: "Agenda s/ Apontamento", ativoKey: "alerta_apontamento_ativo", valorKey: "alerta_apontamento_dias",    valorLabel: "Dias sem apontamento:",     min: 1,  max: 30  },
+                  { key: "feeling",     icon: "ðŸ"‰", label: "Desvio de Feeling",     ativoKey: "alerta_feeling_ativo",     valorKey: "alerta_feeling_threshold",  valorLabel: "Desvio mínimo (pp):",       min: 5,  max: 50  },
+                  { key: "apontamento", icon: "ðŸ"‹", label: "Agenda s/ Apontamento", ativoKey: "alerta_apontamento_ativo", valorKey: "alerta_apontamento_dias",    valorLabel: "Dias sem apontamento:",     min: 1,  max: 30  },
                   { key: "consumo",     icon: "â±",  label: "Consumo de Horas",      ativoKey: "alerta_consumo_ativo",     valorKey: "alerta_consumo_threshold",  valorLabel: "Threshold de consumo (%):", min: 50, max: 100 },
                   { key: "parada",      icon: "â¸",  label: "Atividade Parada",      ativoKey: "alerta_parada_ativo",      valorKey: "alerta_parada_dias",        valorLabel: "Dias úteis sem agenda:",    min: 1,  max: 30  },
                 ] as const).map((item, idx) => (
@@ -1945,7 +1945,7 @@ export default function AdminProjetos() {
     );
   };
 
-  // â”€â”€â”€ Desktop list â”€â”€â”€
+  // â"€â"€â"€ Desktop list â"€â"€â"€
   const renderDesktopList = () => (
     <div className="flex flex-col h-full">
       <div className="flex items-center border-b">
@@ -2348,7 +2348,7 @@ export default function AdminProjetos() {
             const atualCodigos = new Set(atividades.map(a => a.codigo));
             const novas = atividades.filter(a => !blMap[a.codigo]);
             const removidas = blAtivs.filter((b: any) => !atualCodigos.has(b.codigo));
-            const fmtD = (d: string | null) => d ? d.split("-").reverse().join("/") : ""”";
+            const fmtD = (d: string | null) => d ? d.split("-").reverse().join("/") : """";
 
             return (
               <div className="space-y-3">
@@ -2356,7 +2356,7 @@ export default function AdminProjetos() {
                   {atividades.filter(a => blMap[a.codigo]).map(a => {
                     const bl = blMap[a.codigo];
                     const diffH = a.horas - bl.horas;
-                    let desvio = 0; let desvioLabel = ""”"; let desvioBg = "bg-emerald-100 text-emerald-800";
+                    let desvio = 0; let desvioLabel = """"; let desvioBg = "bg-emerald-100 text-emerald-800";
                     if (a.data_fim && bl.data_fim) {
                       desvio = Math.round((new Date(a.data_fim).getTime() - new Date(bl.data_fim).getTime()) / 86400000);
                       if (desvio <= 0) { desvioLabel = "No prazo"; desvioBg = "bg-emerald-100 text-emerald-800"; }
@@ -2383,13 +2383,13 @@ export default function AdminProjetos() {
                   {removidas.map((b: any) => (
                     <div key={b.id} className="rounded-md border p-3 text-muted-foreground">
                       <div className="flex items-center justify-between gap-2"><span className="text-xs">{b.codigo} Â· {b.descricao}</span><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></div>
-                      <p className="text-xs mt-1">BL: {b.horas}h Â· {fmtD(b.data_inicio)} â†’ {fmtD(b.data_fim)}</p>
+                      <p className="text-xs mt-1">BL: {b.horas}h Â· {fmtD(b.data_inicio)} â†' {fmtD(b.data_fim)}</p>
                     </div>
                   ))}
                   {novas.map(a => (
                     <div key={a.id} className="rounded-md border p-3">
                       <div className="flex items-center justify-between gap-2"><span className="text-xs">{a.codigo} Â· {a.descricao}</span><Badge className="text-[10px] bg-blue-100 text-blue-800">Nova</Badge></div>
-                      <p className="text-xs mt-1 text-muted-foreground">Atual: {a.horas}h Â· {fmtD(a.data_inicio)} â†’ {fmtD(a.data_fim)}</p>
+                      <p className="text-xs mt-1 text-muted-foreground">Atual: {a.horas}h Â· {fmtD(a.data_inicio)} â†' {fmtD(a.data_fim)}</p>
                     </div>
                   ))}
                 </div>
@@ -2409,7 +2409,7 @@ export default function AdminProjetos() {
                       {atividades.filter(a => blMap[a.codigo]).map(a => {
                         const bl = blMap[a.codigo];
                         const diffH = a.horas - bl.horas;
-                        let desvio = 0; let desvioLabel = ""”";
+                        let desvio = 0; let desvioLabel = """";
                         if (a.data_fim && bl.data_fim) {
                           desvio = Math.round((new Date(a.data_fim).getTime() - new Date(bl.data_fim).getTime()) / 86400000);
                           if (desvio <= 0) desvioLabel = "No prazo";
@@ -2430,18 +2430,18 @@ export default function AdminProjetos() {
                       {removidas.map((b: any) => (
                         <TableRow key={b.id} className="text-muted-foreground">
                           <TableCell className="text-xs font-mono">{b.codigo}</TableCell><TableCell className="text-xs">{b.descricao}</TableCell>
-                          <TableCell className="text-xs text-right">{b.horas}h</TableCell><TableCell className="text-xs text-right">"”</TableCell>
-                          <TableCell className="text-xs text-right">"”</TableCell><TableCell className="text-xs">{fmtD(b.data_inicio)}</TableCell>
-                          <TableCell className="text-xs">"”</TableCell><TableCell className="text-xs">{fmtD(b.data_fim)}</TableCell>
-                          <TableCell className="text-xs">"”</TableCell><TableCell><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></TableCell>
+                          <TableCell className="text-xs text-right">{b.horas}h</TableCell><TableCell className="text-xs text-right">""</TableCell>
+                          <TableCell className="text-xs text-right">""</TableCell><TableCell className="text-xs">{fmtD(b.data_inicio)}</TableCell>
+                          <TableCell className="text-xs">""</TableCell><TableCell className="text-xs">{fmtD(b.data_fim)}</TableCell>
+                          <TableCell className="text-xs">""</TableCell><TableCell><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></TableCell>
                         </TableRow>
                       ))}
                       {novas.map(a => (
                         <TableRow key={a.id}>
                           <TableCell className="text-xs font-mono">{a.codigo}</TableCell><TableCell className="text-xs">{a.descricao}</TableCell>
-                          <TableCell className="text-xs text-right">"”</TableCell><TableCell className="text-xs text-right">{a.horas}h</TableCell>
-                          <TableCell className="text-xs text-right">"”</TableCell><TableCell className="text-xs">"”</TableCell>
-                          <TableCell className="text-xs">{fmtD(a.data_inicio)}</TableCell><TableCell className="text-xs">"”</TableCell>
+                          <TableCell className="text-xs text-right">""</TableCell><TableCell className="text-xs text-right">{a.horas}h</TableCell>
+                          <TableCell className="text-xs text-right">""</TableCell><TableCell className="text-xs">""</TableCell>
+                          <TableCell className="text-xs">{fmtD(a.data_inicio)}</TableCell><TableCell className="text-xs">""</TableCell>
                           <TableCell className="text-xs">{fmtD(a.data_fim)}</TableCell><TableCell><Badge className="text-[10px] bg-blue-100 text-blue-800">Nova</Badge></TableCell>
                         </TableRow>
                       ))}
@@ -2454,7 +2454,7 @@ export default function AdminProjetos() {
         </DialogContent>
       </Dialog>
 
-      {/* â”€â”€ DIALOG HEALTH SCORE ANALYTICS â”€â”€ */}
+      {/* â"€â"€ DIALOG HEALTH SCORE ANALYTICS â"€â"€ */}
       <Dialog open={healthOpen} onOpenChange={setHealthOpen}>
         <DialogContent className="flex flex-col gap-0 p-0 max-h-[90dvh] w-full max-w-2xl">
           <DialogHeader className="shrink-0 border-b px-5 py-4">
@@ -2462,7 +2462,7 @@ export default function AdminProjetos() {
               <Activity className="h-5 w-5 text-violet-600" />
               Health Score Analytics
               {detailProjeto && (
-                <span className="text-sm font-normal text-muted-foreground">"” {detailProjeto.nome_cliente}</span>
+                <span className="text-sm font-normal text-muted-foreground">"" {detailProjeto.nome_cliente}</span>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -2479,7 +2479,7 @@ export default function AdminProjetos() {
                 <TabsTrigger value="config">Configuração</TabsTrigger>
               </TabsList>
 
-              {/* â”€â”€ ABA SCORE â”€â”€ */}
+              {/* â"€â"€ ABA SCORE â"€â"€ */}
               <TabsContent value="score" className="flex-1 overflow-y-auto px-5 pb-5 space-y-4 mt-3">
                 {healthHistorico.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
@@ -2497,7 +2497,7 @@ export default function AdminProjetos() {
                   const snap = healthHistorico[0];
                   const semaforoCor = snap.semaforo === "verde" ? "text-emerald-600" : snap.semaforo === "amarelo" ? "text-amber-600" : "text-red-600";
                   const semaforoBg  = snap.semaforo === "verde" ? "bg-emerald-50 border-emerald-200" : snap.semaforo === "amarelo" ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200";
-                  const semaforoEmoji = snap.semaforo === "verde" ? "ðŸŸ¢" : snap.semaforo === "amarelo" ? "ðŸŸ¡" : "ðŸ”´";
+                  const semaforoEmoji = snap.semaforo === "verde" ? "ðŸŸ¢" : snap.semaforo === "amarelo" ? "ðŸŸ¡" : "ðŸ"´";
                   const dimensoes = [
                     { label: "Prazo (IDP)", valor: snap.score_prazo,   detalhe: `IDP: ${Number(snap.idp_valor).toFixed(2)}`, cor: "bg-blue-500" },
                     { label: "Custo (IDC)", valor: snap.score_custo,   detalhe: `IDC: ${Number(snap.idc_valor).toFixed(2)}`, cor: "bg-violet-500" },
@@ -2545,7 +2545,7 @@ export default function AdminProjetos() {
                 })()}
               </TabsContent>
 
-              {/* â”€â”€ ABA HISTÁ“RICO â”€â”€ */}
+              {/* â"€â"€ ABA HISTÁ"RICO â"€â"€ */}
               <TabsContent value="historico" className="flex-1 overflow-y-auto px-5 pb-5 mt-3">
                 {healthHistorico.length === 0 ? (
                   <p className="text-sm text-muted-foreground text-center py-8">Nenhum histórico disponível.</p>
@@ -2593,7 +2593,7 @@ export default function AdminProjetos() {
                 )}
               </TabsContent>
 
-              {/* â”€â”€ ABA CONFIGURAÇÁƒO â”€â”€ */}
+              {/* â"€â"€ ABA CONFIGURAÇÁƒO â"€â"€ */}
               <TabsContent value="config" className="flex-1 overflow-y-auto px-5 pb-5 mt-3 space-y-5">
                 {healthConfigEdit && (
                   <>
@@ -2622,7 +2622,7 @@ export default function AdminProjetos() {
                           ? "text-emerald-600" : "text-red-600"
                       }`}>
                         Total: {healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas}%
-                        {(healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas) !== 100 && " "” deve somar 100%"}
+                        {(healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas) !== 100 && " "" deve somar 100%"}
                       </div>
                     </div>
 
