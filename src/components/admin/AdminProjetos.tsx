@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from "react";
+import { useAuth } from "@/contexts/AuthContext";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -157,6 +158,7 @@ type HealthSnapshot = {
 };
 
 export default function AdminProjetos() {
+  const { user } = useAuth();
   const [projetos, setProjetos] = useState<Projeto[]>([]);
   const [coordenadores, setCoordenadores] = useState<Coordenador[]>([]);
   const [loading, setLoading] = useState(true);
