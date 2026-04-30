@@ -359,7 +359,11 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
 
   const handleSalvarEdicao = async () => {
     if (!itemDetalhado) return;
-    await salvarItem(itemDetalhado.id, editForm);
+    const formParaSalvar = {
+      ...editForm,
+      prioridade_reclassificada: editForm.prioridade_reclassificada === "none" ? null : editForm.prioridade_reclassificada,
+    };
+    await salvarItem(itemDetalhado.id, formParaSalvar);
     toast({ title: "Item atualizado!" });
     setEditando(false);
     setEditForm({});
@@ -634,15 +638,15 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
         <Dialog open={!!itemDetalhado} onOpenChange={() => { setItemDetalhado(null); setEditando(false); }}>
           <DialogContent className="flex flex-col gap-0 p-0 max-h-[90dvh] w-full max-w-2xl">
             <DialogHeader className="shrink-0 border-b px-5 py-3">
-              <DialogTitle className="flex items-center gap-2 text-sm">
+              <div className="flex items-center gap-2 pr-8">
                 <span className="font-mono text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded">{itemDetalhado.codigo}</span>
-                <span className="flex-1 truncate">{itemDetalhado.titulo}</span>
+                <DialogTitle className="flex-1 truncate text-sm">{itemDetalhado.titulo}</DialogTitle>
                 {isCoordinator && !editando && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs shrink-0" onClick={() => { setEditando(true); setEditForm({ titulo: itemDetalhado.titulo, descricao_solicitante: itemDetalhado.descricao_solicitante, descricao_complementar: itemDetalhado.descricao_complementar, descricao_solucao: itemDetalhado.descricao_solucao, prioridade: itemDetalhado.prioridade, prioridade_reclassificada: itemDetalhado.prioridade_reclassificada, estimativa_horas: itemDetalhado.estimativa_horas, tempo_efetivo_horas: itemDetalhado.tempo_efetivo_horas, data_prevista: itemDetalhado.data_prevista, data_conclusao: itemDetalhado.data_conclusao }); }}>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs shrink-0" onClick={() => { setEditando(true); setEditForm({ titulo: itemDetalhado.titulo, descricao_solicitante: itemDetalhado.descricao_solicitante, descricao_complementar: itemDetalhado.descricao_complementar, descricao_solucao: itemDetalhado.descricao_solucao, prioridade: itemDetalhado.prioridade, prioridade_reclassificada: itemDetalhado.prioridade_reclassificada || "none", estimativa_horas: itemDetalhado.estimativa_horas, tempo_efetivo_horas: itemDetalhado.tempo_efetivo_horas, data_prevista: itemDetalhado.data_prevista, data_conclusao: itemDetalhado.data_conclusao }); }}>
                     <Edit2 className="h-3 w-3" /> Editar
                   </Button>
                 )}
-              </DialogTitle>
+              </div>
             </DialogHeader>
 
             <Tabs value={detalheTab} onValueChange={setDetalheTab} className="flex-1 flex flex-col overflow-hidden">
@@ -686,10 +690,10 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                       </div>
                       <div className="space-y-1">
                         <Label className="text-xs">Reclassificação</Label>
-                        <Select value={editForm.prioridade_reclassificada || ""} onValueChange={v => setEditForm(p => ({ ...p, prioridade_reclassificada: v || null }))}>
+                        <Select value={editForm.prioridade_reclassificada || "none"} onValueChange={v => setEditForm(p => ({ ...p, prioridade_reclassificada: v || null }))}>
                           <SelectTrigger><SelectValue placeholder="Sem reclassificação" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="">Sem reclassificação</SelectItem>
+                            <SelectItem value="none">Sem reclassificação</SelectItem>
                             <SelectItem value="critica">🔴 Crítica</SelectItem>
                             <SelectItem value="alta">🟠 Alta</SelectItem>
                             <SelectItem value="media">🔵 Média</SelectItem>
