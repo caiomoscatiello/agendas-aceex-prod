@@ -70,6 +70,15 @@ export type BacklogHistorico = {
   comentario: string | null;
 };
 
+export type BacklogParticipante = {
+  id: string;
+  backlog_item_id: string;
+  user_id: string;
+  papel: string;
+  nome?: string;
+  created_at: string;
+};
+
 export function useBacklog(projetoId: string | null, userId: string | undefined) {
   const [colunas, setColunas] = useState<BacklogColuna[]>([]);
   const [items, setItems] = useState<BacklogItem[]>([]);
@@ -295,6 +304,80 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
     }));
   };
 
+
+  // GESTÃO DE COLUNAS
+  const criarColuna = async (nome: string, cor: string) => {
+    if (!projetoId) return;
+    const sorted = [...colunas].sort((a, b) => a.ordem - b.ordem);
+    const cancelado = sorted.find(c => c.status_sistema === "cancelado");
+    const novaOrdem = cancelado ? cancelado.ordem : sorted.length;
+    if (cancelado) {
+      await supabase.from("projeto_backlog_colunas").update({ ordem: cancelado.ordem + 1 }).eq("id", cancelado.id);
+    }
+    await supabase.from("projeto_backlog_colunas").insert({
+      projeto_id: projetoId, nome, cor, ordem: novaOrdem, status_sistema: null,
+    });
+    await loadBoard();
+  };
+
+  const renomearColuna = async (colunaId: string, novoNome: string, novaCor?: string) => {
+    const update: any = { nome: novoNome };
+    if (novaCor) update.cor = novaCor;
+    await supabase.from("projeto_backlog_colunas").update(update).eq("id", colunaId);
+    setColunas(prev => prev.map(c => c.id === colunaId ? { ...c, nome: novoNome, ...(novaCor ? { cor: novaCor } : {}) } : c));
+  };
+
+  const excluirColuna = async (colunaId: string): Promise<boolean> => {
+    const col = colunas.find(c => c.id === colunaId);
+    if (!col || col.status_sistema) return false;
+    if (items.some(i => i.coluna_id === colunaId)) return false;
+    await supabase.from("projeto_backlog_colunas").delete().eq("id", colunaId);
+    await loadBoard();
+    return true;
+  };
+
+  const reordenarColunas = async (colunaId: string, direcao: "esquerda" | "direita") => {
+    const sorted = [...colunas].sort((a, b) => a.ordem - b.ordem);
+    const idx = sorted.findIndex(c => c.id === colunaId);
+    if (idx === -1) return;
+    const atual = sorted[idx];
+    if (atual.status_sistema === "cancelado") return;
+    const targetIdx = direcao === "esquerda" ? idx - 1 : idx + 1;
+    if (targetIdx < 0 || targetIdx >= sorted.length) return;
+    const alvo = sorted[targetIdx];
+    if (alvo.status_sistema === "cancelado" && direcao === "direita") return;
+    await Promise.all([
+      supabase.from("projeto_backlog_colunas").update({ ordem: alvo.ordem }).eq("id", atual.id),
+      supabase.from("projeto_backlog_colunas").update({ ordem: atual.ordem }).eq("id", alvo.id),
+    ]);
+    await loadBoard();
+  };
+
+  // PARTICIPANTES
+  const loadParticipantes = async (itemId: string): Promise<BacklogParticipante[]> => {
+    const { data: parts } = await supabase
+      .from("projeto_backlog_participantes")
+      .select("*")
+      .eq("backlog_item_id", itemId)
+      .order("created_at");
+    if (!parts?.length) return [];
+    const userIds = parts.map((p: any) => p.user_id);
+    const { data: profiles } = await supabase.from("profiles").select("user_id, name").in("user_id", userIds);
+    const profMap: Record<string, string> = {};
+    (profiles || []).forEach((p: any) => { profMap[p.user_id] = p.name; });
+    return parts.map((p: any) => ({ ...p, nome: profMap[p.user_id] || "sem nome" }));
+  };
+
+  const adicionarParticipante = async (itemId: string, participanteUserId: string, papel: string) => {
+    await supabase.from("projeto_backlog_participantes").insert({
+      backlog_item_id: itemId, user_id: participanteUserId, papel,
+    });
+  };
+
+  const removerParticipante = async (participanteId: string) => {
+    await supabase.from("projeto_backlog_participantes").delete().eq("id", participanteId);
+  };
+
   const itemsPorColuna = (colunaId: string) =>
     items
       .filter(i => i.coluna_id === colunaId && !i.pai_id)
@@ -309,89 +392,11 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
     colunas, items, loadingBoard, savingItem,
     loadBoard, moverItem, criarItem, salvarItem, adicionarComentario,
     loadComentarios, loadHistorico,
+    criarColuna, renomearColuna, excluirColuna, reordenarColunas,
+    loadParticipantes, adicionarParticipante, removerParticipante,
     itemsPorColuna, filhosDoItem, temBoard,
   };
 }
 
-// src/components/consultor/hooks/useBacklog.ts
-// BL-004-B — Backlog do Projeto
-
-import { useState, useCallback } from "react";
-import { supabase } from "@/integrations/supabase/client";
-
-export type BacklogColuna = {
-  id: string;
-  projeto_id: string;
-  nome: string;
-  cor: string;
-  ordem: number;
-  status_sistema: string | null;
-  wip_limite: number | null;
-};
-
-export type BacklogItem = {
-  id: string;
-  codigo: string;
-  projeto_id: string;
-  coluna_id: string;
-  atividade_id: string | null;
-  cronograma_item_id: string | null;
-  pai_id: string | null;
-  titulo: string;
-  descricao_solicitante: string | null;
-  descricao_complementar: string | null;
-  descricao_solucao: string | null;
-  tipo: string;
-  prioridade: string;
-  prioridade_reclassificada: string | null;
-  frente_modulo: string;
-  estimativa_horas: number | null;
-  tempo_efetivo_horas: number | null;
-  criado_por: string;
-  atribuido_para: string | null;
-  data_prevista: string | null;
-  data_conclusao: string | null;
-  documento_url: string | null;
-  documento_nome: string | null;
-  visivel_cliente: boolean;
-  hierarquia_bloqueada: boolean;
-  ordem: number;
-  created_at: string;
-  updated_at: string;
-  // joins opcionais
-  criado_por_nome?: string;
-  atribuido_para_nome?: string;
-  filhos?: BacklogItem[];
-};
-
-export type BacklogComentario = {
-  id: string;
-  backlog_item_id: string;
-  autor_id: string;
-  autor_nome?: string;
-  texto: string;
-  created_at: string;
-};
-
-export type BacklogHistorico = {
-  id: string;
-  backlog_item_id: string;
-  de_coluna_nome?: string;
-  para_coluna_nome?: string;
-  movido_por_nome?: string;
-  moved_at: string;
-  tipo_evento: string;
-  detalhe: any;
-  comentario: string | null;
-};
-
-export type BacklogParticipante = {
-  id: string;
-  backlog_item_id: string;
-  user_id: string;
-  papel: string;
-  nome?: string;
-  created_at: string;
-};
 
 
