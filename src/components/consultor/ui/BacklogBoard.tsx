@@ -13,10 +13,11 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import {
-  ListTodo, Plus, Search, Filter, Loader2, X, ChevronDown, ChevronUp,
-  ArrowRight, Lock, Unlock, LayoutGrid, List, GripVertical,
-  Calendar, Clock, User, Tag, AlertCircle, CheckCircle2, Send,
-  History, MessageSquare, Edit2, Save
+  ListTodo, Plus, Search, Loader2, X, ChevronDown, ChevronUp,
+  ArrowRight, Lock, Unlock, LayoutGrid, List,
+  Tag, AlertCircle, CheckCircle2, Send,
+  History, MessageSquare, Edit2, Save,
+  Settings2, ChevronLeft, ChevronRight, Trash2, Users, UserPlus
 } from "lucide-react";
 import { format, parseISO, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -1052,6 +1053,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     </>
   );
 }
+
 
 
 
