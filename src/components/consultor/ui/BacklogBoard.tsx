@@ -10,15 +10,17 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
 import {
   ListTodo, Plus, Search, Filter, Loader2, X, ChevronDown, ChevronUp,
   ArrowRight, Lock, Unlock, LayoutGrid, List, GripVertical,
-  Calendar, Clock, User, Tag, AlertCircle, CheckCircle2
+  Calendar, Clock, User, Tag, AlertCircle, CheckCircle2, Send,
+  History, MessageSquare, Edit2, Save
 } from "lucide-react";
 import { format, parseISO, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useBacklog, BacklogItem, BacklogColuna } from "../hooks/useBacklog";
+import { useBacklog, BacklogItem, BacklogColuna, BacklogComentario, BacklogHistorico } from "../hooks/useBacklog";
 
 // ── TIPOS ─────────────────────────────────────────────────────────────────────
 
@@ -316,7 +318,9 @@ function NovoItemModal({
 export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = false, agendaData, agendaCliente }: Props) {
   const {
     colunas, items, loadingBoard, savingItem,
-    loadBoard, moverItem, criarItem, itemsPorColuna, filhosDoItem, temBoard,
+    loadBoard, moverItem, criarItem, salvarItem, adicionarComentario,
+    loadComentarios, loadHistorico,
+    itemsPorColuna, filhosDoItem, temBoard,
   } = useBacklog(projetoId, userId);
 
   const [view, setView] = useState<"kanban" | "lista">("kanban");
@@ -328,6 +332,65 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [itemDetalhado, setItemDetalhado] = useState<BacklogItem | null>(null);
   const [dragItemId, setDragItemId] = useState<string | null>(null);
   const [dragOverColuna, setDragOverColuna] = useState<string | null>(null);
+  // BL-004-C — Detalhe, histórico e comentários
+  const [detalheTab, setDetalheTab] = useState("info");
+  const [comentarios, setComentarios] = useState<BacklogComentario[]>([]);
+  const [historico, setHistorico] = useState<BacklogHistorico[]>([]);
+  const [loadingDetalhe, setLoadingDetalhe] = useState(false);
+  const [novoComentario, setNovoComentario] = useState("");
+  const [savingComentario, setSavingComentario] = useState(false);
+  const [editando, setEditando] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<BacklogItem>>({});
+
+  const abrirDetalhe = async (item: BacklogItem) => {
+    setItemDetalhado(item);
+    setDetalheTab("info");
+    setEditando(false);
+    setEditForm({});
+    setLoadingDetalhe(true);
+    const [coms, hist] = await Promise.all([
+      loadComentarios(item.id),
+      loadHistorico(item.id),
+    ]);
+    setComentarios(coms);
+    setHistorico(hist);
+    setLoadingDetalhe(false);
+  };
+
+  const handleSalvarEdicao = async () => {
+    if (!itemDetalhado) return;
+    await salvarItem(itemDetalhado.id, editForm);
+    toast({ title: "Item atualizado!" });
+    setEditando(false);
+    setEditForm({});
+    setItemDetalhado(prev => prev ? { ...prev, ...editForm } : null);
+  };
+
+  const handleEnviarComentario = async () => {
+    if (!itemDetalhado || !novoComentario.trim()) return;
+    setSavingComentario(true);
+    const ok = await adicionarComentario(itemDetalhado.id, novoComentario);
+    if (ok) {
+      setNovoComentario("");
+      const coms = await loadComentarios(itemDetalhado.id);
+      setComentarios(coms);
+      toast({ title: "Comentário adicionado!" });
+    }
+    setSavingComentario(false);
+  };
+
+  const labelEvento = (tipo: string) => {
+    const labels: Record<string, string> = {
+      criacao: "Item criado",
+      movimentacao: "Movido",
+      movimentacao_bloco: "Movido em bloco",
+      edicao: "Editado",
+      comentario: "Comentário adicionado",
+      atribuicao: "Atribuição alterada",
+      cadeado_alterado: "Cadeado alterado",
+    };
+    return labels[tipo] || tipo;
+  };
 
   useEffect(() => {
     if (projetoId) loadBoard();
@@ -401,7 +464,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             const col = colunas.find(c => c.id === item.coluna_id);
             const vencido = isVencido(item.data_prevista, col?.status_sistema || null);
             return (
-              <tr key={item.id} className="border-t hover:bg-accent/30 cursor-pointer" onClick={() => setItemDetalhado(item)}>
+              <tr key={item.id} className="border-t hover:bg-accent/30 cursor-pointer" onClick={() => abrirDetalhe(item)}>
                 <td className="p-2 font-mono text-[10px] text-muted-foreground">{item.codigo}</td>
                 <td className="p-2 font-medium max-w-[180px] truncate">{item.titulo}</td>
                 <td className="p-2 text-muted-foreground">{FRENTE_OPTIONS.find(f => f.value === item.frente_modulo)?.label}</td>
@@ -465,7 +528,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   colunaStatus={col.status_sistema}
                   colunas={colunas}
                   onMove={moverItem}
-                  onOpen={setItemDetalhado}
+                  onOpen={abrirDetalhe}
                   isDragging={dragItemId === item.id}
                   onDragStart={() => setDragItemId(item.id)}
                   onDragEnd={() => { setDragItemId(null); setDragOverColuna(null); }}
@@ -566,49 +629,231 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
         colunaInicial={novoItemColuna}
       />
 
-      {/* Modal detalhe do item (placeholder para BL-004-C) */}
+      {/* Modal detalhe do item — BL-004-C */}
       {itemDetalhado && (
-        <Dialog open={!!itemDetalhado} onOpenChange={() => setItemDetalhado(null)}>
-          <DialogContent className="flex flex-col gap-0 p-0 max-h-[90dvh] w-full max-w-lg">
-            <DialogHeader className="shrink-0 border-b px-5 py-4">
+        <Dialog open={!!itemDetalhado} onOpenChange={() => { setItemDetalhado(null); setEditando(false); }}>
+          <DialogContent className="flex flex-col gap-0 p-0 max-h-[90dvh] w-full max-w-2xl">
+            <DialogHeader className="shrink-0 border-b px-5 py-3">
               <DialogTitle className="flex items-center gap-2 text-sm">
-                <span className="font-mono text-muted-foreground text-xs">{itemDetalhado.codigo}</span>
-                {itemDetalhado.titulo}
+                <span className="font-mono text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded">{itemDetalhado.codigo}</span>
+                <span className="flex-1 truncate">{itemDetalhado.titulo}</span>
+                {isCoordinator && !editando && (
+                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs shrink-0" onClick={() => { setEditando(true); setEditForm({ titulo: itemDetalhado.titulo, descricao_solicitante: itemDetalhado.descricao_solicitante, descricao_complementar: itemDetalhado.descricao_complementar, descricao_solucao: itemDetalhado.descricao_solucao, prioridade: itemDetalhado.prioridade, prioridade_reclassificada: itemDetalhado.prioridade_reclassificada, estimativa_horas: itemDetalhado.estimativa_horas, tempo_efetivo_horas: itemDetalhado.tempo_efetivo_horas, data_prevista: itemDetalhado.data_prevista, data_conclusao: itemDetalhado.data_conclusao }); }}>
+                    <Edit2 className="h-3 w-3" /> Editar
+                  </Button>
+                )}
               </DialogTitle>
             </DialogHeader>
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
-              <div className="flex flex-wrap gap-2">
-                <PriBadge prioridade={itemDetalhado.prioridade} reclassificada={itemDetalhado.prioridade_reclassificada} />
-                <span className="text-[9px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                  {FRENTE_OPTIONS.find(f => f.value === itemDetalhado.frente_modulo)?.label}
-                </span>
-                <span className="text-[9px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">
-                  {TIPO_OPTIONS.find(t => t.value === itemDetalhado.tipo)?.label}
-                </span>
-              </div>
-              {itemDetalhado.descricao_solicitante && (
-                <div>
-                  <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Detalhamento</p>
-                  <p className="text-xs text-foreground whitespace-pre-wrap">{itemDetalhado.descricao_solicitante}</p>
+
+            <Tabs value={detalheTab} onValueChange={setDetalheTab} className="flex-1 flex flex-col overflow-hidden">
+              <TabsList className="mx-5 mt-3 shrink-0 w-fit">
+                <TabsTrigger value="info" className="text-xs gap-1"><Tag className="h-3 w-3" />Detalhe</TabsTrigger>
+                <TabsTrigger value="comentarios" className="text-xs gap-1">
+                  <MessageSquare className="h-3 w-3" />Comentários
+                  {comentarios.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{comentarios.length}</span>}
+                </TabsTrigger>
+                <TabsTrigger value="historico" className="text-xs gap-1"><History className="h-3 w-3" />Histórico</TabsTrigger>
+              </TabsList>
+
+              {/* ── ABA INFO ── */}
+              <TabsContent value="info" className="flex-1 overflow-y-auto px-5 pb-4 mt-3 space-y-4">
+                {editando ? (
+                  <>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Título</Label>
+                      <Input value={editForm.titulo || ""} onChange={e => setEditForm(p => ({ ...p, titulo: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Detalhamento do solicitante</Label>
+                      <Textarea rows={3} className="resize-none text-sm" value={editForm.descricao_solicitante || ""} onChange={e => setEditForm(p => ({ ...p, descricao_solicitante: e.target.value }))} />
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Complemento (coordenador)</Label>
+                      <Textarea rows={2} className="resize-none text-sm" value={editForm.descricao_complementar || ""} onChange={e => setEditForm(p => ({ ...p, descricao_complementar: e.target.value }))} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="space-y-1">
+                        <Label className="text-xs">Prioridade original</Label>
+                        <Select value={editForm.prioridade || "media"} onValueChange={v => setEditForm(p => ({ ...p, prioridade: v }))}>
+                          <SelectTrigger><SelectValue /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="critica">🔴 Crítica</SelectItem>
+                            <SelectItem value="alta">🟠 Alta</SelectItem>
+                            <SelectItem value="media">🔵 Média</SelectItem>
+                            <SelectItem value="baixa">🟢 Baixa</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Reclassificação</Label>
+                        <Select value={editForm.prioridade_reclassificada || ""} onValueChange={v => setEditForm(p => ({ ...p, prioridade_reclassificada: v || null }))}>
+                          <SelectTrigger><SelectValue placeholder="Sem reclassificação" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="">Sem reclassificação</SelectItem>
+                            <SelectItem value="critica">🔴 Crítica</SelectItem>
+                            <SelectItem value="alta">🟠 Alta</SelectItem>
+                            <SelectItem value="media">🔵 Média</SelectItem>
+                            <SelectItem value="baixa">🟢 Baixa</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Estimativa (h)</Label>
+                        <Input type="number" min="0" step="0.5" value={editForm.estimativa_horas || ""} onChange={e => setEditForm(p => ({ ...p, estimativa_horas: parseFloat(e.target.value) || null }))} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Tempo efetivo (h)</Label>
+                        <Input type="number" min="0" step="0.5" value={editForm.tempo_efetivo_horas || ""} onChange={e => setEditForm(p => ({ ...p, tempo_efetivo_horas: parseFloat(e.target.value) || null }))} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Data prevista</Label>
+                        <Input type="date" value={editForm.data_prevista || ""} onChange={e => setEditForm(p => ({ ...p, data_prevista: e.target.value || null }))} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Data conclusão</Label>
+                        <Input type="date" value={editForm.data_conclusao || ""} onChange={e => setEditForm(p => ({ ...p, data_conclusao: e.target.value || null }))} />
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <Label className="text-xs">Detalhamento da solução</Label>
+                      <Textarea rows={3} className="resize-none text-sm" value={editForm.descricao_solucao || ""} onChange={e => setEditForm(p => ({ ...p, descricao_solucao: e.target.value }))} placeholder="Descreva a solução implementada..." />
+                    </div>
+                    <div className="flex gap-2 pt-1">
+                      <Button size="sm" onClick={handleSalvarEdicao} disabled={savingItem} className="gap-1">
+                        {savingItem ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                        Salvar
+                      </Button>
+                      <Button size="sm" variant="outline" onClick={() => { setEditando(false); setEditForm({}); }}>Cancelar</Button>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div className="flex flex-wrap gap-2">
+                      <PriBadge prioridade={itemDetalhado.prioridade} reclassificada={itemDetalhado.prioridade_reclassificada} />
+                      <span className="text-[9px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{FRENTE_OPTIONS.find(f => f.value === itemDetalhado.frente_modulo)?.label}</span>
+                      <span className="text-[9px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{TIPO_OPTIONS.find(t => t.value === itemDetalhado.tipo)?.label}</span>
+                    </div>
+                    <div className="grid grid-cols-2 gap-3 text-xs">
+                      <div><p className="text-[10px] text-muted-foreground">Criado por</p><p className="font-medium">{itemDetalhado.criado_por_nome || "—"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Atribuído para</p><p className="font-medium">{itemDetalhado.atribuido_para_nome || "—"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Estimativa</p><p className="font-medium">{itemDetalhado.estimativa_horas ? `${itemDetalhado.estimativa_horas}h` : "—"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Tempo efetivo</p><p className="font-medium">{itemDetalhado.tempo_efetivo_horas ? `${itemDetalhado.tempo_efetivo_horas}h` : "—"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Data prevista</p><p className="font-medium">{itemDetalhado.data_prevista ? format(parseISO(itemDetalhado.data_prevista), "dd/MM/yyyy") : "—"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Data conclusão</p><p className="font-medium">{itemDetalhado.data_conclusao ? format(parseISO(itemDetalhado.data_conclusao), "dd/MM/yyyy") : "—"}</p></div>
+                    </div>
+                    {itemDetalhado.descricao_solicitante && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Detalhamento do solicitante</p>
+                        <p className="text-xs text-foreground whitespace-pre-wrap bg-muted/30 rounded-lg p-3">{itemDetalhado.descricao_solicitante}</p>
+                      </div>
+                    )}
+                    {itemDetalhado.descricao_complementar && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Complemento (coordenador)</p>
+                        <p className="text-xs text-foreground whitespace-pre-wrap bg-muted/30 rounded-lg p-3">{itemDetalhado.descricao_complementar}</p>
+                      </div>
+                    )}
+                    {itemDetalhado.descricao_solucao && (
+                      <div>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Solução implementada</p>
+                        <p className="text-xs text-foreground whitespace-pre-wrap bg-emerald-50 border border-emerald-100 rounded-lg p-3">{itemDetalhado.descricao_solucao}</p>
+                      </div>
+                    )}
+                  </>
+                )}
+              </TabsContent>
+
+              {/* ── ABA COMENTÁRIOS ── */}
+              <TabsContent value="comentarios" className="flex-1 flex flex-col overflow-hidden mt-3">
+                <div className="flex-1 overflow-y-auto px-5 space-y-3 pb-3">
+                  {loadingDetalhe ? (
+                    <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                  ) : comentarios.length === 0 ? (
+                    <div className="flex flex-col items-center gap-2 py-8 text-center">
+                      <MessageSquare className="h-6 w-6 text-muted-foreground/30" />
+                      <p className="text-xs text-muted-foreground">Nenhum comentário ainda</p>
+                    </div>
+                  ) : (
+                    comentarios.map(com => (
+                      <div key={com.id} className="flex gap-3">
+                        <div className="w-7 h-7 rounded-full bg-violet-100 text-violet-700 text-[9px] font-bold flex items-center justify-center flex-shrink-0">
+                          {(com.autor_nome || "?").split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                        </div>
+                        <div className="flex-1 bg-muted/40 rounded-xl p-3 space-y-1">
+                          <div className="flex items-center gap-2">
+                            <span className="text-[10px] font-semibold">{com.autor_nome}</span>
+                            <span className="text-[9px] text-muted-foreground">{format(new Date(com.created_at), "dd/MM/yyyy HH:mm")}</span>
+                          </div>
+                          <p className="text-xs text-foreground whitespace-pre-wrap">{com.texto}</p>
+                        </div>
+                      </div>
+                    ))
+                  )}
                 </div>
-              )}
-              <div className="grid grid-cols-2 gap-3 text-xs">
-                <div><p className="text-[10px] text-muted-foreground">Criado por</p><p className="font-medium">{itemDetalhado.criado_por_nome || "—"}</p></div>
-                <div><p className="text-[10px] text-muted-foreground">Atribuído para</p><p className="font-medium">{itemDetalhado.atribuido_para_nome || "—"}</p></div>
-                <div><p className="text-[10px] text-muted-foreground">Estimativa</p><p className="font-medium">{itemDetalhado.estimativa_horas ? `${itemDetalhado.estimativa_horas}h` : "—"}</p></div>
-                <div><p className="text-[10px] text-muted-foreground">Data prevista</p><p className="font-medium">{itemDetalhado.data_prevista ? format(parseISO(itemDetalhado.data_prevista), "dd/MM/yyyy") : "—"}</p></div>
-              </div>
-              <div className="border-t pt-3">
-                <p className="text-[10px] text-muted-foreground">Histórico e comentários disponíveis no BL-004-C</p>
-              </div>
-            </div>
-            <DialogFooter className="shrink-0 border-t px-5 py-3">
-              <Button variant="outline" size="sm" onClick={() => setItemDetalhado(null)}>Fechar</Button>
-            </DialogFooter>
+                <div className="shrink-0 border-t px-5 py-3 flex gap-2">
+                  <Textarea
+                    value={novoComentario}
+                    onChange={e => setNovoComentario(e.target.value)}
+                    placeholder="Escreva um comentário..."
+                    rows={2}
+                    className="resize-none text-sm flex-1"
+                    onKeyDown={e => { if (e.key === "Enter" && e.ctrlKey) handleEnviarComentario(); }}
+                  />
+                  <Button size="sm" onClick={handleEnviarComentario} disabled={savingComentario || !novoComentario.trim()} className="self-end gap-1">
+                    {savingComentario ? <Loader2 className="h-3 w-3 animate-spin" /> : <Send className="h-3 w-3" />}
+                  </Button>
+                </div>
+              </TabsContent>
+
+              {/* ── ABA HISTÓRICO ── */}
+              <TabsContent value="historico" className="flex-1 overflow-y-auto px-5 pb-4 mt-3">
+                {loadingDetalhe ? (
+                  <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+                ) : historico.length === 0 ? (
+                  <div className="flex flex-col items-center gap-2 py-8 text-center">
+                    <History className="h-6 w-6 text-muted-foreground/30" />
+                    <p className="text-xs text-muted-foreground">Nenhum histórico disponível</p>
+                  </div>
+                ) : (
+                  <div className="relative">
+                    <div className="absolute left-3.5 top-0 bottom-0 w-px bg-border" />
+                    <div className="space-y-4 pl-8">
+                      {historico.map((h, i) => (
+                        <div key={h.id} className="relative">
+                          <div className="absolute -left-5 top-1 w-3 h-3 rounded-full border-2 border-background bg-muted-foreground/30" />
+                          <div className="space-y-0.5">
+                            <div className="flex items-center gap-2 flex-wrap">
+                              <span className="text-xs font-semibold">{labelEvento(h.tipo_evento)}</span>
+                              {h.de_coluna_nome && h.para_coluna_nome && (
+                                <span className="text-[9px] text-muted-foreground flex items-center gap-1">
+                                  {h.de_coluna_nome} <ArrowRight className="h-2.5 w-2.5" /> {h.para_coluna_nome}
+                                </span>
+                              )}
+                              {!h.de_coluna_nome && h.para_coluna_nome && (
+                                <span className="text-[9px] text-muted-foreground">em {h.para_coluna_nome}</span>
+                              )}
+                            </div>
+                            <div className="flex items-center gap-2 text-[9px] text-muted-foreground">
+                              <span>{h.movido_por_nome}</span>
+                              <span>·</span>
+                              <span>{format(new Date(h.moved_at), "dd/MM/yyyy HH:mm")}</span>
+                            </div>
+                            {h.comentario && (
+                              <p className="text-[10px] text-foreground bg-muted/30 rounded px-2 py-1 mt-1">{h.comentario}</p>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </TabsContent>
+            </Tabs>
           </DialogContent>
         </Dialog>
       )}
     </>
   );
 }
+
 

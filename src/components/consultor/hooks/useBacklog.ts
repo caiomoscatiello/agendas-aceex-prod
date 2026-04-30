@@ -223,11 +223,76 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
 
   const adicionarComentario = async (itemId: string, texto: string) => {
     if (!userId || !texto.trim()) return;
-    await supabase.from("projeto_backlog_comentarios").insert({
+    const { error } = await supabase.from("projeto_backlog_comentarios").insert({
       backlog_item_id: itemId,
       autor_id: userId,
       texto: texto.trim(),
     });
+    return !error;
+  };
+
+  const loadComentarios = async (itemId: string): Promise<BacklogComentario[]> => {
+    const { data: comentarios } = await supabase
+      .from("projeto_backlog_comentarios")
+      .select("*")
+      .eq("backlog_item_id", itemId)
+      .order("created_at", { ascending: true });
+
+    if (!comentarios?.length) return [];
+
+    const autorIds = [...new Set(comentarios.map((c: any) => c.autor_id))];
+    const { data: profiles } = await supabase
+      .from("profiles")
+      .select("user_id, name")
+      .in("user_id", autorIds);
+
+    const profilesMap: Record<string, string> = {};
+    (profiles || []).forEach((p: any) => { profilesMap[p.user_id] = p.name; });
+
+    return comentarios.map((c: any) => ({
+      ...c,
+      autor_nome: profilesMap[c.autor_id] || "—",
+    }));
+  };
+
+  const loadHistorico = async (itemId: string): Promise<BacklogHistorico[]> => {
+    const { data: historico } = await supabase
+      .from("projeto_backlog_historico")
+      .select("*")
+      .eq("backlog_item_id", itemId)
+      .order("moved_at", { ascending: true });
+
+    if (!historico?.length) return [];
+
+    // Buscar nomes das colunas e usuários
+    const colunaIds = [
+      ...new Set([
+        ...historico.map((h: any) => h.de_coluna_id).filter(Boolean),
+        ...historico.map((h: any) => h.para_coluna_id).filter(Boolean),
+      ])
+    ];
+    const userIds = [...new Set(historico.map((h: any) => h.movido_por).filter(Boolean))];
+
+    const [colRes, profRes] = await Promise.all([
+      colunaIds.length > 0
+        ? supabase.from("projeto_backlog_colunas").select("id, nome").in("id", colunaIds)
+        : Promise.resolve({ data: [] }),
+      userIds.length > 0
+        ? supabase.from("profiles").select("user_id, name").in("user_id", userIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const colMap: Record<string, string> = {};
+    (colRes.data || []).forEach((c: any) => { colMap[c.id] = c.nome; });
+    const profMap: Record<string, string> = {};
+    (profRes.data || []).forEach((p: any) => { profMap[p.user_id] = p.name; });
+
+    return historico.map((h: any) => ({
+      ...h,
+      de_coluna_nome: h.de_coluna_id ? colMap[h.de_coluna_id] : null,
+      para_coluna_nome: h.para_coluna_id ? colMap[h.para_coluna_id] : null,
+      movido_por_nome: profMap[h.movido_por] || "—",
+    }));
   };
 
   const itemsPorColuna = (colunaId: string) =>
@@ -243,7 +308,9 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
   return {
     colunas, items, loadingBoard, savingItem,
     loadBoard, moverItem, criarItem, salvarItem, adicionarComentario,
+    loadComentarios, loadHistorico,
     itemsPorColuna, filhosDoItem, temBoard,
   };
 }
+
 
