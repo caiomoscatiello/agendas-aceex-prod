@@ -1277,9 +1277,9 @@ export default function AdminProjetos() {
                     <Select value={statusProjeto} onValueChange={setStatusProjeto}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Em planejamento">ðŸŸ¡ Em planejamento</SelectItem>
-                        <SelectItem value="Liberado">ðŸŸ¢ Liberado</SelectItem>
-                        <SelectItem value="Encerrado">ðŸ"´ Encerrado</SelectItem>
+                        <SelectItem value="Em planejamento">🟡 Em planejamento</SelectItem>
+                        <SelectItem value="Liberado">🟢 Liberado</SelectItem>
+                        <SelectItem value="Encerrado">🔴 Encerrado</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1881,8 +1881,8 @@ export default function AdminProjetos() {
             <Card>
               <CardContent className="p-4 space-y-4">
                 {([
-                  { key: "feeling",     icon: "ðŸ"‰", label: "Desvio de Feeling",     ativoKey: "alerta_feeling_ativo",     valorKey: "alerta_feeling_threshold",  valorLabel: "Desvio mínimo (pp):",       min: 5,  max: 50  },
-                  { key: "apontamento", icon: "ðŸ"‹", label: "Agenda s/ Apontamento", ativoKey: "alerta_apontamento_ativo", valorKey: "alerta_apontamento_dias",    valorLabel: "Dias sem apontamento:",     min: 1,  max: 30  },
+                  { key: "feeling",     icon: "📉", label: "Desvio de Feeling",     ativoKey: "alerta_feeling_ativo",     valorKey: "alerta_feeling_threshold",  valorLabel: "Desvio mínimo (pp):",       min: 5,  max: 50  },
+                  { key: "apontamento", icon: "📋", label: "Agenda s/ Apontamento", ativoKey: "alerta_apontamento_ativo", valorKey: "alerta_apontamento_dias",    valorLabel: "Dias sem apontamento:",     min: 1,  max: 30  },
                   { key: "consumo",     icon: "â±",  label: "Consumo de Horas",      ativoKey: "alerta_consumo_ativo",     valorKey: "alerta_consumo_threshold",  valorLabel: "Threshold de consumo (%):", min: 50, max: 100 },
                   { key: "parada",      icon: "â¸",  label: "Atividade Parada",      ativoKey: "alerta_parada_ativo",      valorKey: "alerta_parada_dias",        valorLabel: "Dias úteis sem agenda:",    min: 1,  max: 30  },
                 ] as const).map((item, idx) => (
@@ -2497,7 +2497,7 @@ export default function AdminProjetos() {
                   const snap = healthHistorico[0];
                   const semaforoCor = snap.semaforo === "verde" ? "text-emerald-600" : snap.semaforo === "amarelo" ? "text-amber-600" : "text-red-600";
                   const semaforoBg  = snap.semaforo === "verde" ? "bg-emerald-50 border-emerald-200" : snap.semaforo === "amarelo" ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200";
-                  const semaforoEmoji = snap.semaforo === "verde" ? "ðŸŸ¢" : snap.semaforo === "amarelo" ? "ðŸŸ¡" : "ðŸ"´";
+                  const semaforoEmoji = snap.semaforo === "verde" ? "🟢" : snap.semaforo === "amarelo" ? "🟡" : "🔴";
                   const dimensoes = [
                     { label: "Prazo (IDP)", valor: snap.score_prazo,   detalhe: `IDP: ${Number(snap.idp_valor).toFixed(2)}`, cor: "bg-blue-500" },
                     { label: "Custo (IDC)", valor: snap.score_custo,   detalhe: `IDC: ${Number(snap.idc_valor).toFixed(2)}`, cor: "bg-violet-500" },
