@@ -513,7 +513,7 @@ export default function AdminProjetos() {
       return;
     }
     if (newAtivDataInicio && newAtivDataFim && newAtivDataFim < newAtivDataInicio) {
-      toast({ title: "Erro", description: "Data fim deve ser igual ou posterior Á  data início.", variant: "destructive" });
+      toast({ title: "Erro", description: "Data fim deve ser igual ou posterior à data início.", variant: "destructive" });
       return;
     }
     const novaHora = parseFloat(newAtivHoras);
@@ -583,7 +583,7 @@ export default function AdminProjetos() {
     const hcValue = parseFloat(horasContratadas) || 0;
     const totalHorasAtividades = atividades.reduce((sum, a) => sum + a.horas, 0);
     if (hcValue > 0 && totalHorasAtividades !== hcValue) {
-      toast({ title: "Erro", description: `Total de horas das atividades (${totalHorasAtividades}h) deve ser igual Á s horas contratadas (${hcValue}h).`, variant: "destructive" });
+      toast({ title: "Erro", description: `Total de horas das atividades (${totalHorasAtividades}h) deve ser igual às horas contratadas (${hcValue}h).`, variant: "destructive" });
       setSaving(false);
       return;
     }
@@ -1706,7 +1706,7 @@ export default function AdminProjetos() {
           </TabsContent>
 
           {/* TAB CONFIG */}
-          {/* TAB BACKLOG "" BL-004-B */}
+          {/* TAB BACKLOG — BL-004-B */}
           <TabsContent value="backlog" className="mt-0">
             {detailProjeto ? (
               <BacklogBoard
@@ -2430,18 +2430,18 @@ export default function AdminProjetos() {
                       {removidas.map((b: any) => (
                         <TableRow key={b.id} className="text-muted-foreground">
                           <TableCell className="text-xs font-mono">{b.codigo}</TableCell><TableCell className="text-xs">{b.descricao}</TableCell>
-                          <TableCell className="text-xs text-right">{b.horas}h</TableCell><TableCell className="text-xs text-right">""</TableCell>
-                          <TableCell className="text-xs text-right">""</TableCell><TableCell className="text-xs">{fmtD(b.data_inicio)}</TableCell>
-                          <TableCell className="text-xs">""</TableCell><TableCell className="text-xs">{fmtD(b.data_fim)}</TableCell>
-                          <TableCell className="text-xs">""</TableCell><TableCell><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></TableCell>
+                          <TableCell className="text-xs text-right">{b.horas}h</TableCell><TableCell className="text-xs text-right">—</TableCell>
+                          <TableCell className="text-xs text-right">—</TableCell><TableCell className="text-xs">{fmtD(b.data_inicio)}</TableCell>
+                          <TableCell className="text-xs">—</TableCell><TableCell className="text-xs">{fmtD(b.data_fim)}</TableCell>
+                          <TableCell className="text-xs">—</TableCell><TableCell><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></TableCell>
                         </TableRow>
                       ))}
                       {novas.map(a => (
                         <TableRow key={a.id}>
                           <TableCell className="text-xs font-mono">{a.codigo}</TableCell><TableCell className="text-xs">{a.descricao}</TableCell>
-                          <TableCell className="text-xs text-right">""</TableCell><TableCell className="text-xs text-right">{a.horas}h</TableCell>
-                          <TableCell className="text-xs text-right">""</TableCell><TableCell className="text-xs">""</TableCell>
-                          <TableCell className="text-xs">{fmtD(a.data_inicio)}</TableCell><TableCell className="text-xs">""</TableCell>
+                          <TableCell className="text-xs text-right">—</TableCell><TableCell className="text-xs text-right">{a.horas}h</TableCell>
+                          <TableCell className="text-xs text-right">—</TableCell><TableCell className="text-xs">—</TableCell>
+                          <TableCell className="text-xs">{fmtD(a.data_inicio)}</TableCell><TableCell className="text-xs">—</TableCell>
                           <TableCell className="text-xs">{fmtD(a.data_fim)}</TableCell><TableCell><Badge className="text-[10px] bg-blue-100 text-blue-800">Nova</Badge></TableCell>
                         </TableRow>
                       ))}
@@ -2462,7 +2462,7 @@ export default function AdminProjetos() {
               <Activity className="h-5 w-5 text-violet-600" />
               Health Score Analytics
               {detailProjeto && (
-                <span className="text-sm font-normal text-muted-foreground">"" {detailProjeto.nome_cliente}</span>
+                <span className="text-sm font-normal text-muted-foreground">— {detailProjeto.nome_cliente}</span>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -2622,7 +2622,7 @@ export default function AdminProjetos() {
                           ? "text-emerald-600" : "text-red-600"
                       }`}>
                         Total: {healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas}%
-                        {(healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas) !== 100 && " "" deve somar 100%"}
+                        {(healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas) !== 100 && " — deve somar 100%"}
                       </div>
                     </div>
 
