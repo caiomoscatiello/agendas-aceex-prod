@@ -838,7 +838,7 @@ export default function AdminProjetos() {
   };
 
   const getCoordenadorName = (id: string | null) => {
-    if (!id) return """";
+    if (!id) return "";
     const coord = coordenadores.find(c => c.user_id === id);
     return coord ? coord.name : "Desconhecido";
   };
@@ -1169,11 +1169,11 @@ export default function AdminProjetos() {
                   <div><p className="text-[10px] text-muted-foreground">Código</p><p className="text-sm font-mono">{projeto.codigo_cliente}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Nome do Projeto</p><p className="text-sm">{projeto.nome_cliente}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Coordenador</p><p className="text-sm">{getCoordenadorName(projeto.coordenador_id)}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground">Contato</p><p className="text-sm">{projeto.contato_nome || """"}</p></div>
-                  <div><p className="text-[10px] text-muted-foreground">Telefone</p><p className="text-sm">{projeto.contato_telefone || """"}</p></div>
-                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Endereço</p><p className="text-sm">{projeto.endereco_cliente || """"}</p></div>
-                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Site</p><p className="text-sm">{projeto.site_cliente || """"}</p></div>
-                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Email do Contato</p><p className="text-sm">{projeto.email_contato || """"}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground">Contato</p><p className="text-sm">{projeto.contato_nome || ""}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground">Telefone</p><p className="text-sm">{projeto.contato_telefone || ""}</p></div>
+                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Endereço</p><p className="text-sm">{projeto.endereco_cliente || ""}</p></div>
+                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Site</p><p className="text-sm">{projeto.site_cliente || ""}</p></div>
+                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Email do Contato</p><p className="text-sm">{projeto.email_contato || ""}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Horas Contratadas</p><p className="text-sm">{projeto.horas_contratadas}h</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Deslocamento (horas)</p><p className="text-sm">{projeto.deslocamento}h</p></div>
                   <div>
@@ -1328,7 +1328,7 @@ export default function AdminProjetos() {
                       <span className="font-mono text-xs font-medium bg-primary text-primary-foreground px-2 py-0.5 rounded">{a.codigo}</span>
                       <span className="text-sm flex-1 font-medium">{a.descricao}</span>
                       <span className="text-xs text-muted-foreground">
-                        {a.data_inicio ? a.data_inicio.split("-").reverse().join("/") : """"}
+                        {a.data_inicio ? a.data_inicio.split("-").reverse().join("/") : ""}
                         {a.data_fim ? ` â†' ${a.data_fim.split("-").reverse().join("/")}` : ""}
                       </span>
                       <Badge variant="outline" className="text-xs font-mono">{a.horas}h</Badge>
@@ -1514,8 +1514,8 @@ export default function AdminProjetos() {
                           {stakeholders.filter(s => s.tipo === "Interno").map((s) => (
                             <TableRow key={s.id}>
                               <TableCell className="text-sm font-medium">{s.nome}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || """"}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.email || """"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || ""}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.email || ""}</TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1">
                                   <Badge variant="default" className="text-[10px]">{s.tipo}</Badge>
@@ -1555,9 +1555,9 @@ export default function AdminProjetos() {
                           {stakeholders.filter(s => s.tipo === "Externo").map((s) => (
                             <TableRow key={s.id}>
                               <TableCell className="text-sm font-medium">{s.nome}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || """"}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.empresa || """"}</TableCell>
-                              <TableCell className="hidden sm:table-cell text-sm">{s.email || """"}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.cargo || ""}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.empresa || ""}</TableCell>
+                              <TableCell className="hidden sm:table-cell text-sm">{s.email || ""}</TableCell>
                               <TableCell>
                                 <div className="flex flex-wrap gap-1">
                                   <Badge variant="secondary" className="text-[10px]">{s.tipo}</Badge>
@@ -1641,9 +1641,9 @@ export default function AdminProjetos() {
                             <TableCell className="hidden sm:table-cell text-sm">
                               {responsavel
                                 ? `${responsavel.nome}${responsavel.cargo ? ` Â· ${responsavel.cargo}` : ""}`
-                                : """"}
+                                : ""}
                             </TableCell>
-                            <TableCell className="hidden sm:table-cell text-sm">{r.acao_mitigadora || """"}</TableCell>
+                            <TableCell className="hidden sm:table-cell text-sm">{r.acao_mitigadora || ""}</TableCell>
                             <TableCell>
                               <div className="flex gap-1">
                                 <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEditRisco(r)}>
@@ -1689,7 +1689,7 @@ export default function AdminProjetos() {
                       return (
                         <TableRow key={b.id}>
                           <TableCell className="text-sm font-medium">{b.versao}</TableCell>
-                          <TableCell className="text-sm">{b.descricao || """"}</TableCell>
+                          <TableCell className="text-sm">{b.descricao || ""}</TableCell>
                           <TableCell className="text-sm text-muted-foreground">{fmt}</TableCell>
                           <TableCell>
                             <Button size="sm" variant="outline" className="h-7 text-xs" onClick={() => setBaselineComparando(b)}>
@@ -1775,7 +1775,7 @@ export default function AdminProjetos() {
                   ),
                   status: "ativo",
                   statusLabel: "âœ" Ativo",
-                  sub: `Código cliente: ${detailProjeto?.codigo_cliente ?? """"}`,
+                  sub: `Código cliente: ${detailProjeto?.codigo_cliente ?? ""}`,
                 },
                 {
                   key: "sharepoint",
@@ -2348,7 +2348,7 @@ export default function AdminProjetos() {
             const atualCodigos = new Set(atividades.map(a => a.codigo));
             const novas = atividades.filter(a => !blMap[a.codigo]);
             const removidas = blAtivs.filter((b: any) => !atualCodigos.has(b.codigo));
-            const fmtD = (d: string | null) => d ? d.split("-").reverse().join("/") : """";
+            const fmtD = (d: string | null) => d ? d.split("-").reverse().join("/") : "";
 
             return (
               <div className="space-y-3">
@@ -2356,7 +2356,7 @@ export default function AdminProjetos() {
                   {atividades.filter(a => blMap[a.codigo]).map(a => {
                     const bl = blMap[a.codigo];
                     const diffH = a.horas - bl.horas;
-                    let desvio = 0; let desvioLabel = """"; let desvioBg = "bg-emerald-100 text-emerald-800";
+                    let desvio = 0; let desvioLabel = ""; let desvioBg = "bg-emerald-100 text-emerald-800";
                     if (a.data_fim && bl.data_fim) {
                       desvio = Math.round((new Date(a.data_fim).getTime() - new Date(bl.data_fim).getTime()) / 86400000);
                       if (desvio <= 0) { desvioLabel = "No prazo"; desvioBg = "bg-emerald-100 text-emerald-800"; }
@@ -2409,7 +2409,7 @@ export default function AdminProjetos() {
                       {atividades.filter(a => blMap[a.codigo]).map(a => {
                         const bl = blMap[a.codigo];
                         const diffH = a.horas - bl.horas;
-                        let desvio = 0; let desvioLabel = """";
+                        let desvio = 0; let desvioLabel = "";
                         if (a.data_fim && bl.data_fim) {
                           desvio = Math.round((new Date(a.data_fim).getTime() - new Date(bl.data_fim).getTime()) / 86400000);
                           if (desvio <= 0) desvioLabel = "No prazo";
