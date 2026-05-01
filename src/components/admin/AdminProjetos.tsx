@@ -811,7 +811,7 @@ export default function AdminProjetos() {
 
       const { error: syncError } = await supabase.functions.invoke("monday-sync-project", { body: syncPayload });
       if (syncError) {
-        toast({ title: "Aviso - Monday", description: "Projeto salvo. Board Monday não sincronizado." });
+        toast({ title: "Aviso "" Monday", description: "Projeto salvo. Board Monday não sincronizado." });
       }
     } catch {
       // Monday failure never blocks
@@ -1350,7 +1350,7 @@ export default function AdminProjetos() {
                                     : "border-amber-500 text-amber-700 dark:text-amber-400"
                                 )}
                               >
-                                {item.doc_satisfeito ? "âœ" Doc" : "âš  Doc"}
+                                {item.doc_satisfeito ? "✔ Doc" : "⚠ Doc"}
                               </Badge>
                             )}
                           </div>
@@ -1738,7 +1738,7 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: detailProjeto?.monday_board_id ? "criado" : "nao_criado",
-                  statusLabel: detailProjeto?.monday_board_id ? "âœ" Criado" : "Não criado",
+                  statusLabel: detailProjeto?.monday_board_id ? "✔ Criado" : "Não criado",
                   sub: detailProjeto?.monday_board_id
                     ? `${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
                     : "Board Monday não vinculado a este projeto",
@@ -1774,7 +1774,7 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: "ativo",
-                  statusLabel: "âœ" Ativo",
+                  statusLabel: "✔ Ativo",
                   sub: `Código cliente: ${detailProjeto?.codigo_cliente ?? ""}`,
                 },
                 {
@@ -1790,7 +1790,7 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: detailProjeto?.sharepoint_pasta_url ? "ativo" : "disponivel",
-                  statusLabel: detailProjeto?.sharepoint_pasta_url ? "âœ" Ativo" : "Disponível",
+                  statusLabel: detailProjeto?.sharepoint_pasta_url ? "✔ Ativo" : "Disponível",
                   sub: detailProjeto?.sharepoint_pasta_url
                     ? `Documentos/${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
                     : "Nenhum documento enviado ainda para este projeto.",
@@ -1824,7 +1824,7 @@ export default function AdminProjetos() {
                     </div>
                   ),
                   status: detailProjeto?.autentique_folder_id ? "ativo" : "disponivel",
-                  statusLabel: detailProjeto?.autentique_folder_id ? "âœ" Ativo" : "Disponível",
+                  statusLabel: detailProjeto?.autentique_folder_id ? "✔ Ativo" : "Disponível",
                   sub: detailProjeto?.autentique_folder_id
                     ? `${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
                     : "Nenhum envelope de assinatura criado ainda para este projeto.",
