@@ -1813,7 +1813,7 @@ export default function AdminProjetos() {
                   ),
                   status: "detalhamento",
                   statusLabel: "Em detalhamento",
-                  sub: "Versionamento e automações "" em breve",
+                  sub: "Versionamento e automações em breve",
                 },
                 {
                   key: "autentique",
