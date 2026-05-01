@@ -811,7 +811,7 @@ export default function AdminProjetos() {
 
       const { error: syncError } = await supabase.functions.invoke("monday-sync-project", { body: syncPayload });
       if (syncError) {
-        toast({ title: "Aviso "" Monday", description: "Projeto salvo. Board Monday não sincronizado." });
+        toast({ title: "Aviso Monday", description: "Projeto salvo. Board Monday não sincronizado." });
       }
     } catch {
       // Monday failure never blocks
