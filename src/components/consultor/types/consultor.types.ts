@@ -98,8 +98,8 @@ export type CronogramaItemDoc = {
   nome_cliente: string;
 };
 
-// BL-019 — Pendências PMO
-export type TipoPendencia = "doc_pendente" | "apontamento_atrasado" | "requisicao_pendente";
+// BL-019 + BL-004-F -- Pendencias PMO
+export type TipoPendencia = "doc_pendente" | "apontamento_atrasado" | "requisicao_pendente" | "backlog_vencido";
 
 export type Pendencia = {
   id: string;
@@ -111,4 +111,6 @@ export type Pendencia = {
   diasEmAberto: number;
   agendaId?: string;
   itemCronograma?: string;
+  backlogItemId?: string;
+  backlogCodigo?: string;
 };

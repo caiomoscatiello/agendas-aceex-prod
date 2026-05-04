@@ -1,5 +1,5 @@
 // src/components/consultor/hooks/usePendencias.ts
-// BL-019 — Pendências PMO do Consultor
+// BL-019 + BL-004-F -- Pendencias PMO do Consultor
 
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -23,7 +23,7 @@ export function usePendencias(userId: string | undefined) {
 
     const hoje = new Date().toISOString().split("T")[0];
 
-    // P1: Agendas com documentação pendente
+    // P1: Agendas com documentacao pendente
     const { data: agendasDoc } = await supabase
       .from("agendas")
       .select("id, cliente, data, item_cronograma, atividade")
@@ -38,15 +38,14 @@ export function usePendencias(userId: string | undefined) {
           tipo: "doc_pendente",
           cliente: ag.cliente,
           data: ag.data,
-          titulo: "Documentação pendente",
-          detalhe: ag.atividade || "Agenda com documento não enviado",
+          titulo: "Documentacao pendente",
+          detalhe: ag.atividade || "Agenda com documento nao enviado",
           diasEmAberto: calcularDiasEmAberto(ag.data),
           agendaId: ag.id,
         });
         continue;
       }
 
-      // Verificar se doc_satisfeito no cronograma
       const codigoItem = ag.item_cronograma.split(" - ")[0].trim();
       const { data: ci } = await supabase
         .from("cronograma_itens")
@@ -60,8 +59,8 @@ export function usePendencias(userId: string | undefined) {
           tipo: "doc_pendente",
           cliente: ag.cliente,
           data: ag.data,
-          titulo: ci ? `Doc pendente — ${ci.codigo}` : "Documentação pendente",
-          detalhe: ci?.descricao || ag.atividade || "Documento não enviado",
+          titulo: ci ? `Doc pendente -- ${ci.codigo}` : "Documentacao pendente",
+          detalhe: ci?.descricao || ag.atividade || "Documento nao enviado",
           diasEmAberto: calcularDiasEmAberto(ag.data),
           agendaId: ag.id,
           itemCronograma: ag.item_cronograma,
@@ -69,7 +68,7 @@ export function usePendencias(userId: string | undefined) {
       }
     }
 
-    // P2: Agendas com apontamento em atraso (confirmada com data passada)
+    // P2: Agendas com apontamento em atraso
     const { data: agendasAtrasadas } = await supabase
       .from("agendas")
       .select("id, cliente, data, atividade")
@@ -88,7 +87,7 @@ export function usePendencias(userId: string | undefined) {
       agendaId: ag.id,
     }));
 
-    // P3: Requisições de agenda aguardando aprovação
+    // P3: Requisicoes de agenda aguardando aprovacao
     const { data: requisicoes } = await supabase
       .from("requisicoes_agenda")
       .select("id, cliente, data, total_horas, modalidade, atividade")
@@ -100,24 +99,54 @@ export function usePendencias(userId: string | undefined) {
       tipo: "requisicao_pendente" as const,
       cliente: req.cliente,
       data: req.data,
-      titulo: "Requisição aguardando aprovação",
-      detalhe: `${req.total_horas}h · ${req.modalidade}${req.atividade ? ` · ${req.atividade}` : ""}`,
+      titulo: "Requisicao aguardando aprovacao",
+      detalhe: `${req.total_horas}h - ${req.modalidade}${req.atividade ? ` - ${req.atividade}` : ""}`,
       diasEmAberto: calcularDiasEmAberto(req.data),
     }));
 
-    // Ordenar: doc_pendente > apontamento_atrasado > requisicao_pendente
-    // Dentro de cada grupo: mais antigo primeiro
+    // P4: BL-004-F -- Itens de backlog vencidos atribuidos ao consultor
+    const { data: backlogVencido } = await supabase
+      .from("projeto_backlog")
+      .select(`
+        id,
+        codigo,
+        titulo,
+        data_prevista,
+        projeto_id,
+        coluna_id,
+        projeto_backlog_colunas!inner(status_sistema),
+        projetos!inner(nome_cliente)
+      `)
+      .eq("atribuido_para", userId)
+      .lt("data_prevista", hoje)
+      .not("projeto_backlog_colunas.status_sistema", "in", '("concluido","cancelado")');
+
+    const pendenciasBacklog: Pendencia[] = (backlogVencido || []).map((item: any) => ({
+      id: `backlog-${item.id}`,
+      tipo: "backlog_vencido" as const,
+      cliente: item.projetos?.nome_cliente || "Projeto",
+      data: item.data_prevista,
+      titulo: `[${item.codigo}] ${item.titulo}`,
+      detalhe: "Item de backlog com prazo vencido",
+      diasEmAberto: calcularDiasEmAberto(item.data_prevista),
+      backlogItemId: item.id,
+      backlogCodigo: item.codigo,
+    }));
+
+    // Ordenar: doc > atraso > requisicao > backlog, dentro de cada grupo mais antigo primeiro
     const ordem: Record<string, number> = {
       doc_pendente: 0,
       apontamento_atrasado: 1,
       requisicao_pendente: 2,
+      backlog_vencido: 3,
     };
 
-    const todas = [...pendenciasDoc, ...pendenciasAtraso, ...pendenciasReq].sort((a, b) => {
-      const ordemDiff = ordem[a.tipo] - ordem[b.tipo];
-      if (ordemDiff !== 0) return ordemDiff;
-      return b.diasEmAberto - a.diasEmAberto;
-    });
+    const todas = [...pendenciasDoc, ...pendenciasAtraso, ...pendenciasReq, ...pendenciasBacklog]
+      .sort((a, b) => {
+        const ordemDiff = ordem[a.tipo] - ordem[b.tipo];
+        if (ordemDiff !== 0) return ordemDiff;
+        return b.diasEmAberto - a.diasEmAberto;
+      });
 
     setPendencias(todas);
     setLoadingPendencias(false);
@@ -128,6 +157,7 @@ export function usePendencias(userId: string | undefined) {
     doc_pendente: pendencias.filter(p => p.tipo === "doc_pendente"),
     apontamento_atrasado: pendencias.filter(p => p.tipo === "apontamento_atrasado"),
     requisicao_pendente: pendencias.filter(p => p.tipo === "requisicao_pendente"),
+    backlog_vencido: pendencias.filter(p => p.tipo === "backlog_vencido"),
   };
 
   return { pendencias, totalPendencias, porTipo, loadingPendencias, loadPendencias };
