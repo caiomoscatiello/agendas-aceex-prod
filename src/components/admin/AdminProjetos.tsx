@@ -275,6 +275,18 @@ export default function AdminProjetos() {
   const [healthOpen, setHealthOpen] = useState(false);
   const [csvWizardOpen, setCsvWizardOpen] = useState(false);
   const [backlogColunasCache, setBacklogColunasCache] = useState<{id: string; nome: string; status_sistema: string | null}[]>([]);
+
+  const handleAbrirCsvWizard = async () => {
+    if (!detailProjeto) return;
+    const [colRes, itemRes] = await Promise.all([
+      supabase.from("projeto_backlog_colunas").select("id, nome, status_sistema").eq("projeto_id", detailProjeto.id).order("ordem"),
+      supabase.from("projeto_backlog").select("codigo, titulo, descricao_solicitante").eq("projeto_id", detailProjeto.id),
+    ]);
+    setBacklogColunasCache(colRes.data || []);
+    setBacklogItemsCache(itemRes.data || []);
+    setCsvWizardOpen(true);
+  };
+
   const [backlogItemsCache, setBacklogItemsCache] = useState<{codigo: string; titulo: string; descricao_solicitante: string | null}[]>([]);
   const [healthConfig, setHealthConfig] = useState<HealthConfig | null>(null);
   const [healthHistorico, setHealthHistorico] = useState<HealthSnapshot[]>([]);
@@ -2137,19 +2149,9 @@ export default function AdminProjetos() {
                 <Activity className="h-3.5 w-3.5" /> Health Score Analytics
               </DropdownMenuItem>
               <DropdownMenuSeparator />
-              <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="gap-2 text-sm"
-                onClick={async () => {
-                  if (!detailProjeto) return;
-                  const [colRes, itemRes] = await Promise.all([
-                    supabase.from("projeto_backlog_colunas").select("id, nome, status_sistema").eq("projeto_id", detailProjeto.id).order("ordem"),
-                    supabase.from("projeto_backlog").select("codigo, titulo, descricao_solicitante").eq("projeto_id", detailProjeto.id),
-                  ]);
-                  setBacklogColunasCache(colRes.data || []);
-                  setBacklogItemsCache(itemRes.data || []);
-                  setCsvWizardOpen(true);
-                }}
+                onClick={() => handleAbrirCsvWizard()}
               >
                 <Upload className="h-4 w-4" /> Importar CSV Backlog
               </DropdownMenuItem>
@@ -2706,10 +2708,23 @@ export default function AdminProjetos() {
           )}
         </DialogContent>
       </Dialog>
+      {/* BL-004-E — CSV Import Wizard */}
+      {detailProjeto && (
+        <BacklogCsvWizard
+          open={csvWizardOpen}
+          onClose={() => setCsvWizardOpen(false)}
+          projetoId={detailProjeto.id}
+          projetoNome={detailProjeto.nome_cliente}
+          userId={user?.id || ""}
+          itemsExistentes={backlogItemsCache}
+          colunaAbertoId={backlogColunasCache.find(col => col.status_sistema === "aberto")?.id || backlogColunasCache[0]?.id || ""}
+          onImportConcluido={() => {
+            setCsvWizardOpen(false);
+            toast({ title: "Backlog atualizado!", description: "Itens importados com sucesso." });
+            setAbaAtiva("backlog");
+          }}
+        />
+      )}
     </div>
   );
 }
-
-
-
-
