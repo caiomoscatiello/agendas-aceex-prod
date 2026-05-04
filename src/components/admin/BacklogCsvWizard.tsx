@@ -1,5 +1,5 @@
 // src/components/admin/BacklogCsvWizard.tsx
-// BL-004-E — Wizard de importação CSV do Backlog
+// BL-004-E ? Wizard de importa??o CSV do Backlog
 
 import { useState, useRef, useCallback } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
@@ -89,7 +89,7 @@ function calcularSimilaridade(textoA: string, textoB: string): number {
   return Math.min(1, jaccard + bonus);
 }
 
-const THRESHOLD_SUSPEITO = 0.35; // threshold medio conforme decisao
+const THRESHOLD_SUSPEITO = 0.25; // threshold medio conforme decisao
 
 // ?? PARSE CSV ????????????????????????????????????????????????????????????????
 
@@ -99,7 +99,7 @@ function detectarEncoding(buffer: ArrayBuffer): string {
   if (bytes[0] === 0xEF && bytes[1] === 0xBB && bytes[2] === 0xBF) return "utf-8";
   // BOM UTF-16 LE
   if (bytes[0] === 0xFF && bytes[1] === 0xFE) return "utf-16le";
-  return "utf-8"; // default — tentar UTF-8 primeiro
+  return "utf-8"; // default ? tentar UTF-8 primeiro
 }
 
 function parsearCSV(texto: string): { rows: CSVRow[]; erros: string[] } {
@@ -113,7 +113,7 @@ function parsearCSV(texto: string): { rows: CSVRow[]; erros: string[] } {
   const camposObrigatorios = ["titulo", "tipo", "prioridade", "frente_modulo"];
   const faltando = camposObrigatorios.filter(c => !headers.includes(c));
   if (faltando.length > 0) {
-    return { rows: [], erros: [`Colunas obrigatórias faltando: ${faltando.join(", ")}`] };
+    return { rows: [], erros: [`Colunas obrigatorias faltando: ${faltando.join(", ")}`] };
   }
 
   const rows: CSVRow[] = [];
@@ -132,17 +132,25 @@ function parsearCSV(texto: string): { rows: CSVRow[]; erros: string[] } {
       frente_modulo: FRENTES_VALIDAS.includes(raw.frente_modulo) ? raw.frente_modulo : "outro",
       descricao_solicitante: raw.descricao_solicitante || undefined,
       estimativa_horas: raw.estimativa_horas ? parseFloat(raw.estimativa_horas) || null : null,
-      data_prevista: raw.data_prevista && /^\d{4}-\d{2}-\d{2}$/.test(raw.data_prevista) ? raw.data_prevista : null,
+      data_prevista: null, // calculado abaixo
       raw,
     };
 
-    if (!row.titulo.trim()) {
-      erros.push(`Linha ${row.linha}: título vazio — ignorada`);
-      continue;
+    // Converter data: aceita yyyy-MM-dd e dd/MM/yyyy automaticamente
+    if (raw.data_prevista) {
+      if (/^\d{4}-\d{2}-\d{2}$/.test(raw.data_prevista)) {
+        row.data_prevista = raw.data_prevista;
+      } else if (/^\d{2}\/\d{2}\/\d{4}$/.test(raw.data_prevista)) {
+        const [dd, mm, yyyy] = raw.data_prevista.split('/');
+        row.data_prevista = `${yyyy}-${mm}-${dd}`;
+      } else {
+        erros.push(`Linha ${row.linha}: data_prevista com formato invalido "${raw.data_prevista}" ? use DD/MM/AAAA ou AAAA-MM-DD`);
+      }
     }
 
-    if (raw.data_prevista && !/^\d{4}-\d{2}-\d{2}$/.test(raw.data_prevista)) {
-      erros.push(`Linha ${row.linha}: data_prevista inválida "${raw.data_prevista}" — campo ignorado`);
+    if (!row.titulo.trim()) {
+      erros.push(`Linha ${row.linha}: titulo vazio ? ignorada`);
+      continue;
     }
 
     rows.push(row);
@@ -220,7 +228,7 @@ export function BacklogCsvWizard({
           description: "Arquivo convertido automaticamente. Para evitar problemas, salve como CSV UTF-8 no Excel.",
         });
       } catch {
-        setErrosEstrutura(["Não foi possível ler o arquivo. Salve como CSV UTF-8 (Dados > Salvar como > CSV UTF-8) e tente novamente."]);
+        setErrosEstrutura(["Nao foi possivel ler o arquivo. Salve como CSV UTF-8 (Dados > Salvar como > CSV UTF-8) e tente novamente."]);
         return;
       }
     }
@@ -234,12 +242,12 @@ export function BacklogCsvWizard({
     }
 
     if (rows.length === 0) {
-      setErrosEstrutura(["Nenhuma linha válida encontrada no arquivo."]);
+      setErrosEstrutura(["Nenhuma linha v?lida encontrada no arquivo."]);
       setCsvFile(null);
       return;
     }
 
-    // Avançar para etapa 2 e analisar
+    // Avan?ar para etapa 2 e analisar
     setEtapa(2);
     setAnalisando(true);
     setProgresso(0);
@@ -250,7 +258,7 @@ export function BacklogCsvWizard({
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
 
-      // Timeout safety — processar com pequeno delay para não travar UI
+      // Timeout safety ? processar com pequeno delay para n?o travar UI
       await new Promise(r => setTimeout(r, 10));
       setProgresso(Math.round(((i + 1) / rows.length) * 100));
       setLinhasAnalisadas(a => [...a, {
@@ -279,7 +287,7 @@ export function BacklogCsvWizard({
         status,
         erros: errosEstrutura.filter(e => e.startsWith(`Linha ${row.linha}:`)),
         similaridade: melhorScore >= THRESHOLD_SUSPEITO ? melhorSimilaridade : undefined,
-        selecionado: status === "valido", // suspeitos vêm desmarcados
+        selecionado: status === "valido", // suspeitos v?m desmarcados
       };
 
       setLinhasAnalisadas([...analisados]);
@@ -290,7 +298,7 @@ export function BacklogCsvWizard({
 
   const handleFileChange = (file: File) => {
     if (!file.name.endsWith(".csv")) {
-      setErrosEstrutura(["Apenas arquivos .csv são aceitos."]);
+      setErrosEstrutura(["Apenas arquivos .csv s?o aceitos."]);
       return;
     }
     processarArquivo(file);
@@ -327,7 +335,7 @@ export function BacklogCsvWizard({
     let erros = 0;
     const loteId = crypto.randomUUID();
 
-    // Insert sequencial (um por vez) para evitar race condition no trigger de código
+    // Insert sequencial (um por vez) para evitar race condition no trigger de c?digo
     for (const linha of paraImportar) {
       const { data: novo, error } = await supabase
         .from("projeto_backlog")
@@ -351,7 +359,7 @@ export function BacklogCsvWizard({
 
       if (error || !novo) { erros++; continue; }
 
-      // Histórico individual
+      // Hist?rico individual
       await supabase.from("projeto_backlog_historico").insert({
         backlog_item_id: novo.id,
         para_coluna_id: colunaAbertoId,
@@ -363,8 +371,8 @@ export function BacklogCsvWizard({
       ok++;
     }
 
-    // Registro de auditoria do lote — usando o primeiro item como referência
-    // (registrado no histórico geral como evento especial)
+    // Registro de auditoria do lote ? usando o primeiro item como refer?ncia
+    // (registrado no hist?rico geral como evento especial)
     const primeiroItem = await supabase
       .from("projeto_backlog")
       .select("id")
@@ -400,7 +408,7 @@ export function BacklogCsvWizard({
     onImportConcluido();
   };
 
-  // Download CSV dos não importados
+  // Download CSV dos n?o importados
   const downloadNaoImportados = () => {
     const naoImportados = linhasAnalisadas.filter(l => !l.selecionado || l.status === "erro");
     if (naoImportados.length === 0) return;
@@ -445,13 +453,13 @@ export function BacklogCsvWizard({
         <DialogHeader className="shrink-0 border-b px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-base">
             <FileText className="h-5 w-5 text-violet-600" />
-            Importar CSV — {projetoNome}
+            Importar CSV ? {projetoNome}
           </DialogTitle>
           {/* Steps indicator */}
           <div className="flex items-center gap-2 mt-2">
             {[
               { n: 1, label: "Upload" },
-              { n: 2, label: "Análise" },
+              { n: 2, label: "Analise" },
               { n: 3, label: "Resultado" },
             ].map((s, i) => (
               <div key={s.n} className="flex items-center gap-2">
@@ -468,15 +476,15 @@ export function BacklogCsvWizard({
         {/* Corpo */}
         <div className="flex-1 overflow-y-auto">
 
-          {/* ETAPA 1 — Upload */}
+          {/* ETAPA 1 ? Upload */}
           {etapa === 1 && (
             <div className="px-5 py-6 space-y-5">
               <div className="flex items-start gap-3 bg-violet-50 border border-violet-200 rounded-xl p-4">
                 <Info className="h-4 w-4 text-violet-600 flex-shrink-0 mt-0.5" />
                 <div className="text-xs text-violet-700 space-y-1">
-                  <p className="font-semibold">Campos obrigatórios: titulo, tipo, prioridade, frente_modulo</p>
+                  <p className="font-semibold">Campos obrigatorios: titulo, tipo, prioridade, frente_modulo</p>
                   <p>Campos opcionais: descricao_solicitante, estimativa_horas, data_prevista (formato: YYYY-MM-DD)</p>
-                  <p>Separador: ponto-e-vírgula (;) · Encoding: UTF-8 · Máximo: {MAX_LINHAS} linhas</p>
+                  <p>Separador: ponto-e-v?rgula (;) · Encoding: UTF-8 · M?ximo: {MAX_LINHAS} linhas</p>
                 </div>
               </div>
 
@@ -524,7 +532,7 @@ export function BacklogCsvWizard({
             </div>
           )}
 
-          {/* ETAPA 2 — Análise e Preview */}
+          {/* ETAPA 2 ? Analise e Preview */}
           {etapa === 2 && (
             <div className="px-5 py-4 space-y-4">
               {/* Barra de progresso */}
@@ -548,7 +556,7 @@ export function BacklogCsvWizard({
                 <div className="flex items-center justify-between flex-wrap gap-2">
                   <div className="flex items-center gap-3 text-xs">
                     <span className="flex items-center gap-1 text-emerald-700">
-                      <CheckCircle2 className="h-3.5 w-3.5" />{totalValidos} válidos
+                      <CheckCircle2 className="h-3.5 w-3.5" />{totalValidos} v?lidos
                     </span>
                     {totalSuspeitos > 0 && (
                       <span className="flex items-center gap-1 text-amber-700">
@@ -563,7 +571,7 @@ export function BacklogCsvWizard({
                   </div>
                   <div className="flex items-center gap-2">
                     <Button size="sm" variant="outline" className="h-7 text-xs" onClick={marcarTodosValidos}>
-                      Marcar todos válidos
+                      Marcar todos v?lidos
                     </Button>
                     {totalSuspeitos > 0 && (
                       <Button size="sm" variant="outline" className="h-7 text-xs" onClick={desmarcarSuspeitos}>
@@ -580,7 +588,7 @@ export function BacklogCsvWizard({
                   <thead>
                     <tr className="bg-muted/50">
                       <th className="w-8 p-2"></th>
-                      <th className="text-left p-2 font-semibold text-muted-foreground">Título</th>
+                      <th className="text-left p-2 font-semibold text-muted-foreground">T?tulo</th>
                       <th className="text-left p-2 font-semibold text-muted-foreground w-20">Tipo</th>
                       <th className="text-left p-2 font-semibold text-muted-foreground w-20">Prioridade</th>
                       <th className="text-left p-2 font-semibold text-muted-foreground w-16">Status</th>
@@ -645,12 +653,12 @@ export function BacklogCsvWizard({
             </div>
           )}
 
-          {/* ETAPA 3 — Resultado */}
+          {/* ETAPA 3 ? Resultado */}
           {etapa === 3 && resultado && (
             <div className="px-5 py-8 space-y-5 text-center">
               <CheckCircle2 className="h-12 w-12 text-emerald-500 mx-auto" />
               <div>
-                <p className="text-base font-semibold">Importação concluída!</p>
+                <p className="text-base font-semibold">Importacao concluida!</p>
                 <p className="text-xs text-muted-foreground mt-1">{projetoNome}</p>
               </div>
               <div className="grid grid-cols-3 gap-3 max-w-xs mx-auto">
@@ -669,14 +677,14 @@ export function BacklogCsvWizard({
               </div>
               {naoImportadosCount > 0 && (
                 <div className="bg-muted/40 rounded-xl p-4 space-y-3">
-                  <p className="text-sm font-medium">Deseja avaliar os itens não importados?</p>
+                  <p className="text-sm font-medium">Deseja avaliar os itens n?o importados?</p>
                   <p className="text-xs text-muted-foreground">
                     {naoImportadosCount} {naoImportadosCount === 1 ? "item foi ignorado ou teve erro" : "itens foram ignorados ou tiveram erro"}.
                     Baixe o CSV para revisar e reimportar.
                   </p>
                   <Button size="sm" variant="outline" className="gap-2" onClick={downloadNaoImportados}>
                     <Download className="h-4 w-4" />
-                    Baixar CSV dos não importados
+                    Baixar CSV dos n?o importados
                   </Button>
                 </div>
               )}

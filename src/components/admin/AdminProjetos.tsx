@@ -274,6 +274,7 @@ export default function AdminProjetos() {
   // â"€â"€ HEALTH SCORE â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const [healthOpen, setHealthOpen] = useState(false);
   const [csvWizardOpen, setCsvWizardOpen] = useState(false);
+  const [backlogReloadKey, setBacklogReloadKey] = useState(0);
   const [backlogColunasCache, setBacklogColunasCache] = useState<{id: string; nome: string; status_sistema: string | null}[]>([]);
 
   const handleAbrirCsvWizard = async () => {
@@ -1726,6 +1727,7 @@ export default function AdminProjetos() {
           <TabsContent value="backlog" className="mt-0">
             {detailProjeto ? (
               <BacklogBoard
+                key={backlogReloadKey}
                 projetoId={detailProjeto.id}
                 projetoNome={detailProjeto.nome_cliente}
                 userId={user?.id || ""}
@@ -2708,7 +2710,7 @@ export default function AdminProjetos() {
           )}
         </DialogContent>
       </Dialog>
-      {/* BL-004-E — CSV Import Wizard */}
+      {/* BL-004-E - CSV Import Wizard */}
       {detailProjeto && (
         <BacklogCsvWizard
           open={csvWizardOpen}
@@ -2720,11 +2722,16 @@ export default function AdminProjetos() {
           colunaAbertoId={backlogColunasCache.find(col => col.status_sistema === "aberto")?.id || backlogColunasCache[0]?.id || ""}
           onImportConcluido={() => {
             setCsvWizardOpen(false);
-            toast({ title: "Backlog atualizado!", description: "Itens importados com sucesso." });
+            setBacklogReloadKey(k => k + 1);
             setAbaAtiva("backlog");
+            toast({ title: "Backlog atualizado!", description: "Itens importados com sucesso." });
           }}
         />
       )}
     </div>
   );
 }
+
+
+
+
