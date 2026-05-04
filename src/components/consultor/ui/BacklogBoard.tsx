@@ -714,7 +714,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 <span className="font-mono text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded">{itemDetalhado.codigo}</span>
                 <DialogTitle className="flex-1 truncate text-sm">{itemDetalhado.titulo}</DialogTitle>
                 {isCoordinator && !editando && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs shrink-0" onClick={() => { setEditando(true); setEditForm({ titulo: itemDetalhado.titulo, descricao_solicitante: itemDetalhado.descricao_solicitante, descricao_complementar: itemDetalhado.descricao_complementar, descricao_solucao: itemDetalhado.descricao_solucao, prioridade: itemDetalhado.prioridade, prioridade_reclassificada: itemDetalhado.prioridade_reclassificada || "none", estimativa_horas: itemDetalhado.estimativa_horas, tempo_efetivo_horas: itemDetalhado.tempo_efetivo_horas, data_prevista: itemDetalhado.data_prevista, data_conclusao: itemDetalhado.data_conclusao }); }}>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs shrink-0" onClick={() => { setEditando(true); setEditForm({ titulo: itemDetalhado.titulo, descricao_solicitante: itemDetalhado.descricao_solicitante, descricao_complementar: itemDetalhado.descricao_complementar, descricao_solucao: itemDetalhado.descricao_solucao, prioridade: itemDetalhado.prioridade, prioridade_reclassificada: itemDetalhado.prioridade_reclassificada || "none", estimativa_horas: itemDetalhado.estimativa_horas, tempo_efetivo_horas: itemDetalhado.tempo_efetivo_horas, data_prevista: itemDetalhado.data_prevista, data_conclusao: itemDetalhado.data_conclusao, atribuido_para: itemDetalhado.atribuido_para }); }}>
                     <Edit2 className="h-3 w-3" /> Editar
                   </Button>
                 )}
@@ -790,8 +790,20 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <Input type="date" value={editForm.data_prevista || ""} onChange={e => setEditForm(p => ({ ...p, data_prevista: e.target.value || null }))} />
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Data conclusão</Label>
+                        <Label className="text-xs">Data conclusao</Label>
                         <Input type="date" value={editForm.data_conclusao || ""} onChange={e => setEditForm(p => ({ ...p, data_conclusao: e.target.value || null }))} />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Atribuido para</Label>
+                        <Select value={editForm.atribuido_para || "none"} onValueChange={v => setEditForm(p => ({ ...p, atribuido_para: v === "none" ? null : v }))}>
+                          <SelectTrigger><SelectValue placeholder="Nenhum" /></SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="none">Nenhum</SelectItem>
+                            {profilesDisponiveis.map(p => (
+                              <SelectItem key={p.user_id} value={p.user_id}>{p.name}</SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
                       </div>
                     </div>
                     <div className="space-y-1">
