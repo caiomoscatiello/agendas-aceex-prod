@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle, Activity, TrendingUp, TrendingDown, Minus, Sliders, ListTodo } from "lucide-react";
+import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle, Activity, TrendingUp, TrendingDown, Minus, Sliders, ListTodo, Upload } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AdminCronogramaItens, { CronogramaItem, TipoDocumento } from "./AdminCronogramaItens";
 import { BacklogBoard } from "@/components/consultor/ui/BacklogBoard";
+import { BacklogCsvWizard } from "@/components/admin/BacklogCsvWizard";
 
 type Projeto = {
   id: string;
@@ -272,6 +273,9 @@ export default function AdminProjetos() {
 
   // â"€â"€ HEALTH SCORE â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
   const [healthOpen, setHealthOpen] = useState(false);
+  const [csvWizardOpen, setCsvWizardOpen] = useState(false);
+  const [backlogColunasCache, setBacklogColunasCache] = useState<{id: string; nome: string; status_sistema: string | null}[]>([]);
+  const [backlogItemsCache, setBacklogItemsCache] = useState<{codigo: string; titulo: string; descricao_solicitante: string | null}[]>([]);
   const [healthConfig, setHealthConfig] = useState<HealthConfig | null>(null);
   const [healthHistorico, setHealthHistorico] = useState<HealthSnapshot[]>([]);
   const [healthLoading, setHealthLoading] = useState(false);
@@ -2131,6 +2135,23 @@ export default function AdminProjetos() {
                 onClick={() => { if (detailProjeto) { loadHealthScore(detailProjeto.id); setHealthOpen(true); } }}
               >
                 <Activity className="h-3.5 w-3.5" /> Health Score Analytics
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="gap-2 text-sm"
+                onClick={async () => {
+                  if (!detailProjeto) return;
+                  const [colRes, itemRes] = await Promise.all([
+                    supabase.from("projeto_backlog_colunas").select("id, nome, status_sistema").eq("projeto_id", detailProjeto.id).order("ordem"),
+                    supabase.from("projeto_backlog").select("codigo, titulo, descricao_solicitante").eq("projeto_id", detailProjeto.id),
+                  ]);
+                  setBacklogColunasCache(colRes.data || []);
+                  setBacklogItemsCache(itemRes.data || []);
+                  setCsvWizardOpen(true);
+                }}
+              >
+                <Upload className="h-4 w-4" /> Importar CSV Backlog
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2 text-sm text-destructive focus:text-destructive" onClick={() => { if (detailProjeto) handleDelete(detailProjeto.id); }}>

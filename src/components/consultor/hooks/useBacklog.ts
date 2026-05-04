@@ -305,7 +305,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
   };
 
 
-  // GESTÃO DE COLUNAS
+  // GESTAO DE COLUNAS
   const criarColuna = async (nome: string, cor: string) => {
     if (!projetoId) return;
     const sorted = [...colunas].sort((a, b) => a.ordem - b.ordem);
