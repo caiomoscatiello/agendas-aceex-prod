@@ -1,5 +1,5 @@
 ﻿// src/components/consultor/ui/BacklogBoard.tsx
-// BL-004-B — Board Kanban do Backlog
+// BL-004-B  Board Kanban do Backlog
 
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,14 +17,14 @@ import {
   ArrowRight, Lock, Unlock, LayoutGrid, List,
   Tag, AlertCircle, CheckCircle2, Send,
   History, MessageSquare, Edit2, Save,
-  Settings2, ChevronLeft, ChevronRight, Trash2, Users, UserPlus
+  Settings2, ChevronLeft, ChevronRight, Trash2, Users, UserPlus, FileDown
 } from "lucide-react";
 import { format, parseISO, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useBacklog, BacklogItem, BacklogColuna, BacklogComentario, BacklogHistorico, BacklogParticipante } from "../hooks/useBacklog";
 
-// ── TIPOS ─────────────────────────────────────────────────────────────────────
+// ?? TIPOS ?????????????????????????????????????????????????????????????????????
 
 type Props = {
   projetoId: string;
@@ -37,17 +37,17 @@ type Props = {
 };
 
 const PRIORIDADE_CONFIG: Record<string, { label: string; cor: string; corBg: string }> = {
-  critica: { label: "Crítica",  cor: "text-red-700",    corBg: "bg-red-100" },
+  critica: { label: "Crνtica",  cor: "text-red-700",    corBg: "bg-red-100" },
   alta:    { label: "Alta",     cor: "text-amber-700",  corBg: "bg-amber-100" },
-  media:   { label: "Média",    cor: "text-blue-700",   corBg: "bg-blue-100" },
+  media:   { label: "Mιdia",    cor: "text-blue-700",   corBg: "bg-blue-100" },
   baixa:   { label: "Baixa",   cor: "text-emerald-700", corBg: "bg-emerald-100" },
 };
 
 const TIPO_OPTIONS = [
   { value: "melhoria",     label: "Melhoria" },
   { value: "bug",          label: "Bug" },
-  { value: "duvida",       label: "Dúvida" },
-  { value: "configuracao", label: "Configuração" },
+  { value: "duvida",       label: "Dϊvida" },
+  { value: "configuracao", label: "Configuraηγo" },
   { value: "treinamento",  label: "Treinamento" },
   { value: "outro",        label: "Outro" },
 ];
@@ -58,11 +58,11 @@ const FRENTE_OPTIONS = [
   { value: "estoque",     label: "Estoque" },
   { value: "compras",     label: "Compras" },
   { value: "rh",          label: "RH" },
-  { value: "contabil",    label: "Contábil" },
+  { value: "contabil",    label: "Contαbil" },
   { value: "outro",       label: "Outro" },
 ];
 
-// ── HELPERS ───────────────────────────────────────────────────────────────────
+// ?? HELPERS ???????????????????????????????????????????????????????????????????
 
 function isVencido(data: string | null, colunaStatus: string | null) {
   if (!data) return false;
@@ -75,12 +75,12 @@ function PriBadge({ prioridade, reclassificada }: { prioridade: string; reclassi
   const cfg = PRIORIDADE_CONFIG[efetiva] || PRIORIDADE_CONFIG.media;
   return (
     <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cfg.corBg} ${cfg.cor}`}>
-      {reclassificada && reclassificada !== prioridade ? `↑ ${cfg.label}` : cfg.label}
+      {reclassificada && reclassificada !== prioridade ? `? ${cfg.label}` : cfg.label}
     </span>
   );
 }
 
-// ── CARD DO ITEM ──────────────────────────────────────────────────────────────
+// ?? CARD DO ITEM ??????????????????????????????????????????????????????????????
 
 function ItemCard({
   item, colunaStatus, colunas, onMove, onOpen, isDragging, onDragStart, onDragEnd,
@@ -118,7 +118,7 @@ function ItemCard({
         <PriBadge prioridade={item.prioridade} reclassificada={item.prioridade_reclassificada} />
       </div>
 
-      {/* Título */}
+      {/* Tνtulo */}
       <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{item.titulo}</p>
 
       {/* Meta */}
@@ -136,13 +136,18 @@ function ItemCard({
         )}
       </div>
 
-      {/* Data e atribuição */}
+      {/* Data e atribuiηγo */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           {item.data_prevista && (
             <span className={`text-[9px] flex items-center gap-0.5 ${vencido ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
-              {vencido && "⚠ "}
+              {vencido && "! "}
               {format(parseISO(item.data_prevista), "dd/MM", { locale: ptBR })}
+            </span>
+          )}
+          {(item as any).data_conclusao_desejada && (
+            <span className="text-[9px] text-amber-600 font-semibold">
+              meta:{format(parseISO((item as any).data_conclusao_desejada), "dd/MM", { locale: ptBR })}
             </span>
           )}
         </div>
@@ -165,7 +170,7 @@ function ItemCard({
         </div>
       </div>
 
-      {/* Botão mover (alternativa ao drag) */}
+      {/* Botγo mover (alternativa ao drag) */}
       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
         {colunas
           .filter(c => c.id !== item.coluna_id)
@@ -177,7 +182,7 @@ function ItemCard({
               className="text-[9px] text-muted-foreground border border-border/60 rounded px-1.5 py-0.5 hover:bg-accent transition-colors"
               title={`Mover para ${c.nome}`}
             >
-              → {c.nome.length > 8 ? c.nome.slice(0, 8) + "…" : c.nome}
+              ? {c.nome.length > 8 ? c.nome.slice(0, 8) + "" : c.nome}
             </button>
           ))}
       </div>
@@ -187,7 +192,7 @@ function ItemCard({
         <div className="border-t pt-2 space-y-1.5" onClick={(e) => e.stopPropagation()}>
           {filhos.map(filho => (
             <div key={filho.id} className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted/50 rounded-lg px-2 py-1.5">
-              <span className="text-[8px] opacity-50">↳</span>
+              <span className="text-[8px] opacity-50">?</span>
               <span className="font-mono text-[9px]">{filho.codigo}</span>
               <span className="flex-1 truncate font-medium text-foreground">{filho.titulo}</span>
               <PriBadge prioridade={filho.prioridade} />
@@ -199,7 +204,7 @@ function ItemCard({
   );
 }
 
-// ── MODAL NOVO ITEM ───────────────────────────────────────────────────────────
+// ?? MODAL NOVO ITEM ???????????????????????????????????????????????????????????
 
 function NovoItemModal({
   open, onClose, onSave, colunas, saving, projetoNome, colunaInicial,
@@ -230,7 +235,7 @@ function NovoItemModal({
   }, [open, colunaInicial, colunas]);
 
   const handleSave = () => {
-    if (!titulo.trim()) { toast({ title: "Informe o título", variant: "destructive" }); return; }
+    if (!titulo.trim()) { toast({ title: "Informe o tνtulo", variant: "destructive" }); return; }
     onSave({
       titulo: titulo.trim(),
       tipo, prioridade, frente_modulo: frente,
@@ -247,12 +252,12 @@ function NovoItemModal({
         <DialogHeader className="shrink-0 border-b px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-base">
             <ListTodo className="h-5 w-5 text-violet-600" />
-            Novo item — {projetoNome}
+            Novo item  {projetoNome}
           </DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           <div className="space-y-1">
-            <Label className="text-xs">Título *</Label>
+            <Label className="text-xs">Tνtulo *</Label>
             <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Descreva o item de backlog..." autoFocus />
           </div>
           <div className="space-y-1">
@@ -272,15 +277,15 @@ function NovoItemModal({
               <Select value={prioridade} onValueChange={setPrioridade}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="critica">🔴 Crítica</SelectItem>
-                  <SelectItem value="alta">🟠 Alta</SelectItem>
-                  <SelectItem value="media">🔵 Média</SelectItem>
-                  <SelectItem value="baixa">🟢 Baixa</SelectItem>
+                  <SelectItem value="critica">? Crνtica</SelectItem>
+                  <SelectItem value="alta">? Alta</SelectItem>
+                  <SelectItem value="media">? Mιdia</SelectItem>
+                  <SelectItem value="baixa">? Baixa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Frente / Módulo</Label>
+              <Label className="text-xs">Frente / Mσdulo</Label>
               <Select value={frente} onValueChange={setFrente}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{FRENTE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -315,13 +320,13 @@ function NovoItemModal({
   );
 }
 
-// ── BOARD PRINCIPAL ───────────────────────────────────────────────────────────
+// ?? BOARD PRINCIPAL ???????????????????????????????????????????????????????????
 
 export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = false, agendaData, agendaCliente }: Props) {
   const {
     colunas, items, loadingBoard, savingItem,
     loadBoard, moverItem, criarItem, salvarItem, adicionarComentario,
-    loadComentarios, loadHistorico,
+    loadComentarios, loadHistorico, loadHistoricoEvolutivo,
     criarColuna, renomearColuna, excluirColuna, reordenarColunas,
     loadParticipantes, adicionarParticipante, removerParticipante,
     itemsPorColuna, filhosDoItem, temBoard,
@@ -336,7 +341,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [itemDetalhado, setItemDetalhado] = useState<BacklogItem | null>(null);
   const [dragItemId, setDragItemId] = useState<string | null>(null);
   const [dragOverColuna, setDragOverColuna] = useState<string | null>(null);
-  // BL-004-C — Detalhe, histórico e comentários
+  // BL-004-C  Detalhe, histσrico e comentαrios
   const [detalheTab, setDetalheTab] = useState("info");
   const [comentarios, setComentarios] = useState<BacklogComentario[]>([]);
   const [historico, setHistorico] = useState<BacklogHistorico[]>([]);
@@ -345,7 +350,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [savingComentario, setSavingComentario] = useState(false);
   const [editando, setEditando] = useState(false);
   const [editForm, setEditForm] = useState<Partial<BacklogItem>>({});
-  // BL-004-D — Colunas e participantes
+  // BL-004-D  Colunas e participantes
   const [configColunasOpen, setConfigColunasOpen] = useState(false);
   const [novaColunaNome, setNovaColunaNome] = useState("");
   const [novaColunaCor, setNovaColunaCor] = useState("#6366f1");
@@ -358,6 +363,176 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [profilesDisponiveis, setProfilesDisponiveis] = useState<{user_id: string; name: string}[]>([]);
   const [novoPartUserId, setNovoPartUserId] = useState("");
   const [novoPartPapel, setNovoPartPapel] = useState("observador");
+  const [excelExporting, setExcelExporting] = useState(false);
+
+
+  const handleExportarExcel = async () => {
+    if (!projetoId) return;
+    setExcelExporting(true);
+    try {
+      const XLSX = await import("xlsx");
+      const hoje = new Date().toLocaleDateString("pt-BR");
+      const nomeArq = `${projetoNome}_Backlog_${new Date().toISOString().split("T")[0]}.xlsx`;
+
+      // Dados base
+      const itensFiltrados = items.filter(i => !i.pai_id);
+      const historico = await loadHistoricoEvolutivo();
+
+      // Helpers
+      const fmtData = (d: string | null) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "";
+      const isVencida = (d: string | null, col: string) => {
+        if (!d) return false;
+        const col_ = colunas.find(c => c.id === col);
+        if (col_?.status_sistema === "concluido" || col_?.status_sistema === "cancelado") return false;
+        return new Date(d + "T00:00:00") < new Date();
+      };
+
+      // ?? ABA DASHBOARD ?????????????????????????????????????????????
+      const total = itensFiltrados.length;
+      const concluidos = itensFiltrados.filter(i => colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length;
+      const criticos = itensFiltrados.filter(i => (i.prioridade_reclassificada || i.prioridade) === "critica" &&
+        colunas.find(c => c.id === i.coluna_id)?.status_sistema !== "concluido").length;
+      const vencidos = itensFiltrados.filter(i => isVencida(i.data_prevista, i.coluna_id)).length;
+
+      const colCount = colunas.map(col => ({
+        Coluna: col.nome,
+        Total: itensFiltrados.filter(i => i.coluna_id === col.id).length,
+        Critica: itensFiltrados.filter(i => i.coluna_id === col.id && (i.prioridade_reclassificada || i.prioridade) === "critica").length,
+        Alta: itensFiltrados.filter(i => i.coluna_id === col.id && (i.prioridade_reclassificada || i.prioridade) === "alta").length,
+        Media: itensFiltrados.filter(i => i.coluna_id === col.id && (i.prioridade_reclassificada || i.prioridade) === "media").length,
+        Baixa: itensFiltrados.filter(i => i.coluna_id === col.id && (i.prioridade_reclassificada || i.prioridade) === "baixa").length,
+      }));
+
+      const dashData = [
+        ["Backlog do Projeto", projetoNome],
+        ["Gerado em", hoje],
+        ["Exportado por", "coordenador"],
+        [],
+        ["KPIs", ""],
+        ["Total de itens", total],
+        ["Concluidos", concluidos],
+        ["Criticos em aberto", criticos],
+        ["Vencidos", vencidos],
+        [],
+        ["Itens por coluna", "Total", "Critica", "Alta", "Media", "Baixa"],
+        ...colCount.map(r => [r.Coluna, r.Total, r.Critica, r.Alta, r.Media, r.Baixa]),
+      ];
+
+      // ?? ABA BACKLOG ???????????????????????????????????????????????
+      const backlogData = itensFiltrados.map(i => {
+        const col = colunas.find(c => c.id === i.coluna_id);
+        return {
+          "Codigo": i.codigo,
+          "Titulo": i.titulo,
+          "Tipo": i.tipo,
+          "Prioridade": i.prioridade_reclassificada || i.prioridade,
+          "Frente/Modulo": i.frente_modulo,
+          "Status": col?.nome || "",
+          "Responsavel": i.atribuido_para_nome || "",
+          "Estimativa (h)": i.estimativa_horas || "",
+          "Tempo Efetivo (h)": i.tempo_efetivo_horas || "",
+          "Data prevista": fmtData(i.data_prevista),
+          "Meta conclusao": fmtData((i as any).data_conclusao_desejada),
+          "Data conclusao": fmtData(i.data_conclusao),
+          "Criado em": fmtData(i.created_at.split("T")[0]),
+          "Criado por": i.criado_por_nome || "",
+        };
+      });
+
+      // ?? ABA RESUMO ????????????????????????????????????????????????
+      const resumoData = colunas.map(col => {
+        const iCol = itensFiltrados.filter(i => i.coluna_id === col.id);
+        return {
+          "Coluna": col.nome,
+          "Total": iCol.length,
+          "Critica": iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "critica").length,
+          "Alta": iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "alta").length,
+          "Media": iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "media").length,
+          "Baixa": iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "baixa").length,
+        };
+      });
+
+      // ?? ABA EVOLUTIVO ?????????????????????????????????????????????
+      // Construir mapa de historico por item e coluna
+      const colsSorted = [...colunas].sort((a, b) => a.ordem - b.ordem)
+        .filter(c => c.status_sistema !== "cancelado");
+
+      // Header row 1: grupos de colunas
+      const evHeader1 = ["Codigo", "Titulo", "Prioridade", "Meta"];
+      colsSorted.forEach(col => { evHeader1.push(col.nome, ""); });
+
+      // Header row 2: sub-headers
+      const evHeader2 = ["", "", "", ""];
+      colsSorted.forEach(() => { evHeader2.push("Entrada / Resp", "Saida / Prev"); });
+
+      const evRows = itensFiltrados.map(item => {
+        const row: any[] = [
+          item.codigo,
+          item.titulo,
+          item.prioridade_reclassificada || item.prioridade,
+          fmtData((item as any).data_conclusao_desejada),
+        ];
+
+        const itemHist = historico
+          .filter(h => h.backlog_item_id === item.id)
+          .sort((a: any, b: any) => new Date(a.moved_at).getTime() - new Date(b.moved_at).getTime());
+
+        colsSorted.forEach(col => {
+          // Encontrar quando o item entrou nesta coluna
+          const entrada = itemHist.find((h: any) => h.para_coluna_id === col.id);
+          const saida = itemHist.find((h: any) => h.de_coluna_id === col.id);
+
+          if (!entrada) {
+            row.push("", "");
+          } else {
+            const entradaStr = fmtData(entrada.moved_at.split("T")[0]);
+            const resp = entrada.atribuido_para_nome || entrada.movido_por_nome || "";
+            const saidaStr = saida ? fmtData(saida.moved_at.split("T")[0]) : "";
+            const prevStr = entrada.data_prevista_fase ? fmtData(entrada.data_prevista_fase) : "";
+            row.push(`${entradaStr}${resp ? " / " + resp : ""}`, saidaStr || (prevStr ? "prev: " + prevStr : ""));
+          }
+        });
+
+        return row;
+      });
+
+      // Criar workbook
+      const wb = XLSX.utils.book_new();
+
+      // Dashboard
+      const wsDash = XLSX.utils.aoa_to_sheet(dashData);
+      wsDash["!cols"] = [{ wch: 22 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
+      XLSX.utils.book_append_sheet(wb, wsDash, "Dashboard");
+
+      // Backlog
+      const wsBacklog = XLSX.utils.json_to_sheet(backlogData.length > 0 ? backlogData : [{ Codigo: "Sem itens" }]);
+      wsBacklog["!cols"] = [
+        { wch: 10 }, { wch: 40 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
+        { wch: 16 }, { wch: 20 }, { wch: 10 }, { wch: 12 }, { wch: 14 },
+        { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 22 },
+      ];
+      XLSX.utils.book_append_sheet(wb, wsBacklog, "Backlog");
+
+      // Resumo
+      const wsResumo = XLSX.utils.json_to_sheet(resumoData.length > 0 ? resumoData : [{ Coluna: "Sem dados" }]);
+      wsResumo["!cols"] = [{ wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
+      XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
+
+      // Evolutivo
+      const wsEv = XLSX.utils.aoa_to_sheet([evHeader1, evHeader2, ...evRows]);
+      const evCols = [{ wch: 10 }, { wch: 35 }, { wch: 12 }, { wch: 14 }];
+      colsSorted.forEach(() => { evCols.push({ wch: 22 }, { wch: 18 }); });
+      wsEv["!cols"] = evCols;
+      XLSX.utils.book_append_sheet(wb, wsEv, "Evolutivo");
+
+      XLSX.writeFile(wb, nomeArq);
+      toast({ title: "Excel exportado!", description: nomeArq });
+    } catch (err) {
+      console.error(err);
+      toast({ title: "Erro ao exportar", variant: "destructive" });
+    }
+    setExcelExporting(false);
+  };
 
   const abrirDetalhe = async (item: BacklogItem) => {
     setItemDetalhado(item);
@@ -400,9 +575,9 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const handleExcluirColuna = async (colunaId: string) => {
     const ok = await excluirColuna(colunaId);
     if (!ok) {
-      toast({ title: "Não é possível excluir", description: "Coluna protegida ou com itens.", variant: "destructive" });
+      toast({ title: "Nγo ι possνvel excluir", description: "Coluna protegida ou com itens.", variant: "destructive" });
     } else {
-      toast({ title: "Coluna excluída!" });
+      toast({ title: "Coluna excluνda!" });
     }
   };
 
@@ -441,7 +616,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       setNovoComentario("");
       const coms = await loadComentarios(itemDetalhado.id);
       setComentarios(coms);
-      toast({ title: "Comentário adicionado!" });
+      toast({ title: "Comentαrio adicionado!" });
     }
     setSavingComentario(false);
   };
@@ -452,8 +627,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       movimentacao: "Movido",
       movimentacao_bloco: "Movido em bloco",
       edicao: "Editado",
-      comentario: "Comentário adicionado",
-      atribuicao: "Atribuição alterada",
+      comentario: "Comentαrio adicionado",
+      atribuicao: "Atribuiηγo alterada",
       cadeado_alterado: "Cadeado alterado",
     };
     return labels[tipo] || tipo;
@@ -501,7 +676,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     }
   };
 
-  // ── ONBOARDING ──
+  // ?? ONBOARDING ??
   if (loadingBoard) {
     return (
       <div className="flex items-center justify-center py-16">
@@ -513,13 +688,13 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const totalItems = items.filter(i => !i.pai_id).length;
   const itemsFiltrados = filtrarItems(items.filter(i => !i.pai_id));
 
-  // ── VISTA LISTA ──
+  // ?? VISTA LISTA ??
   const renderLista = () => (
     <div className="rounded-xl border overflow-hidden">
       <table className="w-full text-xs">
         <thead>
           <tr className="bg-muted/50">
-            {["Código", "Título", "Frente", "Prioridade", "Status", "Prevista", "Responsável"].map(h => (
+            {["Cσdigo", "Tνtulo", "Frente", "Prioridade", "Status", "Prevista", "Responsαvel"].map(h => (
               <th key={h} className="text-left p-2 font-semibold text-muted-foreground text-[10px] uppercase tracking-wide">{h}</th>
             ))}
           </tr>
@@ -542,9 +717,9 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   </span>
                 </td>
                 <td className={`p-2 ${vencido ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
-                  {item.data_prevista ? format(parseISO(item.data_prevista), "dd/MM/yy") : "—"}
+                  {item.data_prevista ? format(parseISO(item.data_prevista), "dd/MM/yy") : ""}
                 </td>
-                <td className="p-2 text-muted-foreground">{item.atribuido_para_nome || "—"}</td>
+                <td className="p-2 text-muted-foreground">{item.atribuido_para_nome || ""}</td>
               </tr>
             );
           })}
@@ -553,7 +728,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     </div>
   );
 
-  // ── VISTA KANBAN ──
+  // ?? VISTA KANBAN ??
   const renderKanban = () => (
     <div className="flex gap-3 overflow-x-auto pb-2">
       {colunas.map(col => {
@@ -623,7 +798,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           <div>
             <div className="text-xs font-semibold text-foreground">{projetoNome}</div>
             <div className="text-[10px] text-muted-foreground">
-              {totalItems} {totalItems === 1 ? "item" : "itens"} · {items.filter(i => !i.pai_id && colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length} concluídos
+              {totalItems} {totalItems === 1 ? "item" : "itens"} · {items.filter(i => !i.pai_id && colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length} concluνdos
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -664,7 +839,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             <Input
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar código, título..."
+              placeholder="Buscar cσdigo, tνtulo..."
               className="pl-7 h-7 text-xs"
             />
           </div>
@@ -678,7 +853,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             onClick={() => setFiltroVencidos(v => !v)}
             className={`text-[10px] px-2.5 py-1 rounded-lg border font-medium transition-colors ${filtroVencidos ? "bg-red-100 border-red-300 text-red-700" : "border-border text-muted-foreground hover:bg-muted"}`}
           >
-            ⚠ Vencidos
+            ? Vencidos
           </button>
           {(busca || filtroMeus || filtroVencidos) && (
             <button
@@ -705,7 +880,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
         colunaInicial={novoItemColuna}
       />
 
-      {/* Modal detalhe do item — BL-004-C */}
+      {/* Modal detalhe do item  BL-004-C */}
       {itemDetalhado && (
         <Dialog open={!!itemDetalhado} onOpenChange={() => { setItemDetalhado(null); setEditando(false); }}>
           <DialogContent className="flex flex-col gap-0 p-0 max-h-[90dvh] w-full max-w-2xl">
@@ -714,7 +889,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 <span className="font-mono text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded">{itemDetalhado.codigo}</span>
                 <DialogTitle className="flex-1 truncate text-sm">{itemDetalhado.titulo}</DialogTitle>
                 {isCoordinator && !editando && (
-                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs shrink-0" onClick={() => { setEditando(true); setEditForm({ titulo: itemDetalhado.titulo, descricao_solicitante: itemDetalhado.descricao_solicitante, descricao_complementar: itemDetalhado.descricao_complementar, descricao_solucao: itemDetalhado.descricao_solucao, prioridade: itemDetalhado.prioridade, prioridade_reclassificada: itemDetalhado.prioridade_reclassificada || "none", estimativa_horas: itemDetalhado.estimativa_horas, tempo_efetivo_horas: itemDetalhado.tempo_efetivo_horas, data_prevista: itemDetalhado.data_prevista, data_conclusao: itemDetalhado.data_conclusao, atribuido_para: itemDetalhado.atribuido_para }); }}>
+                  <Button size="sm" variant="ghost" className="h-7 px-2 gap-1 text-xs shrink-0" onClick={() => { setEditando(true); setEditForm({ titulo: itemDetalhado.titulo, descricao_solicitante: itemDetalhado.descricao_solicitante, descricao_complementar: itemDetalhado.descricao_complementar, descricao_solucao: itemDetalhado.descricao_solucao, prioridade: itemDetalhado.prioridade, prioridade_reclassificada: itemDetalhado.prioridade_reclassificada || "none", estimativa_horas: itemDetalhado.estimativa_horas, tempo_efetivo_horas: itemDetalhado.tempo_efetivo_horas, data_prevista: itemDetalhado.data_prevista, data_conclusao: itemDetalhado.data_conclusao, atribuido_para: itemDetalhado.atribuido_para, data_conclusao_desejada: (itemDetalhado as any).data_conclusao_desejada || null }); }}>
                     <Edit2 className="h-3 w-3" /> Editar
                   </Button>
                 )}
@@ -729,18 +904,18 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   {participantes.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{participantes.length}</span>}
                 </TabsTrigger>
                 <TabsTrigger value="comentarios" className="text-xs gap-1">
-                  <MessageSquare className="h-3 w-3" />Comentários
+                  <MessageSquare className="h-3 w-3" />Comentαrios
                   {comentarios.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{comentarios.length}</span>}
                 </TabsTrigger>
-                <TabsTrigger value="historico" className="text-xs gap-1"><History className="h-3 w-3" />Histórico</TabsTrigger>
+                <TabsTrigger value="historico" className="text-xs gap-1"><History className="h-3 w-3" />Histσrico</TabsTrigger>
               </TabsList>
 
-              {/* ── ABA INFO ── */}
+              {/* ?? ABA INFO ?? */}
               <TabsContent value="info" className="flex-1 overflow-y-auto px-5 pb-4 mt-3 space-y-4">
                 {editando ? (
                   <>
                     <div className="space-y-1">
-                      <Label className="text-xs">Título</Label>
+                      <Label className="text-xs">Tνtulo</Label>
                       <Input value={editForm.titulo || ""} onChange={e => setEditForm(p => ({ ...p, titulo: e.target.value }))} />
                     </div>
                     <div className="space-y-1">
@@ -757,23 +932,23 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <Select value={editForm.prioridade || "media"} onValueChange={v => setEditForm(p => ({ ...p, prioridade: v }))}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="critica">🔴 Crítica</SelectItem>
-                            <SelectItem value="alta">🟠 Alta</SelectItem>
-                            <SelectItem value="media">🔵 Média</SelectItem>
-                            <SelectItem value="baixa">🟢 Baixa</SelectItem>
+                            <SelectItem value="critica">? Crνtica</SelectItem>
+                            <SelectItem value="alta">? Alta</SelectItem>
+                            <SelectItem value="media">? Mιdia</SelectItem>
+                            <SelectItem value="baixa">? Baixa</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Reclassificação</Label>
+                        <Label className="text-xs">Reclassificaηγo</Label>
                         <Select value={editForm.prioridade_reclassificada || "none"} onValueChange={v => setEditForm(p => ({ ...p, prioridade_reclassificada: v || null }))}>
-                          <SelectTrigger><SelectValue placeholder="Sem reclassificação" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Sem reclassificaηγo" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Sem reclassificação</SelectItem>
-                            <SelectItem value="critica">🔴 Crítica</SelectItem>
-                            <SelectItem value="alta">🟠 Alta</SelectItem>
-                            <SelectItem value="media">🔵 Média</SelectItem>
-                            <SelectItem value="baixa">🟢 Baixa</SelectItem>
+                            <SelectItem value="none">Sem reclassificaηγo</SelectItem>
+                            <SelectItem value="critica">? Crνtica</SelectItem>
+                            <SelectItem value="alta">? Alta</SelectItem>
+                            <SelectItem value="media">? Mιdia</SelectItem>
+                            <SelectItem value="baixa">? Baixa</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -805,10 +980,14 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                           </SelectContent>
                         </Select>
                       </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs">Meta de conclusao desejada</Label>
+                        <Input type="date" value={(editForm as any).data_conclusao_desejada || ""} onChange={e => setEditForm(p => ({ ...p, data_conclusao_desejada: e.target.value || null }))} />
+                      </div>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Detalhamento da solução</Label>
-                      <Textarea rows={3} className="resize-none text-sm" value={editForm.descricao_solucao || ""} onChange={e => setEditForm(p => ({ ...p, descricao_solucao: e.target.value }))} placeholder="Descreva a solução implementada..." />
+                      <Label className="text-xs">Detalhamento da soluηγo</Label>
+                      <Textarea rows={3} className="resize-none text-sm" value={editForm.descricao_solucao || ""} onChange={e => setEditForm(p => ({ ...p, descricao_solucao: e.target.value }))} placeholder="Descreva a soluηγo implementada..." />
                     </div>
                     <div className="flex gap-2 pt-1">
                       <Button size="sm" onClick={handleSalvarEdicao} disabled={savingItem} className="gap-1">
@@ -826,12 +1005,12 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                       <span className="text-[9px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{TIPO_OPTIONS.find(t => t.value === itemDetalhado.tipo)?.label}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div><p className="text-[10px] text-muted-foreground">Criado por</p><p className="font-medium">{itemDetalhado.criado_por_nome || "—"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Atribuído para</p><p className="font-medium">{itemDetalhado.atribuido_para_nome || "—"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Estimativa</p><p className="font-medium">{itemDetalhado.estimativa_horas ? `${itemDetalhado.estimativa_horas}h` : "—"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Tempo efetivo</p><p className="font-medium">{itemDetalhado.tempo_efetivo_horas ? `${itemDetalhado.tempo_efetivo_horas}h` : "—"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Data prevista</p><p className="font-medium">{itemDetalhado.data_prevista ? format(parseISO(itemDetalhado.data_prevista), "dd/MM/yyyy") : "—"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Data conclusão</p><p className="font-medium">{itemDetalhado.data_conclusao ? format(parseISO(itemDetalhado.data_conclusao), "dd/MM/yyyy") : "—"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Criado por</p><p className="font-medium">{itemDetalhado.criado_por_nome || ""}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Atribuνdo para</p><p className="font-medium">{itemDetalhado.atribuido_para_nome || ""}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Estimativa</p><p className="font-medium">{itemDetalhado.estimativa_horas ? `${itemDetalhado.estimativa_horas}h` : ""}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Tempo efetivo</p><p className="font-medium">{itemDetalhado.tempo_efetivo_horas ? `${itemDetalhado.tempo_efetivo_horas}h` : ""}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Data prevista</p><p className="font-medium">{itemDetalhado.data_prevista ? format(parseISO(itemDetalhado.data_prevista), "dd/MM/yyyy") : ""}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Data conclusγo</p><p className="font-medium">{itemDetalhado.data_conclusao ? format(parseISO(itemDetalhado.data_conclusao), "dd/MM/yyyy") : ""}</p></div>
                     </div>
                     {itemDetalhado.descricao_solicitante && (
                       <div>
@@ -847,7 +1026,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                     )}
                     {itemDetalhado.descricao_solucao && (
                       <div>
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Solução implementada</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Soluηγo implementada</p>
                         <p className="text-xs text-foreground whitespace-pre-wrap bg-emerald-50 border border-emerald-100 rounded-lg p-3">{itemDetalhado.descricao_solucao}</p>
                       </div>
                     )}
@@ -855,7 +1034,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 )}
               </TabsContent>
 
-              {/* ── ABA PARTICIPANTES ── */}
+              {/* ?? ABA PARTICIPANTES ?? */}
               <TabsContent value="participantes" className="flex-1 overflow-y-auto px-5 pb-4 mt-3 space-y-4">
                 {loadingParticipantes ? (
                   <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
@@ -889,7 +1068,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Adicionar participante</p>
                         <div className="grid grid-cols-2 gap-2">
                           <Select value={novoPartUserId} onValueChange={setNovoPartUserId}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar usuário" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar usuαrio" /></SelectTrigger>
                             <SelectContent>
                               {profilesDisponiveis.filter(p => !participantes.find(pt => pt.user_id === p.user_id)).map(p => (
                                 <SelectItem key={p.user_id} value={p.user_id}>{p.name}</SelectItem>
@@ -914,7 +1093,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 )}
               </TabsContent>
 
-              {/* ── ABA COMENTÁRIOS ── */}
+              {/* ?? ABA COMENTΑRIOS ?? */}
               <TabsContent value="comentarios" className="flex-1 flex flex-col overflow-hidden mt-3">
                 <div className="flex-1 overflow-y-auto px-5 space-y-3 pb-3">
                   {loadingDetalhe ? (
@@ -922,7 +1101,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   ) : comentarios.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-8 text-center">
                       <MessageSquare className="h-6 w-6 text-muted-foreground/30" />
-                      <p className="text-xs text-muted-foreground">Nenhum comentário ainda</p>
+                      <p className="text-xs text-muted-foreground">Nenhum comentαrio ainda</p>
                     </div>
                   ) : (
                     comentarios.map(com => (
@@ -945,7 +1124,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   <Textarea
                     value={novoComentario}
                     onChange={e => setNovoComentario(e.target.value)}
-                    placeholder="Escreva um comentário..."
+                    placeholder="Escreva um comentαrio..."
                     rows={2}
                     className="resize-none text-sm flex-1"
                     onKeyDown={e => { if (e.key === "Enter" && e.ctrlKey) handleEnviarComentario(); }}
@@ -956,14 +1135,14 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 </div>
               </TabsContent>
 
-              {/* ── ABA HISTÓRICO ── */}
+              {/* ?? ABA HISTΣRICO ?? */}
               <TabsContent value="historico" className="flex-1 overflow-y-auto px-5 pb-4 mt-3">
                 {loadingDetalhe ? (
                   <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
                 ) : historico.length === 0 ? (
                   <div className="flex flex-col items-center gap-2 py-8 text-center">
                     <History className="h-6 w-6 text-muted-foreground/30" />
-                    <p className="text-xs text-muted-foreground">Nenhum histórico disponível</p>
+                    <p className="text-xs text-muted-foreground">Nenhum histσrico disponνvel</p>
                   </div>
                 ) : (
                   <div className="relative">
@@ -1003,14 +1182,14 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           </DialogContent>
         </Dialog>
       )}
-      {/* Dialog configuração de colunas — BL-004-D */}
+      {/* Dialog configuraηγo de colunas  BL-004-D */}
       {isCoordinator && (
         <Dialog open={configColunasOpen} onOpenChange={setConfigColunasOpen}>
           <DialogContent className="flex flex-col gap-0 p-0 max-h-[85dvh] w-full max-w-md">
             <DialogHeader className="shrink-0 border-b px-5 py-4">
               <div className="flex items-center gap-2 pr-8">
                 <Settings2 className="h-5 w-5 text-violet-600" />
-                <DialogTitle className="text-base">Configurar colunas — {projetoNome}</DialogTitle>
+                <DialogTitle className="text-base">Configurar colunas  {projetoNome}</DialogTitle>
               </div>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
@@ -1053,7 +1232,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                     {savingColuna ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}Criar
                   </Button>
                 </div>
-                <p className="text-[9px] text-muted-foreground">Nova coluna inserida antes de Cancelado. Colunas protegidas podem ser renomeadas mas não excluídas.</p>
+                <p className="text-[9px] text-muted-foreground">Nova coluna inserida antes de Cancelado. Colunas protegidas podem ser renomeadas mas nγo excluνdas.</p>
               </div>
             </div>
             <DialogFooter className="shrink-0 border-t px-5 py-3">

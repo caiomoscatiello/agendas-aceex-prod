@@ -1,5 +1,5 @@
 ﻿// src/components/consultor/hooks/useBacklog.ts
-// BL-004-B — Backlog do Projeto
+// BL-004-B � Backlog do Projeto
 
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -36,6 +36,7 @@ export type BacklogItem = {
   atribuido_para: string | null;
   data_prevista: string | null;
   data_conclusao: string | null;
+  data_conclusao_desejada: string | null;
   documento_url: string | null;
   documento_nome: string | null;
   visivel_cliente: boolean;
@@ -102,7 +103,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
         .order("ordem"),
     ]);
 
-    // Buscar nomes dos usuários
+    // Buscar nomes dos usu�rios
     const userIds = [
       ...new Set([
         ...(itemRes.data || []).map((i: any) => i.criado_por),
@@ -121,7 +122,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
 
     const itemsComNomes = (itemRes.data || []).map((i: any) => ({
       ...i,
-      criado_por_nome: profilesMap[i.criado_por] || "—",
+      criado_por_nome: profilesMap[i.criado_por] || "�",
       atribuido_para_nome: i.atribuido_para ? profilesMap[i.atribuido_para] : null,
     }));
 
@@ -151,7 +152,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
       .update({ coluna_id: novaColunaId })
       .in("id", idsParaMover);
 
-    // Registrar histórico
+    // Registrar hist�rico
     const tipo = moverFilhos && idsParaMover.length > 1 ? "movimentacao_bloco" : "movimentacao";
     await supabase.from("projeto_backlog_historico").insert({
       backlog_item_id: itemId,
@@ -197,7 +198,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
     setSavingItem(false);
     if (error || !novo) return null;
 
-    // Histórico de criação
+    // Hist�rico de cria��o
     await supabase.from("projeto_backlog_historico").insert({
       backlog_item_id: novo.id,
       para_coluna_id: novo.coluna_id,
@@ -212,19 +213,36 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
 
   const salvarItem = async (itemId: string, data: Partial<BacklogItem>) => {
     setSavingItem(true);
+    const itemAtual = items.find(i => i.id === itemId);
+    const mudouColuna = data.coluna_id && itemAtual && data.coluna_id !== itemAtual.coluna_id;
+
     await supabase
       .from("projeto_backlog")
       .update({ ...data, updated_at: new Date().toISOString() })
       .eq("id", itemId);
 
-    // Histórico de edição
-    await supabase.from("projeto_backlog_historico").insert({
-      backlog_item_id: itemId,
-      para_coluna_id: items.find(i => i.id === itemId)?.coluna_id || "",
-      movido_por: userId!,
-      tipo_evento: "edicao",
-      detalhe: data,
-    });
+    if (mudouColuna) {
+      // Movimentacao com snapshot de fase
+      await supabase.from("projeto_backlog_historico").insert({
+        backlog_item_id: itemId,
+        de_coluna_id: itemAtual!.coluna_id,
+        para_coluna_id: data.coluna_id!,
+        movido_por: userId!,
+        tipo_evento: "movimentacao",
+        data_prevista_fase: data.data_prevista || itemAtual!.data_prevista || null,
+        atribuido_para_fase: data.atribuido_para || itemAtual!.atribuido_para || null,
+        detalhe: { origem: "edicao" },
+      });
+    } else {
+      // Edicao simples
+      await supabase.from("projeto_backlog_historico").insert({
+        backlog_item_id: itemId,
+        para_coluna_id: itemAtual?.coluna_id || "",
+        movido_por: userId!,
+        tipo_evento: "edicao",
+        detalhe: data,
+      });
+    }
 
     setSavingItem(false);
     await loadBoard();
@@ -260,7 +278,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
 
     return comentarios.map((c: any) => ({
       ...c,
-      autor_nome: profilesMap[c.autor_id] || "—",
+      autor_nome: profilesMap[c.autor_id] || "�",
     }));
   };
 
@@ -273,7 +291,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
 
     if (!historico?.length) return [];
 
-    // Buscar nomes das colunas e usuários
+    // Buscar nomes das colunas e usu�rios
     const colunaIds = [
       ...new Set([
         ...historico.map((h: any) => h.de_coluna_id).filter(Boolean),
@@ -300,7 +318,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
       ...h,
       de_coluna_nome: h.de_coluna_id ? colMap[h.de_coluna_id] : null,
       para_coluna_nome: h.para_coluna_id ? colMap[h.para_coluna_id] : null,
-      movido_por_nome: profMap[h.movido_por] || "—",
+      movido_por_nome: profMap[h.movido_por] || "�",
     }));
   };
 
@@ -378,6 +396,51 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
     await supabase.from("projeto_backlog_participantes").delete().eq("id", participanteId);
   };
 
+
+  // Carregar historico completo para o Excel Evolutivo
+  const loadHistoricoEvolutivo = async (): Promise<any[]> => {
+    const { data: hist } = await supabase
+      .from("projeto_backlog_historico")
+      .select("*")
+      .in("tipo_evento", ["criacao", "movimentacao", "movimentacao_bloco"])
+      .order("moved_at", { ascending: true });
+
+    if (!hist?.length) return [];
+
+    const colunaIds = [...new Set([
+      ...hist.map((h: any) => h.de_coluna_id).filter(Boolean),
+      ...hist.map((h: any) => h.para_coluna_id).filter(Boolean),
+    ])];
+    const userIds = [...new Set([
+      ...hist.map((h: any) => h.movido_por).filter(Boolean),
+      ...hist.map((h: any) => h.atribuido_para_fase).filter(Boolean),
+    ])];
+
+    const [colRes, profRes] = await Promise.all([
+      colunaIds.length > 0
+        ? supabase.from("projeto_backlog_colunas").select("id, nome, ordem").in("id", colunaIds)
+        : Promise.resolve({ data: [] }),
+      userIds.length > 0
+        ? supabase.from("profiles").select("user_id, name").in("user_id", userIds)
+        : Promise.resolve({ data: [] }),
+    ]);
+
+    const colMap: Record<string, any> = {};
+    (colRes.data || []).forEach((c: any) => { colMap[c.id] = c; });
+    const profMap: Record<string, string> = {};
+    (profRes.data || []).forEach((p: any) => { profMap[p.user_id] = p.name; });
+
+    return hist.map((h: any) => ({
+      ...h,
+      de_coluna_nome: h.de_coluna_id ? colMap[h.de_coluna_id]?.nome : null,
+      de_coluna_ordem: h.de_coluna_id ? colMap[h.de_coluna_id]?.ordem : null,
+      para_coluna_nome: h.para_coluna_id ? colMap[h.para_coluna_id]?.nome : null,
+      para_coluna_ordem: h.para_coluna_id ? colMap[h.para_coluna_id]?.ordem : null,
+      movido_por_nome: profMap[h.movido_por] || "�",
+      atribuido_para_nome: h.atribuido_para_fase ? profMap[h.atribuido_para_fase] : null,
+    }));
+  };
+
   const itemsPorColuna = (colunaId: string) =>
     items
       .filter(i => i.coluna_id === colunaId && !i.pai_id)
@@ -391,12 +454,9 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
   return {
     colunas, items, loadingBoard, savingItem,
     loadBoard, moverItem, criarItem, salvarItem, adicionarComentario,
-    loadComentarios, loadHistorico,
+    loadComentarios, loadHistorico, loadHistoricoEvolutivo,
     criarColuna, renomearColuna, excluirColuna, reordenarColunas,
     loadParticipantes, adicionarParticipante, removerParticipante,
     itemsPorColuna, filhosDoItem, temBoard,
   };
 }
-
-
-
