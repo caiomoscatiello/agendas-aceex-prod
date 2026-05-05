@@ -817,13 +817,14 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
               <List className="h-3.5 w-3.5" />
             </button>
             {isCoordinator && (
-              <button
-                onClick={() => setConfigColunasOpen(true)}
-                className="p-1.5 rounded-lg border border-transparent text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
-                title="Configurar colunas"
-              >
-                <Settings2 className="h-3.5 w-3.5" />
-              </button>
+              <>
+                <button
+                  onClick={() => setConfigColunasOpen(true)}
+                  className="p-1.5 rounded-lg border border-transparent text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
+                  title="Configurar colunas"
+                >
+                  <Settings2 className="h-3.5 w-3.5" />
+                </button>
                 <button
                   onClick={handleExportarExcel}
                   disabled={excelExporting}
@@ -832,6 +833,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 >
                   {excelExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
                 </button>
+              </>
             )}
             <Button size="sm" className="gap-1.5 h-7 text-xs" onClick={() => { setNovoItemColuna(undefined); setNovoItemOpen(true); }}>
               <Plus className="h-3.5 w-3.5" />
