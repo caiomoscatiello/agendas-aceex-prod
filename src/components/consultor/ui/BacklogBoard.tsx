@@ -277,10 +277,10 @@ function NovoItemModal({
               <Select value={prioridade} onValueChange={setPrioridade}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="critica">? Crítica</SelectItem>
-                  <SelectItem value="alta">? Alta</SelectItem>
-                  <SelectItem value="media">? Média</SelectItem>
-                  <SelectItem value="baixa">? Baixa</SelectItem>
+                  <SelectItem value="critica">Crítica</SelectItem>
+                  <SelectItem value="alta">Alta</SelectItem>
+                  <SelectItem value="media">Média</SelectItem>
+                  <SelectItem value="baixa">Baixa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -824,6 +824,14 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
               >
                 <Settings2 className="h-3.5 w-3.5" />
               </button>
+                <button
+                  onClick={handleExportarExcel}
+                  disabled={excelExporting}
+                  className="p-1.5 rounded-lg border border-transparent text-muted-foreground hover:text-foreground hover:bg-muted transition-colors disabled:opacity-50"
+                  title="Exportar Excel"
+                >
+                  {excelExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+                </button>
             )}
             <Button size="sm" className="gap-1.5 h-7 text-xs" onClick={() => { setNovoItemColuna(undefined); setNovoItemOpen(true); }}>
               <Plus className="h-3.5 w-3.5" />
@@ -932,10 +940,10 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <Select value={editForm.prioridade || "media"} onValueChange={v => setEditForm(p => ({ ...p, prioridade: v }))}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="critica">? Crítica</SelectItem>
-                            <SelectItem value="alta">? Alta</SelectItem>
-                            <SelectItem value="media">? Média</SelectItem>
-                            <SelectItem value="baixa">? Baixa</SelectItem>
+                            <SelectItem value="critica">Crítica</SelectItem>
+                            <SelectItem value="alta">Alta</SelectItem>
+                            <SelectItem value="media">Média</SelectItem>
+                            <SelectItem value="baixa">Baixa</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
@@ -945,10 +953,10 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                           <SelectTrigger><SelectValue placeholder="Sem reclassificação" /></SelectTrigger>
                           <SelectContent>
                             <SelectItem value="none">Sem reclassificação</SelectItem>
-                            <SelectItem value="critica">? Crítica</SelectItem>
-                            <SelectItem value="alta">? Alta</SelectItem>
-                            <SelectItem value="media">? Média</SelectItem>
-                            <SelectItem value="baixa">? Baixa</SelectItem>
+                            <SelectItem value="critica">Crítica</SelectItem>
+                            <SelectItem value="alta">Alta</SelectItem>
+                            <SelectItem value="media">Média</SelectItem>
+                            <SelectItem value="baixa">Baixa</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
