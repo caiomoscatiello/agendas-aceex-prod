@@ -37,17 +37,17 @@ type Props = {
 };
 
 const PRIORIDADE_CONFIG: Record<string, { label: string; cor: string; corBg: string }> = {
-  critica: { label: "Crítica",  cor: "text-red-700",    corBg: "bg-red-100" },
+  critica: { label: "Crνtica",  cor: "text-red-700",    corBg: "bg-red-100" },
   alta:    { label: "Alta",     cor: "text-amber-700",  corBg: "bg-amber-100" },
-  media:   { label: "Média",    cor: "text-blue-700",   corBg: "bg-blue-100" },
+  media:   { label: "Mιdia",    cor: "text-blue-700",   corBg: "bg-blue-100" },
   baixa:   { label: "Baixa",   cor: "text-emerald-700", corBg: "bg-emerald-100" },
 };
 
 const TIPO_OPTIONS = [
   { value: "melhoria",     label: "Melhoria" },
   { value: "bug",          label: "Bug" },
-  { value: "duvida",       label: "Dúvida" },
-  { value: "configuracao", label: "Configuração" },
+  { value: "duvida",       label: "Dϊvida" },
+  { value: "configuracao", label: "Configuraηγo" },
   { value: "treinamento",  label: "Treinamento" },
   { value: "outro",        label: "Outro" },
 ];
@@ -58,7 +58,7 @@ const FRENTE_OPTIONS = [
   { value: "estoque",     label: "Estoque" },
   { value: "compras",     label: "Compras" },
   { value: "rh",          label: "RH" },
-  { value: "contabil",    label: "Contábil" },
+  { value: "contabil",    label: "Contαbil" },
   { value: "outro",       label: "Outro" },
 ];
 
@@ -118,7 +118,7 @@ function ItemCard({
         <PriBadge prioridade={item.prioridade} reclassificada={item.prioridade_reclassificada} />
       </div>
 
-      {/* Título */}
+      {/* Tνtulo */}
       <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{item.titulo}</p>
 
       {/* Meta */}
@@ -136,7 +136,7 @@ function ItemCard({
         )}
       </div>
 
-      {/* Data e atribuição */}
+      {/* Data e atribuiηγo */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           {item.data_prevista && (
@@ -170,7 +170,7 @@ function ItemCard({
         </div>
       </div>
 
-      {/* Botão mover (alternativa ao drag) */}
+      {/* Botγo mover (alternativa ao drag) */}
       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
         {colunas
           .filter(c => c.id !== item.coluna_id)
@@ -235,7 +235,7 @@ function NovoItemModal({
   }, [open, colunaInicial, colunas]);
 
   const handleSave = () => {
-    if (!titulo.trim()) { toast({ title: "Informe o título", variant: "destructive" }); return; }
+    if (!titulo.trim()) { toast({ title: "Informe o tνtulo", variant: "destructive" }); return; }
     onSave({
       titulo: titulo.trim(),
       tipo, prioridade, frente_modulo: frente,
@@ -257,7 +257,7 @@ function NovoItemModal({
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           <div className="space-y-1">
-            <Label className="text-xs">Título *</Label>
+            <Label className="text-xs">Tνtulo *</Label>
             <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Descreva o item de backlog..." autoFocus />
           </div>
           <div className="space-y-1">
@@ -277,15 +277,15 @@ function NovoItemModal({
               <Select value={prioridade} onValueChange={setPrioridade}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="critica">Crítica</SelectItem>
+                  <SelectItem value="critica">Crνtica</SelectItem>
                   <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="media">Média</SelectItem>
+                  <SelectItem value="media">Mιdia</SelectItem>
                   <SelectItem value="baixa">Baixa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Frente / Módulo</Label>
+              <Label className="text-xs">Frente / Mσdulo</Label>
               <Select value={frente} onValueChange={setFrente}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{FRENTE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -341,7 +341,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [itemDetalhado, setItemDetalhado] = useState<BacklogItem | null>(null);
   const [dragItemId, setDragItemId] = useState<string | null>(null);
   const [dragOverColuna, setDragOverColuna] = useState<string | null>(null);
-  // BL-004-C - Detalhe, histórico e comentários
+  // BL-004-C - Detalhe, histσrico e comentαrios
   const [detalheTab, setDetalheTab] = useState("info");
   const [comentarios, setComentarios] = useState<BacklogComentario[]>([]);
   const [historico, setHistorico] = useState<BacklogHistorico[]>([]);
@@ -370,162 +370,417 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     if (!projetoId) return;
     setExcelExporting(true);
     try {
-      const XLSX = await import("xlsx");
+      const ExcelJS = (await import("exceljs")).default;
+      const wb = new ExcelJS.Workbook();
+      wb.creator = "Aceex";
+      wb.created = new Date();
+
       const hoje = new Date().toLocaleDateString("pt-BR");
       const nomeArq = `${projetoNome}_Backlog_${new Date().toISOString().split("T")[0]}.xlsx`;
 
-      // Dados base
-      const itensFiltrados = items.filter(i => !i.pai_id);
-      const historico = await loadHistoricoEvolutivo();
+      // Cores
+      const COR_HEADER = "1F4E79";
+      const COR_HEADER_FONT = "FFFFFF";
+      const COR_ALT = "F2F2F2";
+      const COR_CRIT_BG = "FCEBEB"; const COR_CRIT_FG = "A32D2D";
+      const COR_ALTA_BG = "FAEEDA"; const COR_ALTA_FG = "854F0B";
+      const COR_MED_BG  = "E6F1FB"; const COR_MED_FG  = "185FA5";
+      const COR_BX_BG   = "EAF3DE"; const COR_BX_FG   = "3B6D11";
+      const COR_VENC    = "A32D2D";
 
-      // Helpers
-      const fmtData = (d: string | null) => d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "";
-      const isVencida = (d: string | null, col: string) => {
+      const priCores: Record<string, { bg: string; fg: string }> = {
+        critica: { bg: COR_CRIT_BG, fg: COR_CRIT_FG },
+        alta:    { bg: COR_ALTA_BG, fg: COR_ALTA_FG },
+        media:   { bg: COR_MED_BG,  fg: COR_MED_FG  },
+        baixa:   { bg: COR_BX_BG,   fg: COR_BX_FG   },
+      };
+
+      const stCores: Record<string, { bg: string; fg: string }> = {
+        aberto:       { bg: "FAEEDA", fg: "854F0B" },
+        em_andamento: { bg: "E6F1FB", fg: "185FA5" },
+        em_revisao:   { bg: "EEEDFE", fg: "3C3489" },
+        concluido:    { bg: "EAF3DE", fg: "3B6D11" },
+        cancelado:    { bg: "F1EFE8", fg: "5F5E5A" },
+      };
+
+      const styleHeader = (row: ExcelJS.Row) => {
+        row.eachCell(cell => {
+          cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + COR_HEADER } };
+          cell.font = { bold: true, color: { argb: "FF" + COR_HEADER_FONT }, name: "Arial", size: 10 };
+          cell.alignment = { vertical: "middle", horizontal: "left", wrapText: false };
+          cell.border = { bottom: { style: "thin", color: { argb: "FF2a5a8a" } } };
+        });
+        row.height = 20;
+      };
+
+      const styleAlt = (row: ExcelJS.Row, rowIdx: number) => {
+        if (rowIdx % 2 === 0) {
+          row.eachCell(cell => {
+            cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + COR_ALT } };
+          });
+        }
+        row.eachCell(cell => {
+          cell.font = { name: "Arial", size: 10 };
+          cell.alignment = { vertical: "middle" };
+        });
+        row.height = 18;
+      };
+
+      const fmtData = (d: string | null | undefined) =>
+        d ? new Date(d + "T00:00:00").toLocaleDateString("pt-BR") : "";
+
+      const isVencida = (d: string | null | undefined, colId: string) => {
         if (!d) return false;
-        const col_ = colunas.find(c => c.id === col);
-        if (col_?.status_sistema === "concluido" || col_?.status_sistema === "cancelado") return false;
+        const col = colunas.find(c => c.id === colId);
+        if (col?.status_sistema === "concluido" || col?.status_sistema === "cancelado") return false;
         return new Date(d + "T00:00:00") < new Date();
       };
 
-      // ?? ABA DASHBOARD ?????????????????????????????????????????????
-      const total = itensFiltrados.length;
-      const concluidos = itensFiltrados.filter(i => colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length;
-      const criticos = itensFiltrados.filter(i => (i.prioridade_reclassificada || i.prioridade) === "critica" &&
-        colunas.find(c => c.id === i.coluna_id)?.status_sistema !== "concluido").length;
-      const vencidos = itensFiltrados.filter(i => isVencida(i.data_prevista, i.coluna_id)).length;
+      const itensFiltrados = items.filter(i => !i.pai_id);
 
-      const colCount = colunas.map(col => ({
-        Coluna: col.nome,
-        Total: itensFiltrados.filter(i => i.coluna_id === col.id).length,
-        Critica: itensFiltrados.filter(i => i.coluna_id === col.id && (i.prioridade_reclassificada || i.prioridade) === "critica").length,
-        Alta: itensFiltrados.filter(i => i.coluna_id === col.id && (i.prioridade_reclassificada || i.prioridade) === "alta").length,
-        Media: itensFiltrados.filter(i => i.coluna_id === col.id && (i.prioridade_reclassificada || i.prioridade) === "media").length,
-        Baixa: itensFiltrados.filter(i => i.coluna_id === col.id && (i.prioridade_reclassificada || i.prioridade) === "baixa").length,
-      }));
-
-      const dashData = [
-        ["Backlog do Projeto", projetoNome],
-        ["Gerado em", hoje],
-        ["Exportado por", "coordenador"],
-        [],
-        ["KPIs", ""],
-        ["Total de itens", total],
-        ["Concluidos", concluidos],
-        ["Criticos em aberto", criticos],
-        ["Vencidos", vencidos],
-        [],
-        ["Itens por coluna", "Total", "Critica", "Alta", "Media", "Baixa"],
-        ...colCount.map(r => [r.Coluna, r.Total, r.Critica, r.Alta, r.Media, r.Baixa]),
+      // ?? ABA DASHBOARD ?????????????????????????????????????????????????????
+      const wsDash = wb.addWorksheet("Dashboard");
+      wsDash.columns = [
+        { key: "a", width: 28 }, { key: "b", width: 22 },
+        { key: "c", width: 14 }, { key: "d", width: 14 },
+        { key: "e", width: 14 }, { key: "f", width: 14 },
       ];
 
-      // ?? ABA BACKLOG ???????????????????????????????????????????????
-      const backlogData = itensFiltrados.map(i => {
-        const col = colunas.find(c => c.id === i.coluna_id);
-        return {
-          "Codigo": i.codigo,
-          "Titulo": i.titulo,
-          "Tipo": i.tipo,
-          "Prioridade": i.prioridade_reclassificada || i.prioridade,
-          "Frente/Modulo": i.frente_modulo,
-          "Status": col?.nome || "",
-          "Responsavel": i.atribuido_para_nome || "",
-          "Estimativa (h)": i.estimativa_horas || "",
-          "Tempo Efetivo (h)": i.tempo_efetivo_horas || "",
-          "Data prevista": fmtData(i.data_prevista),
-          "Meta conclusao": fmtData((i as any).data_conclusao_desejada),
-          "Data conclusao": fmtData(i.data_conclusao),
-          "Criado em": fmtData(i.created_at.split("T")[0]),
-          "Criado por": i.criado_por_nome || "",
-        };
+      // Titulo
+      wsDash.mergeCells("A1:F1");
+      const tituloCell = wsDash.getCell("A1");
+      tituloCell.value = `Backlog do Projeto - ${projetoNome}`;
+      tituloCell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + COR_HEADER } };
+      tituloCell.font = { bold: true, color: { argb: "FFFFFFFF" }, name: "Arial", size: 13 };
+      tituloCell.alignment = { horizontal: "left", vertical: "middle" };
+      wsDash.getRow(1).height = 28;
+
+      wsDash.getCell("A2").value = "Gerado em";
+      wsDash.getCell("B2").value = hoje;
+      wsDash.getCell("A3").value = "Exportado por";
+      wsDash.getCell("B3").value = "coordenador";
+      [2,3].forEach(r => {
+        wsDash.getRow(r).font = { name: "Arial", size: 10, color: { argb: "FF666666" } };
+        wsDash.getRow(r).height = 16;
       });
 
-      // ?? ABA RESUMO ????????????????????????????????????????????????
-      const resumoData = colunas.map(col => {
+      // KPIs
+      const total = itensFiltrados.length;
+      const concluidos = itensFiltrados.filter(i => colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length;
+      const criticos = itensFiltrados.filter(i => (i.prioridade_reclassificada || i.prioridade) === "critica" && colunas.find(c => c.id === i.coluna_id)?.status_sistema !== "concluido").length;
+      const vencidos = itensFiltrados.filter(i => isVencida(i.data_prevista, i.coluna_id)).length;
+
+      wsDash.addRow([]);
+      const kpiHeaderRow = wsDash.addRow(["KPI", "Valor"]);
+      styleHeader(kpiHeaderRow);
+      wsDash.mergeCells(`A${kpiHeaderRow.number}:B${kpiHeaderRow.number}`);
+      kpiHeaderRow.getCell(1).value = "Indicadores";
+
+      const kpis = [
+        ["Total de itens", total, "FF185FA5"],
+        ["Concluidos", concluidos, "FF3B6D11"],
+        ["Criticos em aberto", criticos, "FFA32D2D"],
+        ["Vencidos", vencidos, "FF854F0B"],
+      ];
+      kpis.forEach(([label, val, color], idx) => {
+        const r = wsDash.addRow([label, val]);
+        styleAlt(r, idx);
+        r.getCell(2).font = { bold: true, color: { argb: color as string }, name: "Arial", size: 11 };
+      });
+
+      wsDash.addRow([]);
+      const colHeaderRow = wsDash.addRow(["Coluna", "Total", "Critica", "Alta", "Media", "Baixa"]);
+      styleHeader(colHeaderRow);
+
+      colunas.sort((a, b) => a.ordem - b.ordem).forEach((col, idx) => {
         const iCol = itensFiltrados.filter(i => i.coluna_id === col.id);
-        return {
-          "Coluna": col.nome,
-          "Total": iCol.length,
-          "Critica": iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "critica").length,
-          "Alta": iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "alta").length,
-          "Media": iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "media").length,
-          "Baixa": iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "baixa").length,
-        };
+        const r = wsDash.addRow([
+          col.nome,
+          iCol.length,
+          iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "critica").length,
+          iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "alta").length,
+          iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "media").length,
+          iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "baixa").length,
+        ]);
+        styleAlt(r, idx);
+        if (iCol.filter(i => (i.prioridade_reclassificada || i.prioridade) === "critica").length > 0) {
+          r.getCell(3).font = { bold: true, color: { argb: "FF" + COR_CRIT_FG }, name: "Arial", size: 10 };
+        }
       });
 
-      // ?? ABA EVOLUTIVO ?????????????????????????????????????????????
-      // Construir mapa de historico por item e coluna
-      const colsSorted = [...colunas].sort((a, b) => a.ordem - b.ordem)
+      // ?? ABA BACKLOG ????????????????????????????????????????????????????????
+      const wsBacklog = wb.addWorksheet("Backlog");
+      wsBacklog.columns = [
+        { header: "Codigo",        key: "codigo",    width: 10 },
+        { header: "Titulo",        key: "titulo",    width: 42 },
+        { header: "Tipo",          key: "tipo",      width: 14 },
+        { header: "Prioridade",    key: "prioridade",width: 12 },
+        { header: "Frente",        key: "frente",    width: 14 },
+        { header: "Status",        key: "status",    width: 16 },
+        { header: "Responsavel",   key: "resp",      width: 22 },
+        { header: "Est (h)",       key: "est",       width: 10 },
+        { header: "Efetivo (h)",   key: "ef",        width: 12 },
+        { header: "Data prevista", key: "prev",      width: 14 },
+        { header: "Meta conclusao",key: "meta",      width: 14 },
+        { header: "Conclusao",     key: "concl",     width: 14 },
+        { header: "Criado em",     key: "criado",    width: 14 },
+        { header: "Criado por",    key: "criadopor", width: 22 },
+      ];
+
+      styleHeader(wsBacklog.getRow(1));
+      wsBacklog.views = [{ state: "frozen", ySplit: 1 }];
+      wsBacklog.autoFilter = { from: "A1", to: "N1" };
+
+      itensFiltrados.forEach((item, idx) => {
+        const col = colunas.find(c => c.id === item.coluna_id);
+        const pri = item.prioridade_reclassificada || item.prioridade;
+        const venc = isVencida(item.data_prevista, item.coluna_id);
+
+        const r = wsBacklog.addRow({
+          codigo: item.codigo,
+          titulo: item.titulo,
+          tipo: item.tipo,
+          prioridade: pri,
+          frente: item.frente_modulo,
+          status: col?.nome || "",
+          resp: item.atribuido_para_nome || "",
+          est: item.estimativa_horas || "",
+          ef: item.tempo_efetivo_horas || "",
+          prev: fmtData(item.data_prevista),
+          meta: fmtData((item as any).data_conclusao_desejada),
+          concl: fmtData(item.data_conclusao),
+          criado: fmtData(item.created_at.split("T")[0]),
+          criadopor: item.criado_por_nome || "",
+        });
+        styleAlt(r, idx);
+
+        // Cor prioridade
+        const pc = priCores[pri];
+        if (pc) {
+          r.getCell(4).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + pc.bg } };
+          r.getCell(4).font = { bold: true, color: { argb: "FF" + pc.fg }, name: "Arial", size: 10 };
+        }
+
+        // Cor status
+        const sc = stCores[col?.status_sistema || ""];
+        if (sc) {
+          r.getCell(6).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + sc.bg } };
+          r.getCell(6).font = { bold: true, color: { argb: "FF" + sc.fg }, name: "Arial", size: 10 };
+        }
+
+        // Data vencida em vermelho
+        if (venc) {
+          r.getCell(10).font = { bold: true, color: { argb: "FF" + COR_VENC }, name: "Arial", size: 10 };
+        }
+
+        // Codigo em mono
+        r.getCell(1).font = { name: "Courier New", size: 9, color: { argb: "FF666666" } };
+      });
+
+      // ?? ABA RESUMO ?????????????????????????????????????????????????????????
+      const wsResumo = wb.addWorksheet("Resumo");
+      wsResumo.columns = [
+        { width: 20 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 }, { width: 10 },
+      ];
+
+      const addResumoHeader = (titulo: string) => {
+        const r = wsResumo.addRow([titulo]);
+        wsResumo.mergeCells(`A${r.number}:F${r.number}`);
+        r.getCell(1).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + COR_HEADER } };
+        r.getCell(1).font = { bold: true, color: { argb: "FFFFFFFF" }, name: "Arial", size: 10 };
+        r.height = 20;
+        return r;
+      };
+
+      addResumoHeader("Itens por coluna x prioridade");
+      const rh = wsResumo.addRow(["Coluna", "Total", "Critica", "Alta", "Media", "Baixa"]);
+      styleHeader(rh);
+
+      colunas.sort((a,b) => a.ordem - b.ordem).forEach((col, idx) => {
+        const iCol = itensFiltrados.filter(i => i.coluna_id === col.id);
+        const r = wsResumo.addRow([
+          col.nome, iCol.length,
+          iCol.filter(i => (i.prioridade_reclassificada||i.prioridade)==="critica").length,
+          iCol.filter(i => (i.prioridade_reclassificada||i.prioridade)==="alta").length,
+          iCol.filter(i => (i.prioridade_reclassificada||i.prioridade)==="media").length,
+          iCol.filter(i => (i.prioridade_reclassificada||i.prioridade)==="baixa").length,
+        ]);
+        styleAlt(r, idx);
+        r.getCell(1).font = { bold: false, name: "Arial", size: 10 };
+      });
+
+      wsResumo.addRow([]);
+      addResumoHeader("Acuracia de estimativas");
+      const estH = wsResumo.addRow(["Metrica", "Valor"]);
+      styleHeader(estH);
+      const concl = itensFiltrados.filter(i => colunas.find(c=>c.id===i.coluna_id)?.status_sistema==="concluido");
+      const totalEst = itensFiltrados.reduce((s,i) => s+(i.estimativa_horas||0), 0);
+      const totalEf = concl.reduce((s,i) => s+(i.tempo_efetivo_horas||0), 0);
+      [
+        ["Total estimado (h)", totalEst],
+        ["Total efetivo - concluidos (h)", totalEf],
+        ["Itens vencidos", vencidos],
+        ["Itens concluidos", concluidos],
+      ].forEach(([label, val], idx) => {
+        const r = wsResumo.addRow([label, val]);
+        styleAlt(r, idx);
+      });
+
+      // ?? ABA EVOLUTIVO ??????????????????????????????????????????????????????
+      const wsEv = wb.addWorksheet("Evolutivo");
+      const colsSorted = [...colunas].sort((a,b) => a.ordem - b.ordem)
         .filter(c => c.status_sistema !== "cancelado");
 
-      // Header row 1: grupos de colunas
-      const evHeader1 = ["Codigo", "Titulo", "Prioridade", "Meta"];
-      colsSorted.forEach(col => { evHeader1.push(col.nome, ""); });
+      // Calcular larguras
+      const evColWidths = [10, 38, 12, 14];
+      colsSorted.forEach(() => { evColWidths.push(22, 18); });
+      wsEv.columns = evColWidths.map(w => ({ width: w }));
 
-      // Header row 2: sub-headers
-      const evHeader2 = ["", "", "", ""];
-      colsSorted.forEach(() => { evHeader2.push("Entrada / Resp", "Saida / Prev"); });
+      // Linha 1 - grupos de colunas (merged)
+      const ev1 = wsEv.addRow(["Codigo", "Titulo", "Prioridade", "Meta",
+        ...colsSorted.flatMap(col => [col.nome, ""])]);
+      styleHeader(ev1);
+      // Merge grupos
+      let colOffset = 5;
+      colsSorted.forEach(col => {
+        const startCol = colOffset;
+        const endCol = colOffset + 1;
+        if (startCol !== endCol) {
+          wsEv.mergeCells(1, startCol, 1, endCol);
+        }
+        const cell = wsEv.getCell(1, startCol);
+        cell.value = col.nome;
+        cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF16457A" } };
+        cell.font = { bold: true, color: { argb: "FFFFFFFF" }, name: "Arial", size: 10 };
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+        colOffset += 2;
+      });
 
-      const evRows = itensFiltrados.map(item => {
-        const row: any[] = [
+      // Linha 2 - sub-headers
+      const ev2 = wsEv.addRow(["", "", "", "",
+        ...colsSorted.flatMap(() => ["Entrada / Resp", "Saida / Prev"])]);
+      styleHeader(ev2);
+      ev2.eachCell(cell => {
+        cell.alignment = { horizontal: "center", vertical: "middle" };
+      });
+
+      wsEv.views = [{ state: "frozen", ySplit: 2, xSplit: 2 }];
+
+      const historico = await loadHistoricoEvolutivo();
+
+      // Cores para fases
+      const COR_FASE_PAST_BG = "F5F5F5";
+      const COR_FASE_PAST_FG = "999999";
+      const COR_FASE_CUR_BG  = "EAF3FB";
+      const COR_FASE_CUR_FG  = "0C447C";
+      const COR_FASE_CUR_BD  = "1F4E79";
+
+      itensFiltrados.forEach((item, rowIdx) => {
+        const pri = item.prioridade_reclassificada || item.prioridade;
+        const pc = priCores[pri];
+        const rowData: any[] = [
           item.codigo,
           item.titulo,
-          item.prioridade_reclassificada || item.prioridade,
+          pri,
           fmtData((item as any).data_conclusao_desejada),
         ];
 
         const itemHist = historico
-          .filter(h => h.backlog_item_id === item.id)
+          .filter((h: any) => h.backlog_item_id === item.id)
           .sort((a: any, b: any) => new Date(a.moved_at).getTime() - new Date(b.moved_at).getTime());
 
         colsSorted.forEach(col => {
-          // Encontrar quando o item entrou nesta coluna
           const entrada = itemHist.find((h: any) => h.para_coluna_id === col.id);
           const saida = itemHist.find((h: any) => h.de_coluna_id === col.id);
 
           if (!entrada) {
-            row.push("", "");
+            rowData.push("", "");
           } else {
             const entradaStr = fmtData(entrada.moved_at.split("T")[0]);
             const resp = entrada.atribuido_para_nome || entrada.movido_por_nome || "";
             const saidaStr = saida ? fmtData(saida.moved_at.split("T")[0]) : "";
             const prevStr = entrada.data_prevista_fase ? fmtData(entrada.data_prevista_fase) : "";
-            row.push(`${entradaStr}${resp ? " / " + resp : ""}`, saidaStr || (prevStr ? "prev: " + prevStr : ""));
+            rowData.push(
+              entradaStr + (resp ? " / " + resp : ""),
+              saidaStr || (prevStr ? "prev: " + prevStr : "")
+            );
           }
         });
 
-        return row;
+        const r = wsEv.addRow(rowData);
+        r.height = 18;
+        r.getCell(1).font = { name: "Courier New", size: 9, color: { argb: "FF888888" } };
+
+        // Cor prioridade
+        if (pc) {
+          r.getCell(3).fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + pc.bg } };
+          r.getCell(3).font = { bold: true, color: { argb: "FF" + pc.fg }, name: "Arial", size: 10 };
+        }
+
+        // Colorir fases
+        const colIdx = colunas.findIndex(c => c.id === item.coluna_id);
+        let cellOffset = 5;
+        colsSorted.forEach((col, ci) => {
+          const faseIdx = colsSorted.findIndex(c2 => c2.id === col.id);
+          const itemColIdx = colsSorted.findIndex(c2 => c2.id === item.coluna_id);
+          const entrada = itemHist.find((h: any) => h.para_coluna_id === col.id);
+
+          if (!entrada) {
+            // Futura - transparente
+            [cellOffset, cellOffset+1].forEach(cc => {
+              const cell = r.getCell(cc);
+              cell.font = { color: { argb: "FFCCCCCC" }, name: "Arial", size: 9 };
+              cell.alignment = { horizontal: "center", vertical: "middle" };
+            });
+          } else if (faseIdx < itemColIdx) {
+            // Passada - cinza claro
+            [cellOffset, cellOffset+1].forEach(cc => {
+              const cell = r.getCell(cc);
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + COR_FASE_PAST_BG } };
+              cell.font = { color: { argb: "FF" + COR_FASE_PAST_FG }, name: "Arial", size: 9 };
+              cell.alignment = { horizontal: "center", vertical: "middle" };
+            });
+          } else {
+            // Atual - azul claro com borda
+            [cellOffset, cellOffset+1].forEach(cc => {
+              const cell = r.getCell(cc);
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + COR_FASE_CUR_BG } };
+              cell.font = { bold: true, color: { argb: "FF" + COR_FASE_CUR_FG }, name: "Arial", size: 9 };
+              cell.alignment = { horizontal: "center", vertical: "middle" };
+              cell.border = {
+                top: { style: "thin", color: { argb: "FF" + COR_FASE_CUR_BD } },
+                bottom: { style: "thin", color: { argb: "FF" + COR_FASE_CUR_BD } },
+                left: cc === cellOffset ? { style: "medium", color: { argb: "FF" + COR_FASE_CUR_BD } } : undefined,
+                right: cc === cellOffset+1 ? { style: "medium", color: { argb: "FF" + COR_FASE_CUR_BD } } : undefined,
+              };
+            });
+          }
+          cellOffset += 2;
+        });
+
+        // Linhas alternadas para colunas fixas
+        if (rowIdx % 2 === 0) {
+          [1,2,3,4].forEach(cc => {
+            const cell = r.getCell(cc);
+            if (!cell.fill || (cell.fill as any).fgColor?.argb === "00000000") {
+              cell.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF" + COR_ALT } };
+            }
+          });
+        }
+        [1,2,3,4].forEach(cc => {
+          r.getCell(cc).font = r.getCell(cc).font || { name: "Arial", size: 10 };
+        });
       });
 
-      // Criar workbook
-      const wb = XLSX.utils.book_new();
-
-      // Dashboard
-      const wsDash = XLSX.utils.aoa_to_sheet(dashData);
-      wsDash["!cols"] = [{ wch: 22 }, { wch: 20 }, { wch: 12 }, { wch: 12 }, { wch: 12 }, { wch: 12 }];
-      XLSX.utils.book_append_sheet(wb, wsDash, "Dashboard");
-
-      // Backlog
-      const wsBacklog = XLSX.utils.json_to_sheet(backlogData.length > 0 ? backlogData : [{ Codigo: "Sem itens" }]);
-      wsBacklog["!cols"] = [
-        { wch: 10 }, { wch: 40 }, { wch: 14 }, { wch: 12 }, { wch: 14 },
-        { wch: 16 }, { wch: 20 }, { wch: 10 }, { wch: 12 }, { wch: 14 },
-        { wch: 14 }, { wch: 14 }, { wch: 14 }, { wch: 22 },
-      ];
-      XLSX.utils.book_append_sheet(wb, wsBacklog, "Backlog");
-
-      // Resumo
-      const wsResumo = XLSX.utils.json_to_sheet(resumoData.length > 0 ? resumoData : [{ Coluna: "Sem dados" }]);
-      wsResumo["!cols"] = [{ wch: 18 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }, { wch: 10 }];
-      XLSX.utils.book_append_sheet(wb, wsResumo, "Resumo");
-
-      // Evolutivo
-      const wsEv = XLSX.utils.aoa_to_sheet([evHeader1, evHeader2, ...evRows]);
-      const evCols = [{ wch: 10 }, { wch: 35 }, { wch: 12 }, { wch: 14 }];
-      colsSorted.forEach(() => { evCols.push({ wch: 22 }, { wch: 18 }); });
-      wsEv["!cols"] = evCols;
-      XLSX.utils.book_append_sheet(wb, wsEv, "Evolutivo");
-
-      XLSX.writeFile(wb, nomeArq);
+      // Download
+      const buffer = await wb.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = nomeArq;
+      a.click();
+      URL.revokeObjectURL(url);
       toast({ title: "Excel exportado!", description: nomeArq });
     } catch (err) {
       console.error(err);
@@ -533,6 +788,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     }
     setExcelExporting(false);
   };
+;
 
   const abrirDetalhe = async (item: BacklogItem) => {
     setItemDetalhado(item);
@@ -575,9 +831,9 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const handleExcluirColuna = async (colunaId: string) => {
     const ok = await excluirColuna(colunaId);
     if (!ok) {
-      toast({ title: "Não é possível excluir", description: "Coluna protegida ou com itens.", variant: "destructive" });
+      toast({ title: "Nγo ι possνvel excluir", description: "Coluna protegida ou com itens.", variant: "destructive" });
     } else {
-      toast({ title: "Coluna excluída!" });
+      toast({ title: "Coluna excluνda!" });
     }
   };
 
@@ -616,7 +872,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       setNovoComentario("");
       const coms = await loadComentarios(itemDetalhado.id);
       setComentarios(coms);
-      toast({ title: "Comentário adicionado!" });
+      toast({ title: "Comentαrio adicionado!" });
     }
     setSavingComentario(false);
   };
@@ -627,8 +883,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       movimentacao: "Movido",
       movimentacao_bloco: "Movido em bloco",
       edicao: "Editado",
-      comentario: "Comentário adicionado",
-      atribuicao: "Atribuição alterada",
+      comentario: "Comentαrio adicionado",
+      atribuicao: "Atribuiηγo alterada",
       cadeado_alterado: "Cadeado alterado",
     };
     return labels[tipo] || tipo;
@@ -694,7 +950,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       <table className="w-full text-xs">
         <thead>
           <tr className="bg-muted/50">
-            {["Código", "Título", "Frente", "Prioridade", "Status", "Prevista", "Responsável"].map(h => (
+            {["Cσdigo", "Tνtulo", "Frente", "Prioridade", "Status", "Prevista", "Responsαvel"].map(h => (
               <th key={h} className="text-left p-2 font-semibold text-muted-foreground text-[10px] uppercase tracking-wide">{h}</th>
             ))}
           </tr>
@@ -798,7 +1054,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           <div>
             <div className="text-xs font-semibold text-foreground">{projetoNome}</div>
             <div className="text-[10px] text-muted-foreground">
-              {totalItems} {totalItems === 1 ? "item" : "itens"} · {items.filter(i => !i.pai_id && colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length} concluídos
+              {totalItems} {totalItems === 1 ? "item" : "itens"} · {items.filter(i => !i.pai_id && colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length} concluνdos
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -849,7 +1105,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             <Input
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar código, título..."
+              placeholder="Buscar cσdigo, tνtulo..."
               className="pl-7 h-7 text-xs"
             />
           </div>
@@ -914,10 +1170,10 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   {participantes.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{participantes.length}</span>}
                 </TabsTrigger>
                 <TabsTrigger value="comentarios" className="text-xs gap-1">
-                  <MessageSquare className="h-3 w-3" />Comentários
+                  <MessageSquare className="h-3 w-3" />Comentαrios
                   {comentarios.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{comentarios.length}</span>}
                 </TabsTrigger>
-                <TabsTrigger value="historico" className="text-xs gap-1"><History className="h-3 w-3" />Histórico</TabsTrigger>
+                <TabsTrigger value="historico" className="text-xs gap-1"><History className="h-3 w-3" />Histσrico</TabsTrigger>
               </TabsList>
 
               {/* ?? ABA INFO ?? */}
@@ -925,7 +1181,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 {editando ? (
                   <>
                     <div className="space-y-1">
-                      <Label className="text-xs">Título</Label>
+                      <Label className="text-xs">Tνtulo</Label>
                       <Input value={editForm.titulo || ""} onChange={e => setEditForm(p => ({ ...p, titulo: e.target.value }))} />
                     </div>
                     <div className="space-y-1">
@@ -942,22 +1198,22 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <Select value={editForm.prioridade || "media"} onValueChange={v => setEditForm(p => ({ ...p, prioridade: v }))}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="critica">Crítica</SelectItem>
+                            <SelectItem value="critica">Crνtica</SelectItem>
                             <SelectItem value="alta">Alta</SelectItem>
-                            <SelectItem value="media">Média</SelectItem>
+                            <SelectItem value="media">Mιdia</SelectItem>
                             <SelectItem value="baixa">Baixa</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Reclassificação</Label>
+                        <Label className="text-xs">Reclassificaηγo</Label>
                         <Select value={editForm.prioridade_reclassificada || "none"} onValueChange={v => setEditForm(p => ({ ...p, prioridade_reclassificada: v || null }))}>
-                          <SelectTrigger><SelectValue placeholder="Sem reclassificação" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Sem reclassificaηγo" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Sem reclassificação</SelectItem>
-                            <SelectItem value="critica">Crítica</SelectItem>
+                            <SelectItem value="none">Sem reclassificaηγo</SelectItem>
+                            <SelectItem value="critica">Crνtica</SelectItem>
                             <SelectItem value="alta">Alta</SelectItem>
-                            <SelectItem value="media">Média</SelectItem>
+                            <SelectItem value="media">Mιdia</SelectItem>
                             <SelectItem value="baixa">Baixa</SelectItem>
                           </SelectContent>
                         </Select>
@@ -996,8 +1252,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Detalhamento da solução</Label>
-                      <Textarea rows={3} className="resize-none text-sm" value={editForm.descricao_solucao || ""} onChange={e => setEditForm(p => ({ ...p, descricao_solucao: e.target.value }))} placeholder="Descreva a solução implementada..." />
+                      <Label className="text-xs">Detalhamento da soluηγo</Label>
+                      <Textarea rows={3} className="resize-none text-sm" value={editForm.descricao_solucao || ""} onChange={e => setEditForm(p => ({ ...p, descricao_solucao: e.target.value }))} placeholder="Descreva a soluηγo implementada..." />
                     </div>
                     <div className="flex gap-2 pt-1">
                       <Button size="sm" onClick={handleSalvarEdicao} disabled={savingItem} className="gap-1">
@@ -1016,11 +1272,11 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div><p className="text-[10px] text-muted-foreground">Criado por</p><p className="font-medium">{itemDetalhado.criado_por_nome || "-"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Atribuído para</p><p className="font-medium">{itemDetalhado.atribuido_para_nome || "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Atribuνdo para</p><p className="font-medium">{itemDetalhado.atribuido_para_nome || "-"}</p></div>
                       <div><p className="text-[10px] text-muted-foreground">Estimativa</p><p className="font-medium">{itemDetalhado.estimativa_horas ? `${itemDetalhado.estimativa_horas}h` : "-"}</p></div>
                       <div><p className="text-[10px] text-muted-foreground">Tempo efetivo</p><p className="font-medium">{itemDetalhado.tempo_efetivo_horas ? `${itemDetalhado.tempo_efetivo_horas}h` : "-"}</p></div>
                       <div><p className="text-[10px] text-muted-foreground">Data prevista</p><p className="font-medium">{itemDetalhado.data_prevista ? format(parseISO(itemDetalhado.data_prevista), "dd/MM/yyyy") : "-"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Data conclusão</p><p className="font-medium">{itemDetalhado.data_conclusao ? format(parseISO(itemDetalhado.data_conclusao), "dd/MM/yyyy") : "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Data conclusγo</p><p className="font-medium">{itemDetalhado.data_conclusao ? format(parseISO(itemDetalhado.data_conclusao), "dd/MM/yyyy") : "-"}</p></div>
                     </div>
                     {itemDetalhado.descricao_solicitante && (
                       <div>
@@ -1036,7 +1292,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                     )}
                     {itemDetalhado.descricao_solucao && (
                       <div>
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Solução implementada</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Soluηγo implementada</p>
                         <p className="text-xs text-foreground whitespace-pre-wrap bg-emerald-50 border border-emerald-100 rounded-lg p-3">{itemDetalhado.descricao_solucao}</p>
                       </div>
                     )}
@@ -1078,7 +1334,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Adicionar participante</p>
                         <div className="grid grid-cols-2 gap-2">
                           <Select value={novoPartUserId} onValueChange={setNovoPartUserId}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar usuário" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar usuαrio" /></SelectTrigger>
                             <SelectContent>
                               {profilesDisponiveis.filter(p => !participantes.find(pt => pt.user_id === p.user_id)).map(p => (
                                 <SelectItem key={p.user_id} value={p.user_id}>{p.name}</SelectItem>
@@ -1103,7 +1359,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 )}
               </TabsContent>
 
-              {/* ?? ABA COMENTÁRIOS ?? */}
+              {/* ?? ABA COMENTΑRIOS ?? */}
               <TabsContent value="comentarios" className="flex-1 flex flex-col overflow-hidden mt-3">
                 <div className="flex-1 overflow-y-auto px-5 space-y-3 pb-3">
                   {loadingDetalhe ? (
@@ -1111,7 +1367,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   ) : comentarios.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-8 text-center">
                       <MessageSquare className="h-6 w-6 text-muted-foreground/30" />
-                      <p className="text-xs text-muted-foreground">Nenhum comentário ainda</p>
+                      <p className="text-xs text-muted-foreground">Nenhum comentαrio ainda</p>
                     </div>
                   ) : (
                     comentarios.map(com => (
@@ -1134,7 +1390,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   <Textarea
                     value={novoComentario}
                     onChange={e => setNovoComentario(e.target.value)}
-                    placeholder="Escreva um comentário..."
+                    placeholder="Escreva um comentαrio..."
                     rows={2}
                     className="resize-none text-sm flex-1"
                     onKeyDown={e => { if (e.key === "Enter" && e.ctrlKey) handleEnviarComentario(); }}
@@ -1145,14 +1401,14 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 </div>
               </TabsContent>
 
-              {/* ?? ABA HISTÓRICO ?? */}
+              {/* ?? ABA HISTΣRICO ?? */}
               <TabsContent value="historico" className="flex-1 overflow-y-auto px-5 pb-4 mt-3">
                 {loadingDetalhe ? (
                   <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
                 ) : historico.length === 0 ? (
                   <div className="flex flex-col items-center gap-2 py-8 text-center">
                     <History className="h-6 w-6 text-muted-foreground/30" />
-                    <p className="text-xs text-muted-foreground">Nenhum histórico disponível</p>
+                    <p className="text-xs text-muted-foreground">Nenhum histσrico disponνvel</p>
                   </div>
                 ) : (
                   <div className="relative">
@@ -1192,7 +1448,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           </DialogContent>
         </Dialog>
       )}
-      {/* Dialog configuração de colunas - BL-004-D */}
+      {/* Dialog configuraηγo de colunas - BL-004-D */}
       {isCoordinator && (
         <Dialog open={configColunasOpen} onOpenChange={setConfigColunasOpen}>
           <DialogContent className="flex flex-col gap-0 p-0 max-h-[85dvh] w-full max-w-md">
@@ -1242,7 +1498,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                     {savingColuna ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}Criar
                   </Button>
                 </div>
-                <p className="text-[9px] text-muted-foreground">Nova coluna inserida antes de Cancelado. Colunas protegidas podem ser renomeadas mas não excluídas.</p>
+                <p className="text-[9px] text-muted-foreground">Nova coluna inserida antes de Cancelado. Colunas protegidas podem ser renomeadas mas nγo excluνdas.</p>
               </div>
             </div>
             <DialogFooter className="shrink-0 border-t px-5 py-3">
