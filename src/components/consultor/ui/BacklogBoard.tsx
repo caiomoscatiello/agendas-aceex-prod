@@ -1,5 +1,5 @@
 ﻿// src/components/consultor/ui/BacklogBoard.tsx
-// BL-004-B  Board Kanban do Backlog
+// BL-004-B - Board Kanban do Backlog
 
 import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -37,17 +37,17 @@ type Props = {
 };
 
 const PRIORIDADE_CONFIG: Record<string, { label: string; cor: string; corBg: string }> = {
-  critica: { label: "Crνtica",  cor: "text-red-700",    corBg: "bg-red-100" },
+  critica: { label: "Crítica",  cor: "text-red-700",    corBg: "bg-red-100" },
   alta:    { label: "Alta",     cor: "text-amber-700",  corBg: "bg-amber-100" },
-  media:   { label: "Mιdia",    cor: "text-blue-700",   corBg: "bg-blue-100" },
+  media:   { label: "Média",    cor: "text-blue-700",   corBg: "bg-blue-100" },
   baixa:   { label: "Baixa",   cor: "text-emerald-700", corBg: "bg-emerald-100" },
 };
 
 const TIPO_OPTIONS = [
   { value: "melhoria",     label: "Melhoria" },
   { value: "bug",          label: "Bug" },
-  { value: "duvida",       label: "Dϊvida" },
-  { value: "configuracao", label: "Configuraηγo" },
+  { value: "duvida",       label: "Dúvida" },
+  { value: "configuracao", label: "Configuração" },
   { value: "treinamento",  label: "Treinamento" },
   { value: "outro",        label: "Outro" },
 ];
@@ -58,7 +58,7 @@ const FRENTE_OPTIONS = [
   { value: "estoque",     label: "Estoque" },
   { value: "compras",     label: "Compras" },
   { value: "rh",          label: "RH" },
-  { value: "contabil",    label: "Contαbil" },
+  { value: "contabil",    label: "Contábil" },
   { value: "outro",       label: "Outro" },
 ];
 
@@ -118,7 +118,7 @@ function ItemCard({
         <PriBadge prioridade={item.prioridade} reclassificada={item.prioridade_reclassificada} />
       </div>
 
-      {/* Tνtulo */}
+      {/* Título */}
       <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{item.titulo}</p>
 
       {/* Meta */}
@@ -136,7 +136,7 @@ function ItemCard({
         )}
       </div>
 
-      {/* Data e atribuiηγo */}
+      {/* Data e atribuição */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           {item.data_prevista && (
@@ -170,7 +170,7 @@ function ItemCard({
         </div>
       </div>
 
-      {/* Botγo mover (alternativa ao drag) */}
+      {/* Botão mover (alternativa ao drag) */}
       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
         {colunas
           .filter(c => c.id !== item.coluna_id)
@@ -182,7 +182,7 @@ function ItemCard({
               className="text-[9px] text-muted-foreground border border-border/60 rounded px-1.5 py-0.5 hover:bg-accent transition-colors"
               title={`Mover para ${c.nome}`}
             >
-              ? {c.nome.length > 8 ? c.nome.slice(0, 8) + "" : c.nome}
+              ? {c.nome.length > 8 ? c.nome.slice(0, 8) + "" : c.nome}
             </button>
           ))}
       </div>
@@ -235,7 +235,7 @@ function NovoItemModal({
   }, [open, colunaInicial, colunas]);
 
   const handleSave = () => {
-    if (!titulo.trim()) { toast({ title: "Informe o tνtulo", variant: "destructive" }); return; }
+    if (!titulo.trim()) { toast({ title: "Informe o título", variant: "destructive" }); return; }
     onSave({
       titulo: titulo.trim(),
       tipo, prioridade, frente_modulo: frente,
@@ -252,12 +252,12 @@ function NovoItemModal({
         <DialogHeader className="shrink-0 border-b px-5 py-4">
           <DialogTitle className="flex items-center gap-2 text-base">
             <ListTodo className="h-5 w-5 text-violet-600" />
-            Novo item  {projetoNome}
+            Novo item - {projetoNome}
           </DialogTitle>
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           <div className="space-y-1">
-            <Label className="text-xs">Tνtulo *</Label>
+            <Label className="text-xs">Título *</Label>
             <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Descreva o item de backlog..." autoFocus />
           </div>
           <div className="space-y-1">
@@ -277,15 +277,15 @@ function NovoItemModal({
               <Select value={prioridade} onValueChange={setPrioridade}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="critica">? Crνtica</SelectItem>
+                  <SelectItem value="critica">? Crítica</SelectItem>
                   <SelectItem value="alta">? Alta</SelectItem>
-                  <SelectItem value="media">? Mιdia</SelectItem>
+                  <SelectItem value="media">? Média</SelectItem>
                   <SelectItem value="baixa">? Baixa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Frente / Mσdulo</Label>
+              <Label className="text-xs">Frente / Módulo</Label>
               <Select value={frente} onValueChange={setFrente}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{FRENTE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -341,7 +341,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [itemDetalhado, setItemDetalhado] = useState<BacklogItem | null>(null);
   const [dragItemId, setDragItemId] = useState<string | null>(null);
   const [dragOverColuna, setDragOverColuna] = useState<string | null>(null);
-  // BL-004-C  Detalhe, histσrico e comentαrios
+  // BL-004-C - Detalhe, histórico e comentários
   const [detalheTab, setDetalheTab] = useState("info");
   const [comentarios, setComentarios] = useState<BacklogComentario[]>([]);
   const [historico, setHistorico] = useState<BacklogHistorico[]>([]);
@@ -350,7 +350,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [savingComentario, setSavingComentario] = useState(false);
   const [editando, setEditando] = useState(false);
   const [editForm, setEditForm] = useState<Partial<BacklogItem>>({});
-  // BL-004-D  Colunas e participantes
+  // BL-004-D - Colunas e participantes
   const [configColunasOpen, setConfigColunasOpen] = useState(false);
   const [novaColunaNome, setNovaColunaNome] = useState("");
   const [novaColunaCor, setNovaColunaCor] = useState("#6366f1");
@@ -575,9 +575,9 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const handleExcluirColuna = async (colunaId: string) => {
     const ok = await excluirColuna(colunaId);
     if (!ok) {
-      toast({ title: "Nγo ι possνvel excluir", description: "Coluna protegida ou com itens.", variant: "destructive" });
+      toast({ title: "Não é possível excluir", description: "Coluna protegida ou com itens.", variant: "destructive" });
     } else {
-      toast({ title: "Coluna excluνda!" });
+      toast({ title: "Coluna excluída!" });
     }
   };
 
@@ -616,7 +616,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       setNovoComentario("");
       const coms = await loadComentarios(itemDetalhado.id);
       setComentarios(coms);
-      toast({ title: "Comentαrio adicionado!" });
+      toast({ title: "Comentário adicionado!" });
     }
     setSavingComentario(false);
   };
@@ -627,8 +627,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       movimentacao: "Movido",
       movimentacao_bloco: "Movido em bloco",
       edicao: "Editado",
-      comentario: "Comentαrio adicionado",
-      atribuicao: "Atribuiηγo alterada",
+      comentario: "Comentário adicionado",
+      atribuicao: "Atribuição alterada",
       cadeado_alterado: "Cadeado alterado",
     };
     return labels[tipo] || tipo;
@@ -694,7 +694,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       <table className="w-full text-xs">
         <thead>
           <tr className="bg-muted/50">
-            {["Cσdigo", "Tνtulo", "Frente", "Prioridade", "Status", "Prevista", "Responsαvel"].map(h => (
+            {["Código", "Título", "Frente", "Prioridade", "Status", "Prevista", "Responsável"].map(h => (
               <th key={h} className="text-left p-2 font-semibold text-muted-foreground text-[10px] uppercase tracking-wide">{h}</th>
             ))}
           </tr>
@@ -717,9 +717,9 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   </span>
                 </td>
                 <td className={`p-2 ${vencido ? "text-red-600 font-semibold" : "text-muted-foreground"}`}>
-                  {item.data_prevista ? format(parseISO(item.data_prevista), "dd/MM/yy") : ""}
+                  {item.data_prevista ? format(parseISO(item.data_prevista), "dd/MM/yy") : "-"}
                 </td>
-                <td className="p-2 text-muted-foreground">{item.atribuido_para_nome || ""}</td>
+                <td className="p-2 text-muted-foreground">{item.atribuido_para_nome || "-"}</td>
               </tr>
             );
           })}
@@ -798,7 +798,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           <div>
             <div className="text-xs font-semibold text-foreground">{projetoNome}</div>
             <div className="text-[10px] text-muted-foreground">
-              {totalItems} {totalItems === 1 ? "item" : "itens"} · {items.filter(i => !i.pai_id && colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length} concluνdos
+              {totalItems} {totalItems === 1 ? "item" : "itens"} · {items.filter(i => !i.pai_id && colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length} concluídos
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -839,7 +839,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             <Input
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar cσdigo, tνtulo..."
+              placeholder="Buscar código, título..."
               className="pl-7 h-7 text-xs"
             />
           </div>
@@ -880,7 +880,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
         colunaInicial={novoItemColuna}
       />
 
-      {/* Modal detalhe do item  BL-004-C */}
+      {/* Modal detalhe do item - BL-004-C */}
       {itemDetalhado && (
         <Dialog open={!!itemDetalhado} onOpenChange={() => { setItemDetalhado(null); setEditando(false); }}>
           <DialogContent className="flex flex-col gap-0 p-0 max-h-[90dvh] w-full max-w-2xl">
@@ -904,10 +904,10 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   {participantes.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{participantes.length}</span>}
                 </TabsTrigger>
                 <TabsTrigger value="comentarios" className="text-xs gap-1">
-                  <MessageSquare className="h-3 w-3" />Comentαrios
+                  <MessageSquare className="h-3 w-3" />Comentários
                   {comentarios.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{comentarios.length}</span>}
                 </TabsTrigger>
-                <TabsTrigger value="historico" className="text-xs gap-1"><History className="h-3 w-3" />Histσrico</TabsTrigger>
+                <TabsTrigger value="historico" className="text-xs gap-1"><History className="h-3 w-3" />Histórico</TabsTrigger>
               </TabsList>
 
               {/* ?? ABA INFO ?? */}
@@ -915,7 +915,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 {editando ? (
                   <>
                     <div className="space-y-1">
-                      <Label className="text-xs">Tνtulo</Label>
+                      <Label className="text-xs">Título</Label>
                       <Input value={editForm.titulo || ""} onChange={e => setEditForm(p => ({ ...p, titulo: e.target.value }))} />
                     </div>
                     <div className="space-y-1">
@@ -932,22 +932,22 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <Select value={editForm.prioridade || "media"} onValueChange={v => setEditForm(p => ({ ...p, prioridade: v }))}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="critica">? Crνtica</SelectItem>
+                            <SelectItem value="critica">? Crítica</SelectItem>
                             <SelectItem value="alta">? Alta</SelectItem>
-                            <SelectItem value="media">? Mιdia</SelectItem>
+                            <SelectItem value="media">? Média</SelectItem>
                             <SelectItem value="baixa">? Baixa</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Reclassificaηγo</Label>
+                        <Label className="text-xs">Reclassificação</Label>
                         <Select value={editForm.prioridade_reclassificada || "none"} onValueChange={v => setEditForm(p => ({ ...p, prioridade_reclassificada: v || null }))}>
-                          <SelectTrigger><SelectValue placeholder="Sem reclassificaηγo" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Sem reclassificação" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Sem reclassificaηγo</SelectItem>
-                            <SelectItem value="critica">? Crνtica</SelectItem>
+                            <SelectItem value="none">Sem reclassificação</SelectItem>
+                            <SelectItem value="critica">? Crítica</SelectItem>
                             <SelectItem value="alta">? Alta</SelectItem>
-                            <SelectItem value="media">? Mιdia</SelectItem>
+                            <SelectItem value="media">? Média</SelectItem>
                             <SelectItem value="baixa">? Baixa</SelectItem>
                           </SelectContent>
                         </Select>
@@ -986,8 +986,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                       </div>
                     </div>
                     <div className="space-y-1">
-                      <Label className="text-xs">Detalhamento da soluηγo</Label>
-                      <Textarea rows={3} className="resize-none text-sm" value={editForm.descricao_solucao || ""} onChange={e => setEditForm(p => ({ ...p, descricao_solucao: e.target.value }))} placeholder="Descreva a soluηγo implementada..." />
+                      <Label className="text-xs">Detalhamento da solução</Label>
+                      <Textarea rows={3} className="resize-none text-sm" value={editForm.descricao_solucao || ""} onChange={e => setEditForm(p => ({ ...p, descricao_solucao: e.target.value }))} placeholder="Descreva a solução implementada..." />
                     </div>
                     <div className="flex gap-2 pt-1">
                       <Button size="sm" onClick={handleSalvarEdicao} disabled={savingItem} className="gap-1">
@@ -1005,12 +1005,12 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                       <span className="text-[9px] bg-muted text-muted-foreground px-2 py-0.5 rounded-full">{TIPO_OPTIONS.find(t => t.value === itemDetalhado.tipo)?.label}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-xs">
-                      <div><p className="text-[10px] text-muted-foreground">Criado por</p><p className="font-medium">{itemDetalhado.criado_por_nome || ""}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Atribuνdo para</p><p className="font-medium">{itemDetalhado.atribuido_para_nome || ""}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Estimativa</p><p className="font-medium">{itemDetalhado.estimativa_horas ? `${itemDetalhado.estimativa_horas}h` : ""}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Tempo efetivo</p><p className="font-medium">{itemDetalhado.tempo_efetivo_horas ? `${itemDetalhado.tempo_efetivo_horas}h` : ""}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Data prevista</p><p className="font-medium">{itemDetalhado.data_prevista ? format(parseISO(itemDetalhado.data_prevista), "dd/MM/yyyy") : ""}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Data conclusγo</p><p className="font-medium">{itemDetalhado.data_conclusao ? format(parseISO(itemDetalhado.data_conclusao), "dd/MM/yyyy") : ""}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Criado por</p><p className="font-medium">{itemDetalhado.criado_por_nome || "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Atribuído para</p><p className="font-medium">{itemDetalhado.atribuido_para_nome || "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Estimativa</p><p className="font-medium">{itemDetalhado.estimativa_horas ? `${itemDetalhado.estimativa_horas}h` : "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Tempo efetivo</p><p className="font-medium">{itemDetalhado.tempo_efetivo_horas ? `${itemDetalhado.tempo_efetivo_horas}h` : "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Data prevista</p><p className="font-medium">{itemDetalhado.data_prevista ? format(parseISO(itemDetalhado.data_prevista), "dd/MM/yyyy") : "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Data conclusão</p><p className="font-medium">{itemDetalhado.data_conclusao ? format(parseISO(itemDetalhado.data_conclusao), "dd/MM/yyyy") : "-"}</p></div>
                     </div>
                     {itemDetalhado.descricao_solicitante && (
                       <div>
@@ -1026,7 +1026,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                     )}
                     {itemDetalhado.descricao_solucao && (
                       <div>
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Soluηγo implementada</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Solução implementada</p>
                         <p className="text-xs text-foreground whitespace-pre-wrap bg-emerald-50 border border-emerald-100 rounded-lg p-3">{itemDetalhado.descricao_solucao}</p>
                       </div>
                     )}
@@ -1068,7 +1068,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Adicionar participante</p>
                         <div className="grid grid-cols-2 gap-2">
                           <Select value={novoPartUserId} onValueChange={setNovoPartUserId}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar usuαrio" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar usuário" /></SelectTrigger>
                             <SelectContent>
                               {profilesDisponiveis.filter(p => !participantes.find(pt => pt.user_id === p.user_id)).map(p => (
                                 <SelectItem key={p.user_id} value={p.user_id}>{p.name}</SelectItem>
@@ -1093,7 +1093,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 )}
               </TabsContent>
 
-              {/* ?? ABA COMENTΑRIOS ?? */}
+              {/* ?? ABA COMENTÁRIOS ?? */}
               <TabsContent value="comentarios" className="flex-1 flex flex-col overflow-hidden mt-3">
                 <div className="flex-1 overflow-y-auto px-5 space-y-3 pb-3">
                   {loadingDetalhe ? (
@@ -1101,7 +1101,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   ) : comentarios.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-8 text-center">
                       <MessageSquare className="h-6 w-6 text-muted-foreground/30" />
-                      <p className="text-xs text-muted-foreground">Nenhum comentαrio ainda</p>
+                      <p className="text-xs text-muted-foreground">Nenhum comentário ainda</p>
                     </div>
                   ) : (
                     comentarios.map(com => (
@@ -1124,7 +1124,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   <Textarea
                     value={novoComentario}
                     onChange={e => setNovoComentario(e.target.value)}
-                    placeholder="Escreva um comentαrio..."
+                    placeholder="Escreva um comentário..."
                     rows={2}
                     className="resize-none text-sm flex-1"
                     onKeyDown={e => { if (e.key === "Enter" && e.ctrlKey) handleEnviarComentario(); }}
@@ -1135,14 +1135,14 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 </div>
               </TabsContent>
 
-              {/* ?? ABA HISTΣRICO ?? */}
+              {/* ?? ABA HISTÓRICO ?? */}
               <TabsContent value="historico" className="flex-1 overflow-y-auto px-5 pb-4 mt-3">
                 {loadingDetalhe ? (
                   <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
                 ) : historico.length === 0 ? (
                   <div className="flex flex-col items-center gap-2 py-8 text-center">
                     <History className="h-6 w-6 text-muted-foreground/30" />
-                    <p className="text-xs text-muted-foreground">Nenhum histσrico disponνvel</p>
+                    <p className="text-xs text-muted-foreground">Nenhum histórico disponível</p>
                   </div>
                 ) : (
                   <div className="relative">
@@ -1182,14 +1182,14 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           </DialogContent>
         </Dialog>
       )}
-      {/* Dialog configuraηγo de colunas  BL-004-D */}
+      {/* Dialog configuração de colunas - BL-004-D */}
       {isCoordinator && (
         <Dialog open={configColunasOpen} onOpenChange={setConfigColunasOpen}>
           <DialogContent className="flex flex-col gap-0 p-0 max-h-[85dvh] w-full max-w-md">
             <DialogHeader className="shrink-0 border-b px-5 py-4">
               <div className="flex items-center gap-2 pr-8">
                 <Settings2 className="h-5 w-5 text-violet-600" />
-                <DialogTitle className="text-base">Configurar colunas  {projetoNome}</DialogTitle>
+                <DialogTitle className="text-base">Configurar colunas - {projetoNome}</DialogTitle>
               </div>
             </DialogHeader>
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
@@ -1232,7 +1232,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                     {savingColuna ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}Criar
                   </Button>
                 </div>
-                <p className="text-[9px] text-muted-foreground">Nova coluna inserida antes de Cancelado. Colunas protegidas podem ser renomeadas mas nγo excluνdas.</p>
+                <p className="text-[9px] text-muted-foreground">Nova coluna inserida antes de Cancelado. Colunas protegidas podem ser renomeadas mas não excluídas.</p>
               </div>
             </div>
             <DialogFooter className="shrink-0 border-t px-5 py-3">
