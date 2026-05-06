@@ -84,7 +84,7 @@ function PriBadge({ prioridade, reclassificada }: { prioridade: string; reclassi
 
 function ItemCard({
   item, colunaStatus, colunas, onMove, onOpen, isDragging, onDragStart, onDragEnd,
-  filhos, isCoordinator,
+  filhos, isCoordinator, dimmed,
 }: {
   item: BacklogItem;
   colunaStatus: string | null;
@@ -96,6 +96,7 @@ function ItemCard({
   onDragEnd: () => void;
   filhos: BacklogItem[];
   isCoordinator: boolean;
+  dimmed?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const vencido = isVencido(item.data_prevista, colunaStatus);
