@@ -37,17 +37,17 @@ type Props = {
 };
 
 const PRIORIDADE_CONFIG: Record<string, { label: string; cor: string; corBg: string }> = {
-  critica: { label: "Crνtica",  cor: "text-red-700",    corBg: "bg-red-100" },
+  critica: { label: "Critica",  cor: "text-red-700",    corBg: "bg-red-100" },
   alta:    { label: "Alta",     cor: "text-amber-700",  corBg: "bg-amber-100" },
-  media:   { label: "Mιdia",    cor: "text-blue-700",   corBg: "bg-blue-100" },
+  media:   { label: "Media",    cor: "text-blue-700",   corBg: "bg-blue-100" },
   baixa:   { label: "Baixa",   cor: "text-emerald-700", corBg: "bg-emerald-100" },
 };
 
 const TIPO_OPTIONS = [
   { value: "melhoria",     label: "Melhoria" },
   { value: "bug",          label: "Bug" },
-  { value: "duvida",       label: "Dϊvida" },
-  { value: "configuracao", label: "Configuraηγo" },
+  { value: "duvida",       label: "Duvida" },
+  { value: "configuracao", label: "Configuraao" },
   { value: "treinamento",  label: "Treinamento" },
   { value: "outro",        label: "Outro" },
 ];
@@ -58,7 +58,7 @@ const FRENTE_OPTIONS = [
   { value: "estoque",     label: "Estoque" },
   { value: "compras",     label: "Compras" },
   { value: "rh",          label: "RH" },
-  { value: "contabil",    label: "Contαbil" },
+  { value: "contabil",    label: "Contabil" },
   { value: "outro",       label: "Outro" },
 ];
 
@@ -106,7 +106,7 @@ function ItemCard({
     <div
       className={`bg-card border rounded-xl p-3 cursor-pointer transition-all space-y-2 ${
         isDragging ? "opacity-40 scale-95" : "hover:shadow-sm hover:border-border/80"
-      } ${vencido ? "border-red-200" : ""}`}
+      } ${vencido ? "border-red-200" : ""} ${dimmed ? "opacity-30" : ""}`}
       draggable
       onDragStart={onDragStart}
       onDragEnd={onDragEnd}
@@ -118,7 +118,7 @@ function ItemCard({
         <PriBadge prioridade={item.prioridade} reclassificada={item.prioridade_reclassificada} />
       </div>
 
-      {/* Tνtulo */}
+      {/* Titulo */}
       <p className="text-xs font-semibold text-foreground leading-tight line-clamp-2">{item.titulo}</p>
 
       {/* Meta */}
@@ -136,7 +136,7 @@ function ItemCard({
         )}
       </div>
 
-      {/* Data e atribuiηγo */}
+      {/* Data e atribuiao */}
       <div className="flex items-center justify-between gap-2">
         <div className="flex items-center gap-1">
           {item.data_prevista && (
@@ -163,14 +163,14 @@ function ItemCard({
             </button>
           )}
           {item.atribuido_para_nome && (
-            <div className="w-5 h-5 rounded-full bg-violet-100 text-violet-700 text-[8px] font-bold flex items-center justify-center">
-              {item.atribuido_para_nome.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+            <div className="w-5 h-5 rounded-full bg-violet-100 text-violet-700 text-[8px] font-bold flex items-center justify-center border-2 border-violet-300" title={item.atribuido_para_nome}>
+              {item.atribuido_para_nome.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
             </div>
           )}
         </div>
       </div>
 
-      {/* Botγo mover (alternativa ao drag) */}
+      {/* Botao mover (alternativa ao drag) */}
       <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
         {colunas
           .filter(c => c.id !== item.coluna_id)
@@ -235,7 +235,7 @@ function NovoItemModal({
   }, [open, colunaInicial, colunas]);
 
   const handleSave = () => {
-    if (!titulo.trim()) { toast({ title: "Informe o tνtulo", variant: "destructive" }); return; }
+    if (!titulo.trim()) { toast({ title: "Informe o titulo", variant: "destructive" }); return; }
     onSave({
       titulo: titulo.trim(),
       tipo, prioridade, frente_modulo: frente,
@@ -257,7 +257,7 @@ function NovoItemModal({
         </DialogHeader>
         <div className="flex-1 overflow-y-auto px-5 py-4 space-y-3">
           <div className="space-y-1">
-            <Label className="text-xs">Tνtulo *</Label>
+            <Label className="text-xs">Titulo *</Label>
             <Input value={titulo} onChange={e => setTitulo(e.target.value)} placeholder="Descreva o item de backlog..." autoFocus />
           </div>
           <div className="space-y-1">
@@ -277,15 +277,15 @@ function NovoItemModal({
               <Select value={prioridade} onValueChange={setPrioridade}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="critica">Crνtica</SelectItem>
+                  <SelectItem value="critica">Critica</SelectItem>
                   <SelectItem value="alta">Alta</SelectItem>
-                  <SelectItem value="media">Mιdia</SelectItem>
+                  <SelectItem value="media">Media</SelectItem>
                   <SelectItem value="baixa">Baixa</SelectItem>
                 </SelectContent>
               </Select>
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Frente / Mσdulo</Label>
+              <Label className="text-xs">Frente / Modulo</Label>
               <Select value={frente} onValueChange={setFrente}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>{FRENTE_OPTIONS.map(o => <SelectItem key={o.value} value={o.value}>{o.label}</SelectItem>)}</SelectContent>
@@ -336,12 +336,17 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [busca, setBusca] = useState("");
   const [filtroMeus, setFiltroMeus] = useState(false);
   const [filtroVencidos, setFiltroVencidos] = useState(false);
+  const [filtroPrioridade, setFiltroPrioridade] = useState<string[]>([]);
+  const [filtroFrente, setFiltroFrente] = useState<string[]>([]);
+  const [filtroResponsavel, setFiltroResponsavel] = useState<string>("");
+  const [ocultarCancelados, setOcultarCancelados] = useState(true);
+  const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [novoItemOpen, setNovoItemOpen] = useState(false);
   const [novoItemColuna, setNovoItemColuna] = useState<string | undefined>();
   const [itemDetalhado, setItemDetalhado] = useState<BacklogItem | null>(null);
   const [dragItemId, setDragItemId] = useState<string | null>(null);
   const [dragOverColuna, setDragOverColuna] = useState<string | null>(null);
-  // BL-004-C - Detalhe, histσrico e comentαrios
+  // BL-004-C - Detalhe, historico e comentarios
   const [detalheTab, setDetalheTab] = useState("info");
   const [comentarios, setComentarios] = useState<BacklogComentario[]>([]);
   const [historico, setHistorico] = useState<BacklogHistorico[]>([]);
@@ -831,9 +836,9 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const handleExcluirColuna = async (colunaId: string) => {
     const ok = await excluirColuna(colunaId);
     if (!ok) {
-      toast({ title: "Nγo ι possνvel excluir", description: "Coluna protegida ou com itens.", variant: "destructive" });
+      toast({ title: "Nao e possivel excluir", description: "Coluna protegida ou com itens.", variant: "destructive" });
     } else {
-      toast({ title: "Coluna excluνda!" });
+      toast({ title: "Coluna excluida!" });
     }
   };
 
@@ -872,7 +877,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       setNovoComentario("");
       const coms = await loadComentarios(itemDetalhado.id);
       setComentarios(coms);
-      toast({ title: "Comentαrio adicionado!" });
+      toast({ title: "Comentario adicionado!" });
     }
     setSavingComentario(false);
   };
@@ -883,8 +888,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       movimentacao: "Movido",
       movimentacao_bloco: "Movido em bloco",
       edicao: "Editado",
-      comentario: "Comentαrio adicionado",
-      atribuicao: "Atribuiηγo alterada",
+      comentario: "Comentario adicionado",
+      atribuicao: "Atribuiao alterada",
       cadeado_alterado: "Cadeado alterado",
     };
     return labels[tipo] || tipo;
@@ -894,22 +899,42 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     if (projetoId) loadBoard();
   }, [projetoId, loadBoard]);
 
-  const filtrarItems = (lista: BacklogItem[]) => {
-    return lista.filter(i => {
-      if (busca) {
-        const q = busca.toLowerCase();
-        if (!i.codigo.toLowerCase().includes(q) &&
-            !i.titulo.toLowerCase().includes(q) &&
-            !(i.descricao_solicitante || "").toLowerCase().includes(q)) return false;
-      }
-      if (filtroMeus && i.atribuido_para !== userId) return false;
-      if (filtroVencidos) {
-        const col = colunas.find(c => c.id === i.coluna_id);
-        if (!isVencido(i.data_prevista, col?.status_sistema || null)) return false;
-      }
-      return true;
-    });
+  const itemPassaFiltro = (i: BacklogItem): boolean => {
+    if (busca) {
+      const q = busca.toLowerCase();
+      if (!i.codigo.toLowerCase().includes(q) &&
+          !i.titulo.toLowerCase().includes(q) &&
+          !(i.descricao_solicitante || "").toLowerCase().includes(q)) return false;
+    }
+    if (filtroMeus && i.atribuido_para !== userId) return false;
+    if (filtroVencidos) {
+      const col = colunas.find(c => c.id === i.coluna_id);
+      if (!isVencido(i.data_prevista, col?.status_sistema || null)) return false;
+    }
+    if (filtroPrioridade.length > 0) {
+      const pri = i.prioridade_reclassificada || i.prioridade;
+      if (!filtroPrioridade.includes(pri)) return false;
+    }
+    if (filtroFrente.length > 0 && !filtroFrente.includes(i.frente_modulo)) return false;
+    if (filtroResponsavel && i.atribuido_para !== filtroResponsavel) return false;
+    if (ocultarCancelados) {
+      const col = colunas.find(c => c.id === i.coluna_id);
+      if (col?.status_sistema === "cancelado") return false;
+    }
+    return true;
   };
+
+  const filtrarItems = (lista: BacklogItem[]) => lista.filter(itemPassaFiltro);
+
+  // Ordenacao: prioridade desc + created_at asc dentro da coluna
+  const PRIO_ORDER: Record<string, number> = { critica: 0, alta: 1, media: 2, baixa: 3 };
+  const sortItems = (lista: BacklogItem[]) =>
+    [...lista].sort((a, b) => {
+      const pa = PRIO_ORDER[a.prioridade_reclassificada || a.prioridade] ?? 9;
+      const pb = PRIO_ORDER[b.prioridade_reclassificada || b.prioridade] ?? 9;
+      if (pa !== pb) return pa - pb;
+      return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+    });
 
   const handleDrop = async (colunaId: string) => {
     if (!dragItemId || dragItemId === colunaId) return;
@@ -950,15 +975,15 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       <table className="w-full text-xs">
         <thead>
           <tr className="bg-muted/50">
-            {["Cσdigo", "Tνtulo", "Frente", "Prioridade", "Status", "Prevista", "Responsαvel"].map(h => (
+            {["Codigo", "Titulo", "Frente", "Prioridade", "Status", "Prevista", "Responsavel"].map(h => (
               <th key={h} className="text-left p-2 font-semibold text-muted-foreground text-[10px] uppercase tracking-wide">{h}</th>
             ))}
           </tr>
         </thead>
         <tbody>
-          {itemsFiltrados.length === 0 ? (
+          {sortItems(itemsFiltrados).length === 0 ? (
             <tr><td colSpan={7} className="p-6 text-center text-muted-foreground">Nenhum item encontrado</td></tr>
-          ) : itemsFiltrados.map(item => {
+          ) : sortItems(itemsFiltrados).map(item => {
             const col = colunas.find(c => c.id === item.coluna_id);
             const vencido = isVencido(item.data_prevista, col?.status_sistema || null);
             return (
@@ -988,7 +1013,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const renderKanban = () => (
     <div className="flex gap-3 overflow-x-auto pb-2">
       {colunas.map(col => {
-        const colItems = filtrarItems(itemsPorColuna(col.id));
+        const colItems = sortItems(filtrarItems(itemsPorColuna(col.id)));
         const wipAtingido = col.wip_limite !== null && colItems.length >= col.wip_limite;
         return (
           <div
@@ -1005,7 +1030,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 <span className="text-xs font-semibold truncate max-w-[90px]">{col.nome}</span>
               </div>
               <div className="flex items-center gap-1">
-                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full ${wipAtingido ? "bg-red-100 text-red-700" : "bg-muted text-muted-foreground"}`}>
+                <span className={`text-[9px] font-semibold px-1.5 py-0.5 rounded-full flex items-center gap-0.5 ${wipAtingido ? "bg-red-100 text-red-700 animate-pulse" : "bg-muted text-muted-foreground"}`}>
+                  {wipAtingido && <AlertCircle className="h-2.5 w-2.5" />}
                   {colItems.length}{col.wip_limite ? `/${col.wip_limite}` : ""}
                 </span>
                 <button
@@ -1032,6 +1058,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   onDragEnd={() => { setDragItemId(null); setDragOverColuna(null); }}
                   filhos={filhosDoItem(item.id)}
                   isCoordinator={isCoordinator}
+                  dimmed={!!busca && !itemPassaFiltro(item)}
                 />
               ))}
               {colItems.length === 0 && (
@@ -1054,7 +1081,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           <div>
             <div className="text-xs font-semibold text-foreground">{projetoNome}</div>
             <div className="text-[10px] text-muted-foreground">
-              {totalItems} {totalItems === 1 ? "item" : "itens"} · {items.filter(i => !i.pai_id && colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length} concluνdos
+              {totalItems} {totalItems === 1 ? "item" : "itens"} · {items.filter(i => !i.pai_id && colunas.find(c => c.id === i.coluna_id)?.status_sistema === "concluido").length} concluidos
             </div>
           </div>
           <div className="flex items-center gap-2">
@@ -1105,7 +1132,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             <Input
               value={busca}
               onChange={e => setBusca(e.target.value)}
-              placeholder="Buscar cσdigo, tνtulo..."
+              placeholder="Buscar codigo, titulo..."
               className="pl-7 h-7 text-xs"
             />
           </div>
@@ -1119,11 +1146,40 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             onClick={() => setFiltroVencidos(v => !v)}
             className={`text-[10px] px-2.5 py-1 rounded-lg border font-medium transition-colors ${filtroVencidos ? "bg-red-100 border-red-300 text-red-700" : "border-border text-muted-foreground hover:bg-muted"}`}
           >
-            ? Vencidos
+            Vencidos
           </button>
-          {(busca || filtroMeus || filtroVencidos) && (
+          <button
+            onClick={() => setOcultarCancelados(v => !v)}
+            className={`text-[10px] px-2.5 py-1 rounded-lg border font-medium transition-colors ${!ocultarCancelados ? "bg-amber-100 border-amber-300 text-amber-700" : "border-border text-muted-foreground hover:bg-muted"}`}
+          >
+            {ocultarCancelados ? "Ver cancelados" : "Ocultar cancelados"}
+          </button>
+          {/* Filtro por prioridade */}
+          {["critica","alta","media","baixa"].map(pri => (
+            <button key={pri}
+              onClick={() => setFiltroPrioridade(prev => prev.includes(pri) ? prev.filter(p=>p!==pri) : [...prev,pri])}
+              className={`text-[10px] px-2.5 py-1 rounded-lg border font-medium transition-colors capitalize ${filtroPrioridade.includes(pri) ? "bg-violet-100 border-violet-300 text-violet-700" : "border-border text-muted-foreground hover:bg-muted"}`}
+            >
+              {pri}
+            </button>
+          ))}
+          {/* Filtro responsavel (coordenador) */}
+          {isCoordinator && (
+            <select
+              value={filtroResponsavel}
+              onChange={e => setFiltroResponsavel(e.target.value)}
+              className="text-[10px] px-2 py-1 rounded-lg border border-border text-muted-foreground bg-background hover:bg-muted h-7"
+            >
+              <option value="">Todos responsaveis</option>
+              {[...new Set(items.map(i => i.atribuido_para).filter(Boolean))].map(uid => {
+                const nome = items.find(i => i.atribuido_para === uid)?.atribuido_para_nome || uid;
+                return <option key={uid} value={uid!}>{nome}</option>;
+              })}
+            </select>
+          )}
+          {(busca || filtroMeus || filtroVencidos || filtroPrioridade.length > 0 || filtroResponsavel || !ocultarCancelados) && (
             <button
-              onClick={() => { setBusca(""); setFiltroMeus(false); setFiltroVencidos(false); }}
+              onClick={() => { setBusca(""); setFiltroMeus(false); setFiltroVencidos(false); setFiltroPrioridade([]); setFiltroResponsavel(""); setOcultarCancelados(true); }}
               className="text-[10px] px-2 py-1 text-muted-foreground hover:text-foreground"
             >
               <X className="h-3 w-3" />
@@ -1170,10 +1226,10 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   {participantes.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{participantes.length}</span>}
                 </TabsTrigger>
                 <TabsTrigger value="comentarios" className="text-xs gap-1">
-                  <MessageSquare className="h-3 w-3" />Comentαrios
+                  <MessageSquare className="h-3 w-3" />Comentarios
                   {comentarios.length > 0 && <span className="text-[9px] bg-muted rounded-full px-1">{comentarios.length}</span>}
                 </TabsTrigger>
-                <TabsTrigger value="historico" className="text-xs gap-1"><History className="h-3 w-3" />Histσrico</TabsTrigger>
+                <TabsTrigger value="historico" className="text-xs gap-1"><History className="h-3 w-3" />Historico</TabsTrigger>
               </TabsList>
 
               {/* ?? ABA INFO ?? */}
@@ -1181,7 +1237,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 {editando ? (
                   <>
                     <div className="space-y-1">
-                      <Label className="text-xs">Tνtulo</Label>
+                      <Label className="text-xs">Titulo</Label>
                       <Input value={editForm.titulo || ""} onChange={e => setEditForm(p => ({ ...p, titulo: e.target.value }))} />
                     </div>
                     <div className="space-y-1">
@@ -1198,22 +1254,22 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <Select value={editForm.prioridade || "media"} onValueChange={v => setEditForm(p => ({ ...p, prioridade: v }))}>
                           <SelectTrigger><SelectValue /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="critica">Crνtica</SelectItem>
+                            <SelectItem value="critica">Critica</SelectItem>
                             <SelectItem value="alta">Alta</SelectItem>
-                            <SelectItem value="media">Mιdia</SelectItem>
+                            <SelectItem value="media">Media</SelectItem>
                             <SelectItem value="baixa">Baixa</SelectItem>
                           </SelectContent>
                         </Select>
                       </div>
                       <div className="space-y-1">
-                        <Label className="text-xs">Reclassificaηγo</Label>
+                        <Label className="text-xs">Reclassificaao</Label>
                         <Select value={editForm.prioridade_reclassificada || "none"} onValueChange={v => setEditForm(p => ({ ...p, prioridade_reclassificada: v || null }))}>
-                          <SelectTrigger><SelectValue placeholder="Sem reclassificaηγo" /></SelectTrigger>
+                          <SelectTrigger><SelectValue placeholder="Sem reclassificaao" /></SelectTrigger>
                           <SelectContent>
-                            <SelectItem value="none">Sem reclassificaηγo</SelectItem>
-                            <SelectItem value="critica">Crνtica</SelectItem>
+                            <SelectItem value="none">Sem reclassificaao</SelectItem>
+                            <SelectItem value="critica">Critica</SelectItem>
                             <SelectItem value="alta">Alta</SelectItem>
-                            <SelectItem value="media">Mιdia</SelectItem>
+                            <SelectItem value="media">Media</SelectItem>
                             <SelectItem value="baixa">Baixa</SelectItem>
                           </SelectContent>
                         </Select>
@@ -1251,9 +1307,23 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <Input type="date" value={(editForm as any).data_conclusao_desejada || ""} onChange={e => setEditForm(p => ({ ...p, data_conclusao_desejada: e.target.value || null }))} />
                       </div>
                     </div>
+                    {isCoordinator && (
+                      <div className="flex items-center gap-3 pt-1">
+                        <input
+                          type="checkbox"
+                          id="visivel_cliente"
+                          checked={!!(editForm as any).visivel_cliente}
+                          onChange={e => setEditForm(p => ({ ...p, visivel_cliente: e.target.checked }))}
+                          className="h-4 w-4 rounded border-border"
+                        />
+                        <label htmlFor="visivel_cliente" className="text-xs text-muted-foreground cursor-pointer">
+                          Visivel para o cliente (Portal do Cliente)
+                        </label>
+                      </div>
+                    )}
                     <div className="space-y-1">
-                      <Label className="text-xs">Detalhamento da soluηγo</Label>
-                      <Textarea rows={3} className="resize-none text-sm" value={editForm.descricao_solucao || ""} onChange={e => setEditForm(p => ({ ...p, descricao_solucao: e.target.value }))} placeholder="Descreva a soluηγo implementada..." />
+                      <Label className="text-xs">Detalhamento da soluao</Label>
+                      <Textarea rows={3} className="resize-none text-sm" value={editForm.descricao_solucao || ""} onChange={e => setEditForm(p => ({ ...p, descricao_solucao: e.target.value }))} placeholder="Descreva a soluao implementada..." />
                     </div>
                     <div className="flex gap-2 pt-1">
                       <Button size="sm" onClick={handleSalvarEdicao} disabled={savingItem} className="gap-1">
@@ -1272,11 +1342,11 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                     </div>
                     <div className="grid grid-cols-2 gap-3 text-xs">
                       <div><p className="text-[10px] text-muted-foreground">Criado por</p><p className="font-medium">{itemDetalhado.criado_por_nome || "-"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Atribuνdo para</p><p className="font-medium">{itemDetalhado.atribuido_para_nome || "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Atribuido para</p><p className="font-medium">{itemDetalhado.atribuido_para_nome || "-"}</p></div>
                       <div><p className="text-[10px] text-muted-foreground">Estimativa</p><p className="font-medium">{itemDetalhado.estimativa_horas ? `${itemDetalhado.estimativa_horas}h` : "-"}</p></div>
                       <div><p className="text-[10px] text-muted-foreground">Tempo efetivo</p><p className="font-medium">{itemDetalhado.tempo_efetivo_horas ? `${itemDetalhado.tempo_efetivo_horas}h` : "-"}</p></div>
                       <div><p className="text-[10px] text-muted-foreground">Data prevista</p><p className="font-medium">{itemDetalhado.data_prevista ? format(parseISO(itemDetalhado.data_prevista), "dd/MM/yyyy") : "-"}</p></div>
-                      <div><p className="text-[10px] text-muted-foreground">Data conclusγo</p><p className="font-medium">{itemDetalhado.data_conclusao ? format(parseISO(itemDetalhado.data_conclusao), "dd/MM/yyyy") : "-"}</p></div>
+                      <div><p className="text-[10px] text-muted-foreground">Data conclusao</p><p className="font-medium">{itemDetalhado.data_conclusao ? format(parseISO(itemDetalhado.data_conclusao), "dd/MM/yyyy") : "-"}</p></div>
                     </div>
                     {itemDetalhado.descricao_solicitante && (
                       <div>
@@ -1292,7 +1362,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                     )}
                     {itemDetalhado.descricao_solucao && (
                       <div>
-                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Soluηγo implementada</p>
+                        <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide mb-1">Soluao implementada</p>
                         <p className="text-xs text-foreground whitespace-pre-wrap bg-emerald-50 border border-emerald-100 rounded-lg p-3">{itemDetalhado.descricao_solucao}</p>
                       </div>
                     )}
@@ -1334,7 +1404,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wide">Adicionar participante</p>
                         <div className="grid grid-cols-2 gap-2">
                           <Select value={novoPartUserId} onValueChange={setNovoPartUserId}>
-                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar usuαrio" /></SelectTrigger>
+                            <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecionar usuario" /></SelectTrigger>
                             <SelectContent>
                               {profilesDisponiveis.filter(p => !participantes.find(pt => pt.user_id === p.user_id)).map(p => (
                                 <SelectItem key={p.user_id} value={p.user_id}>{p.name}</SelectItem>
@@ -1359,7 +1429,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 )}
               </TabsContent>
 
-              {/* ?? ABA COMENTΑRIOS ?? */}
+              {/* ?? ABA COMENTARIOS ?? */}
               <TabsContent value="comentarios" className="flex-1 flex flex-col overflow-hidden mt-3">
                 <div className="flex-1 overflow-y-auto px-5 space-y-3 pb-3">
                   {loadingDetalhe ? (
@@ -1367,7 +1437,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   ) : comentarios.length === 0 ? (
                     <div className="flex flex-col items-center gap-2 py-8 text-center">
                       <MessageSquare className="h-6 w-6 text-muted-foreground/30" />
-                      <p className="text-xs text-muted-foreground">Nenhum comentαrio ainda</p>
+                      <p className="text-xs text-muted-foreground">Nenhum comentario ainda</p>
                     </div>
                   ) : (
                     comentarios.map(com => (
@@ -1390,7 +1460,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   <Textarea
                     value={novoComentario}
                     onChange={e => setNovoComentario(e.target.value)}
-                    placeholder="Escreva um comentαrio..."
+                    placeholder="Escreva um comentario..."
                     rows={2}
                     className="resize-none text-sm flex-1"
                     onKeyDown={e => { if (e.key === "Enter" && e.ctrlKey) handleEnviarComentario(); }}
@@ -1401,14 +1471,14 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                 </div>
               </TabsContent>
 
-              {/* ?? ABA HISTΣRICO ?? */}
+              {/* ?? ABA HISTORICO ?? */}
               <TabsContent value="historico" className="flex-1 overflow-y-auto px-5 pb-4 mt-3">
                 {loadingDetalhe ? (
                   <div className="flex justify-center py-6"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
                 ) : historico.length === 0 ? (
                   <div className="flex flex-col items-center gap-2 py-8 text-center">
                     <History className="h-6 w-6 text-muted-foreground/30" />
-                    <p className="text-xs text-muted-foreground">Nenhum histσrico disponνvel</p>
+                    <p className="text-xs text-muted-foreground">Nenhum historico disponivel</p>
                   </div>
                 ) : (
                   <div className="relative">
@@ -1448,7 +1518,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           </DialogContent>
         </Dialog>
       )}
-      {/* Dialog configuraηγo de colunas - BL-004-D */}
+      {/* Dialog configuraao de colunas - BL-004-D */}
       {isCoordinator && (
         <Dialog open={configColunasOpen} onOpenChange={setConfigColunasOpen}>
           <DialogContent className="flex flex-col gap-0 p-0 max-h-[85dvh] w-full max-w-md">
@@ -1498,7 +1568,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                     {savingColuna ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}Criar
                   </Button>
                 </div>
-                <p className="text-[9px] text-muted-foreground">Nova coluna inserida antes de Cancelado. Colunas protegidas podem ser renomeadas mas nγo excluνdas.</p>
+                <p className="text-[9px] text-muted-foreground">Nova coluna inserida antes de Cancelado. Colunas protegidas podem ser renomeadas mas nao excluidas.</p>
               </div>
             </div>
             <DialogFooter className="shrink-0 border-t px-5 py-3">
