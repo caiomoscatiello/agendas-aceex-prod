@@ -831,12 +831,11 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const handleRenomearColuna = async (colunaId: string) => {
     if (!editColunaNome.trim()) return;
     await renomearColuna(colunaId, editColunaNome.trim(), editColunaCor);
-    // WIP: salvar separadamente
     if (editColunaWip !== undefined) {
       await supabase.from("projeto_backlog_colunas").update({ wip_limite: editColunaWip }).eq("id", colunaId);
-      setColunas(prev => prev.map(c => c.id === colunaId ? { ...c, wip_limite: editColunaWip } : c));
     }
     setEditandoColuna(null);
+    await loadBoard();
     toast({ title: "Coluna atualizada!" });
   };
 
