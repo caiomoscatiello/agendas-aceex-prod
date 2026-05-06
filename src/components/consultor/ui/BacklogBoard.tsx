@@ -364,6 +364,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [editandoColuna, setEditandoColuna] = useState<string | null>(null);
   const [editColunaNome, setEditColunaNome] = useState("");
   const [editColunaCor, setEditColunaCor] = useState("");
+  const [editColunaWip, setEditColunaWip] = useState<number | null>(null);
   const [participantes, setParticipantes] = useState<BacklogParticipante[]>([]);
   const [loadingParticipantes, setLoadingParticipantes] = useState(false);
   const [profilesDisponiveis, setProfilesDisponiveis] = useState<{user_id: string; name: string}[]>([]);
@@ -830,6 +831,11 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const handleRenomearColuna = async (colunaId: string) => {
     if (!editColunaNome.trim()) return;
     await renomearColuna(colunaId, editColunaNome.trim(), editColunaCor);
+    // WIP: salvar separadamente
+    if (editColunaWip !== undefined) {
+      await supabase.from("projeto_backlog_colunas").update({ wip_limite: editColunaWip }).eq("id", colunaId);
+      setColunas(prev => prev.map(c => c.id === colunaId ? { ...c, wip_limite: editColunaWip } : c));
+    }
     setEditandoColuna(null);
     toast({ title: "Coluna atualizada!" });
   };
@@ -1539,6 +1545,18 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                           <input type="color" value={editColunaCor} onChange={e => setEditColunaCor(e.target.value)} className="w-8 h-8 rounded cursor-pointer border-0 bg-transparent" />
                           <Input value={editColunaNome} onChange={e => setEditColunaNome(e.target.value)} className="h-7 text-xs flex-1" autoFocus />
                         </div>
+                        <div className="flex items-center gap-2 mt-1">
+                          <label className="text-[10px] text-muted-foreground whitespace-nowrap">Limite WIP:</label>
+                          <input
+                            type="number"
+                            min="1"
+                            max="99"
+                            placeholder="sem limite"
+                            value={editColunaWip ?? ""}
+                            onChange={e => setEditColunaWip(e.target.value ? parseInt(e.target.value) : null)}
+                            className="h-7 text-xs w-24 border rounded-md px-2 bg-background"
+                          />
+                        </div>
                         <div className="flex gap-2">
                           <Button size="sm" className="h-6 text-xs gap-1" onClick={() => handleRenomearColuna(col.id)}><Save className="h-3 w-3" />Salvar</Button>
                           <Button size="sm" variant="outline" className="h-6 text-xs" onClick={() => setEditandoColuna(null)}>Cancelar</Button>
@@ -1552,7 +1570,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <div className="flex items-center gap-1">
                           <button onClick={() => reordenarColunas(col.id, "esquerda")} disabled={idx === 0 || col.status_sistema === "cancelado"} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronLeft className="h-3 w-3" /></button>
                           <button onClick={() => reordenarColunas(col.id, "direita")} disabled={idx === arr.length - 1 || col.status_sistema === "cancelado"} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronRight className="h-3 w-3" /></button>
-                          <button onClick={() => { setEditandoColuna(col.id); setEditColunaNome(col.nome); setEditColunaCor(col.cor); }} className="p-1 text-muted-foreground hover:text-foreground"><Edit2 className="h-3 w-3" /></button>
+                          <button onClick={() => { setEditandoColuna(col.id); setEditColunaNome(col.nome); setEditColunaCor(col.cor); setEditColunaWip(col.wip_limite ?? null); }} className="p-1 text-muted-foreground hover:text-foreground"><Edit2 className="h-3 w-3" /></button>
                           {!col.status_sistema && <button onClick={() => handleExcluirColuna(col.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>}
                         </div>
                       </div>
