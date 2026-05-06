@@ -1527,7 +1527,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       )}
       {/* Dialog configuraao de colunas - BL-004-D */}
       {isCoordinator && (
-        <Dialog open={configColunasOpen} onOpenChange={setConfigColunasOpen}>
+        <Dialog open={configColunasOpen} onOpenChange={(open) => { setConfigColunasOpen(open); if (!open) setEditandoColuna(null); }}>
           <DialogContent className="flex flex-col gap-0 p-0 max-h-[85dvh] w-full max-w-md">
             <DialogHeader className="shrink-0 border-b px-5 py-4">
               <div className="flex items-center gap-2 pr-8">
@@ -1570,7 +1570,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         <div className="flex items-center gap-1">
                           <button onClick={() => reordenarColunas(col.id, "esquerda")} disabled={idx === 0 || col.status_sistema === "cancelado"} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronLeft className="h-3 w-3" /></button>
                           <button onClick={() => reordenarColunas(col.id, "direita")} disabled={idx === arr.length - 1 || col.status_sistema === "cancelado"} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30"><ChevronRight className="h-3 w-3" /></button>
-                          <button onClick={() => { setEditandoColuna(col.id); setEditColunaNome(col.nome); setEditColunaCor(col.cor); setEditColunaWip(col.wip_limite ?? null); }} className="p-1 text-muted-foreground hover:text-foreground"><Edit2 className="h-3 w-3" /></button>
+                          <button onClick={(e) => { e.stopPropagation(); setEditandoColuna(col.id); setEditColunaNome(col.nome); setEditColunaCor(col.cor); setEditColunaWip(col.wip_limite ?? null); }} className="p-1 text-muted-foreground hover:text-foreground"><Edit2 className="h-3 w-3" /></button>
                           {!col.status_sistema && <button onClick={() => handleExcluirColuna(col.id)} className="p-1 text-muted-foreground hover:text-destructive"><Trash2 className="h-3 w-3" /></button>}
                         </div>
                       </div>
