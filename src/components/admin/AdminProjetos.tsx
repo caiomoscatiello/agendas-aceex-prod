@@ -252,13 +252,13 @@ export default function AdminProjetos() {
   const [savingRisco, setSavingRisco] = useState(false);
   const [exibirEncerrados, setExibirEncerrados] = useState(false);
   const [rsDescricao, setRsDescricao] = useState("");
-  const [rsProbabilidade, setRsProbabilidade] = useState("Média");
-  const [rsImpacto, setRsImpacto] = useState("Médio");
+  const [rsProbabilidade, setRsProbabilidade] = useState("Mιdia");
+  const [rsImpacto, setRsImpacto] = useState("Mιdio");
   const [rsStatus, setRsStatus] = useState("Identificado");
   const [rsAcao, setRsAcao] = useState("");
   const [rsResponsavelId, setRsResponsavelId] = useState<string | null>(null);
 
-  // â"€â"€ ALERTAS CONFIG â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  // β"β" ALERTAS CONFIG β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"
   const [alertaConfig, setAlertaConfig] = useState({
     alerta_feeling_ativo: true,
     alerta_feeling_threshold: 20,
@@ -271,7 +271,7 @@ export default function AdminProjetos() {
   });
   const [savingAlertaConfig, setSavingAlertaConfig] = useState(false);
 
-  // â"€â"€ HEALTH SCORE â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  // β"β" HEALTH SCORE β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"
   const [healthOpen, setHealthOpen] = useState(false);
   const [csvWizardOpen, setCsvWizardOpen] = useState(false);
   const [backlogReloadKey, setBacklogReloadKey] = useState(0);
@@ -303,7 +303,7 @@ export default function AdminProjetos() {
     loadTiposDocumento();
   }, []);
 
-  // â"€â"€ HEALTH SCORE FUNCTIONS â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€â"€
+  // β"β" HEALTH SCORE FUNCTIONS β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"β"
   const loadHealthScore = async (projetoId: string) => {
     setHealthLoading(true);
     const defaultConfig: HealthConfig = {
@@ -333,7 +333,7 @@ export default function AdminProjetos() {
       { onConflict: "projeto_id" }
     );
     setHealthConfig({ ...healthConfigEdit });
-    toast({ title: "Configuração salva!" });
+    toast({ title: "Configuraηγo salva!" });
     setHealthSaving(false);
   };
 
@@ -441,7 +441,7 @@ export default function AdminProjetos() {
     await loadStakeholders(projeto.id);
     await loadRiscos(projeto.id);
 
-    // â"€â"€ Carregar config de alertas â"€â"€
+    // β"β" Carregar config de alertas β"β"
     const { data: cfgData } = await supabase
       .from("projeto_alertas_config")
       .select("*")
@@ -523,14 +523,14 @@ export default function AdminProjetos() {
     );
     if (codigoDuplicado) {
       toast({
-        title: "Código duplicado",
-        description: `Já existe uma atividade com o código "${newAtivCodigo}". Use um código único.`,
+        title: "Cσdigo duplicado",
+        description: `Jα existe uma atividade com o cσdigo "${newAtivCodigo}". Use um cσdigo ϊnico.`,
         variant: "destructive",
       });
       return;
     }
     if (newAtivDataInicio && newAtivDataFim && newAtivDataFim < newAtivDataInicio) {
-      toast({ title: "Erro", description: "Data fim deve ser igual ou posterior à data início.", variant: "destructive" });
+      toast({ title: "Erro", description: "Data fim deve ser igual ou posterior ΰ data inνcio.", variant: "destructive" });
       return;
     }
     const novaHora = parseFloat(newAtivHoras);
@@ -561,8 +561,8 @@ export default function AdminProjetos() {
         .eq("cliente", nomeCliente);
       if (count && count > 0) {
         toast({
-          title: "Remoção bloqueada",
-          description: `A atividade '${atividade.codigo} - ${atividade.descricao}' possui ${count} agenda(s) vinculada(s) e não pode ser removida.`,
+          title: "Remoηγo bloqueada",
+          description: `A atividade '${atividade.codigo} - ${atividade.descricao}' possui ${count} agenda(s) vinculada(s) e nγo pode ser removida.`,
           variant: "destructive",
         });
         return;
@@ -573,19 +573,19 @@ export default function AdminProjetos() {
 
   const handleSave = async () => {
     if (!nomeCliente.trim()) {
-      toast({ title: "Erro", description: "Nome do cliente é obrigatório.", variant: "destructive" });
+      toast({ title: "Erro", description: "Nome do cliente ι obrigatσrio.", variant: "destructive" });
       return;
     }
 
     if (!codigoCliente.trim() || codigoCliente.trim().length !== 6 || !/^[A-Za-z0-9]{6}$/.test(codigoCliente.trim())) {
-      toast({ title: "Erro", description: "Código do cliente deve ter exatamente 6 caracteres alfanuméricos.", variant: "destructive" });
+      toast({ title: "Erro", description: "Cσdigo do cliente deve ter exatamente 6 caracteres alfanumιricos.", variant: "destructive" });
       return;
     }
     
     if (contatoTelefone) {
       const rawPhone = contatoTelefone.replace(/\D/g, "");
       if (rawPhone.length !== 11 || rawPhone[2] !== "9") {
-        toast({ title: "Erro", description: "Telefone inválido. Use o formato (DDD) 9XXXX-XXXX.", variant: "destructive" });
+        toast({ title: "Erro", description: "Telefone invαlido. Use o formato (DDD) 9XXXX-XXXX.", variant: "destructive" });
         return;
       }
     }
@@ -600,7 +600,7 @@ export default function AdminProjetos() {
     const hcValue = parseFloat(horasContratadas) || 0;
     const totalHorasAtividades = atividades.reduce((sum, a) => sum + a.horas, 0);
     if (hcValue > 0 && totalHorasAtividades !== hcValue) {
-      toast({ title: "Erro", description: `Total de horas das atividades (${totalHorasAtividades}h) deve ser igual às horas contratadas (${hcValue}h).`, variant: "destructive" });
+      toast({ title: "Erro", description: `Total de horas das atividades (${totalHorasAtividades}h) deve ser igual ΰs horas contratadas (${hcValue}h).`, variant: "destructive" });
       setSaving(false);
       return;
     }
@@ -765,7 +765,7 @@ export default function AdminProjetos() {
       }
     }
 
-    toast({ title: "Sucesso", description: editingProjeto ? "Projeto atualizado!" : "Projeto cadastrado!" });
+    toast({ title: "Sucesso", description: editingProjeto ? "Projeto atualizado!" : "Projeto cadastrado! Acesse a aba Backlog para criar itens com um template." });
 
     try {
       const coordenadorNome = coordenadores.find(c => c.user_id === selectedCoordenador)?.name ?? "";
@@ -828,7 +828,7 @@ export default function AdminProjetos() {
 
       const { error: syncError } = await supabase.functions.invoke("monday-sync-project", { body: syncPayload });
       if (syncError) {
-        toast({ title: "Aviso Monday", description: "Projeto salvo. Board Monday não sincronizado." });
+        toast({ title: "Aviso Monday", description: "Projeto salvo. Board Monday nγo sincronizado." });
       }
     } catch {
       // Monday failure never blocks
@@ -891,7 +891,7 @@ export default function AdminProjetos() {
 
   const handleSaveStakeholder = async () => {
     if (!shNome.trim()) {
-      toast({ title: "Erro", description: "Nome é obrigatório.", variant: "destructive" });
+      toast({ title: "Erro", description: "Nome ι obrigatσrio.", variant: "destructive" });
       return;
     }
     setSavingStakeholder(true);
@@ -914,7 +914,7 @@ export default function AdminProjetos() {
     } else {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || !authData?.user) {
-        toast({ title: "Erro de autenticação", description: "Sessão expirada. Faça login novamente.", variant: "destructive" });
+        toast({ title: "Erro de autenticaηγo", description: "Sessγo expirada. Faηa login novamente.", variant: "destructive" });
         setSavingStakeholder(false);
         return;
       }
@@ -937,7 +937,7 @@ export default function AdminProjetos() {
 
   const openNewRisco = () => {
     setEditingRisco(null);
-    setRsDescricao(""); setRsProbabilidade("Média"); setRsImpacto("Médio");
+    setRsDescricao(""); setRsProbabilidade("Mιdia"); setRsImpacto("Mιdio");
     setRsStatus("Identificado"); setRsAcao(""); setRsResponsavelId(null);
     setRiscoDialogOpen(true);
   };
@@ -952,7 +952,7 @@ export default function AdminProjetos() {
 
   const handleSaveRisco = async () => {
     if (!rsDescricao.trim()) {
-      toast({ title: "Erro", description: "Descrição é obrigatória.", variant: "destructive" });
+      toast({ title: "Erro", description: "Descriηγo ι obrigatσria.", variant: "destructive" });
       return;
     }
     setSavingRisco(true);
@@ -970,7 +970,7 @@ export default function AdminProjetos() {
     } else {
       const { data: authData, error: authError } = await supabase.auth.getUser();
       if (authError || !authData?.user) {
-        toast({ title: "Erro de autenticação", description: "Sessão expirada. Faça login novamente.", variant: "destructive" });
+        toast({ title: "Erro de autenticaηγo", description: "Sessγo expirada. Faηa login novamente.", variant: "destructive" });
         setSavingRisco(false);
         return;
       }
@@ -993,8 +993,8 @@ export default function AdminProjetos() {
 
   const handleResetBoard = async (projeto: Projeto) => {
     if (!confirm(
-      `Isso irá arquivar o board Monday do projeto "${projeto.nome_cliente}" ` +
-      `e limpar os dados de sincronização.\n\n` +
+      `Isso irα arquivar o board Monday do projeto "${projeto.nome_cliente}" ` +
+      `e limpar os dados de sincronizaηγo.\n\n` +
       `Permitido apenas em projetos sem agendas vinculadas.\n\n` +
       `Confirmar reset?`
     )) return;
@@ -1007,13 +1007,13 @@ export default function AdminProjetos() {
       );
       if (error) throw error;
       if (data?.success) {
-        toast({ title: "Reset concluído", description: "Board arquivado. Use 'Criar board' para recriar." });
+        toast({ title: "Reset concluνdo", description: "Board arquivado. Use 'Criar board' para recriar." });
         loadProjetos();
         setDetailProjeto(prev =>
           prev ? { ...prev, monday_board_id: null, monday_board_url: null, monday_status: "nao_criado" } as any : prev
         );
       } else {
-        toast({ title: "Reset não permitido", description: data?.error || "Erro ao resetar.", variant: "destructive" });
+        toast({ title: "Reset nγo permitido", description: data?.error || "Erro ao resetar.", variant: "destructive" });
       }
     } catch (err: any) {
       toast({ title: "Erro no reset", description: err.message, variant: "destructive" });
@@ -1082,7 +1082,7 @@ export default function AdminProjetos() {
           if (fresh) setDetailProjeto(fresh as any);
         }
       } else if (data?.skipped) {
-        toast({ title: "Integração desativada", description: "Ative em Settings â†' Integ. Monday.", variant: "destructive" });
+        toast({ title: "Integraηγo desativada", description: "Ative em Settings β' Integ. Monday.", variant: "destructive" });
       } else {
         throw new Error(data?.error || "Erro desconhecido");
       }
@@ -1125,18 +1125,18 @@ export default function AdminProjetos() {
       };
       const { error } = await supabase.functions.invoke("monday-sync-project", { body: payload });
       if (error) {
-        toast({ title: "Erro Monday", description: "Não foi possível criar o board.", variant: "destructive" });
+        toast({ title: "Erro Monday", description: "Nγo foi possνvel criar o board.", variant: "destructive" });
       } else {
         toast({ title: "Board Monday criado!" });
         loadProjetos();
       }
     } catch {
-      toast({ title: "Erro Monday", description: "Falha na sincronização.", variant: "destructive" });
+      toast({ title: "Erro Monday", description: "Falha na sincronizaηγo.", variant: "destructive" });
     }
     setSyncingMondayId(null);
   };
 
-  // â"€â"€â"€ Shared sheet content â"€â"€â"€
+  // β"β"β" Shared sheet content β"β"β"
   const renderSheetBody = () => {
     const isEditable = sheetMode === "edit" || sheetMode === "new";
     const projeto = detailProjeto;
@@ -1164,13 +1164,13 @@ export default function AdminProjetos() {
           <TabsTrigger value="geral" className="flex-1 text-xs">Geral</TabsTrigger>
           <TabsTrigger value="despesas" className="flex-1 text-xs">Despesas</TabsTrigger>
           <div className="w-px bg-border mx-1 self-stretch" />
-          {/* Execução */}
+          {/* Execuηγo */}
           <TabsTrigger value="atividades" className="flex-1 text-xs">Atividades</TabsTrigger>
           <TabsTrigger value="backlog" className="flex-1 text-xs gap-1">
             <ListTodo className="h-3 w-3" />Backlog
           </TabsTrigger>
           <div className="w-px bg-border mx-1 self-stretch" />
-          {/* Governança */}
+          {/* Governanηa */}
           <TabsTrigger value="stakeholders" className="flex-1 text-xs">Stakeholders</TabsTrigger>
           <TabsTrigger value="riscos" className="flex-1 text-xs">Riscos</TabsTrigger>
           <TabsTrigger value="baseline" className="flex-1 text-xs">Baseline</TabsTrigger>
@@ -1183,12 +1183,12 @@ export default function AdminProjetos() {
               <div className="space-y-4">
                 <p className="text-xs text-muted-foreground">Clique em Editar para modificar os dados.</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div><p className="text-[10px] text-muted-foreground">Código</p><p className="text-sm font-mono">{projeto.codigo_cliente}</p></div>
+                  <div><p className="text-[10px] text-muted-foreground">Cσdigo</p><p className="text-sm font-mono">{projeto.codigo_cliente}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Nome do Projeto</p><p className="text-sm">{projeto.nome_cliente}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Coordenador</p><p className="text-sm">{getCoordenadorName(projeto.coordenador_id)}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Contato</p><p className="text-sm">{projeto.contato_nome || ""}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Telefone</p><p className="text-sm">{projeto.contato_telefone || ""}</p></div>
-                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Endereço</p><p className="text-sm">{projeto.endereco_cliente || ""}</p></div>
+                  <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Endereηo</p><p className="text-sm">{projeto.endereco_cliente || ""}</p></div>
                   <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Site</p><p className="text-sm">{projeto.site_cliente || ""}</p></div>
                   <div className="sm:col-span-2"><p className="text-[10px] text-muted-foreground">Email do Contato</p><p className="text-sm">{projeto.email_contato || ""}</p></div>
                   <div><p className="text-[10px] text-muted-foreground">Horas Contratadas</p><p className="text-sm">{projeto.horas_contratadas}h</p></div>
@@ -1210,21 +1210,21 @@ export default function AdminProjetos() {
                 <p className="text-sm font-semibold text-muted-foreground">Dados do Cliente</p>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div className="space-y-1">
-                    <Label className="text-xs">Código do Projeto *</Label>
+                    <Label className="text-xs">Cσdigo do Projeto *</Label>
                     <Input
                       value={codigoCliente}
                       onChange={(e) => setCodigoCliente(e.target.value.replace(/[^A-Za-z0-9]/g, "").slice(0, 6).toUpperCase())}
                       placeholder="ABC123"
                       maxLength={6}
                     />
-                    <p className="text-[10px] text-muted-foreground">6 caracteres alfanuméricos</p>
+                    <p className="text-[10px] text-muted-foreground">6 caracteres alfanumιricos</p>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs">Nome do Projeto *</Label>
                     <Input value={nomeCliente} onChange={(e) => setNomeCliente(e.target.value)} placeholder="Nome do cliente" />
                   </div>
                   <div className="space-y-1">
-                    <Label className="text-xs">Coordenador Responsável *</Label>
+                    <Label className="text-xs">Coordenador Responsαvel *</Label>
                     <Select value={selectedCoordenador} onValueChange={setSelectedCoordenador}>
                       <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                       <SelectContent>
@@ -1257,8 +1257,8 @@ export default function AdminProjetos() {
                     <p className="text-[10px] text-muted-foreground">Formato: (DDD) 9XXXX-XXXX</p>
                   </div>
                   <div className="space-y-1 sm:col-span-2">
-                    <Label className="text-xs">Endereço</Label>
-                    <Input value={enderecoCliente} onChange={(e) => setEnderecoCliente(e.target.value)} placeholder="Endereço completo" />
+                    <Label className="text-xs">Endereηo</Label>
+                    <Input value={enderecoCliente} onChange={(e) => setEnderecoCliente(e.target.value)} placeholder="Endereηo completo" />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs">Site</Label>
@@ -1294,9 +1294,9 @@ export default function AdminProjetos() {
                     <Select value={statusProjeto} onValueChange={setStatusProjeto}>
                       <SelectTrigger><SelectValue /></SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="Em planejamento">🟡 Em planejamento</SelectItem>
-                        <SelectItem value="Liberado">🟢 Liberado</SelectItem>
-                        <SelectItem value="Encerrado">🔴 Encerrado</SelectItem>
+                        <SelectItem value="Em planejamento">? Em planejamento</SelectItem>
+                        <SelectItem value="Liberado">? Liberado</SelectItem>
+                        <SelectItem value="Encerrado">? Encerrado</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
@@ -1346,7 +1346,7 @@ export default function AdminProjetos() {
                       <span className="text-sm flex-1 font-medium">{a.descricao}</span>
                       <span className="text-xs text-muted-foreground">
                         {a.data_inicio ? a.data_inicio.split("-").reverse().join("/") : ""}
-                        {a.data_fim ? ` â†' ${a.data_fim.split("-").reverse().join("/")}` : ""}
+                        {a.data_fim ? ` β' ${a.data_fim.split("-").reverse().join("/")}` : ""}
                       </span>
                       <Badge variant="outline" className="text-xs font-mono">{a.horas}h</Badge>
                     </div>
@@ -1367,7 +1367,7 @@ export default function AdminProjetos() {
                                     : "border-amber-500 text-amber-700 dark:text-amber-400"
                                 )}
                               >
-                                {item.doc_satisfeito ? "✔ Doc" : "⚠ Doc"}
+                                {item.doc_satisfeito ? "? Doc" : "? Doc"}
                               </Badge>
                             )}
                           </div>
@@ -1389,7 +1389,7 @@ export default function AdminProjetos() {
                               const limite = parseFloat(horasContratadas) || 0;
                               const total = atividades.reduce((s, at) => s + at.horas, 0);
                               if (limite > 0 && total > limite) {
-                                toast({ title: "Atenção", description: `Total de horas (${total}h) excede as contratadas (${limite}h).`, variant: "destructive" });
+                                toast({ title: "Atenηγo", description: `Total de horas (${total}h) excede as contratadas (${limite}h).`, variant: "destructive" });
                               }
                             }}
                           />
@@ -1424,19 +1424,19 @@ export default function AdminProjetos() {
             {isEditable && (
               <div className="mt-4 grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
                 <div className="w-full sm:w-24 space-y-1">
-                  <Label className="text-xs">Código</Label>
+                  <Label className="text-xs">Cσdigo</Label>
                   <Input value={newAtivCodigo} onChange={(e) => setNewAtivCodigo(e.target.value)} placeholder="A01" />
                 </div>
                 <div className="col-span-2 sm:flex-1 space-y-1">
-                  <Label className="text-xs">Descrição</Label>
-                  <Input value={newAtivDescricao} onChange={(e) => setNewAtivDescricao(e.target.value)} placeholder="Descrição da atividade" />
+                  <Label className="text-xs">Descriηγo</Label>
+                  <Input value={newAtivDescricao} onChange={(e) => setNewAtivDescricao(e.target.value)} placeholder="Descriηγo da atividade" />
                 </div>
                 <div className="w-full sm:w-20 space-y-1">
                   <Label className="text-xs">Horas</Label>
                   <Input type="number" value={newAtivHoras} onChange={(e) => setNewAtivHoras(e.target.value)} placeholder="0" />
                 </div>
                 <div className="w-full sm:w-32 space-y-1">
-                  <Label className="text-[10px]">Data início</Label>
+                  <Label className="text-[10px]">Data inνcio</Label>
                   <Input type="date" className="h-8 text-xs" value={newAtivDataInicio} onChange={(e) => setNewAtivDataInicio(e.target.value)} />
                 </div>
                 <div className="w-full sm:w-32 space-y-1">
@@ -1464,7 +1464,7 @@ export default function AdminProjetos() {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Tipo</TableHead>
-                      <TableHead>Valor Máximo</TableHead>
+                      <TableHead>Valor Mαximo</TableHead>
                       {isEditable && <TableHead className="w-10"></TableHead>}
                     </TableRow>
                   </TableHeader>
@@ -1490,10 +1490,10 @@ export default function AdminProjetos() {
               <div className="flex gap-2 items-end mt-3">
                 <div className="flex-1 space-y-1">
                   <Label className="text-xs">Tipo</Label>
-                  <Input value={newDespTipo} onChange={(e) => setNewDespTipo(e.target.value)} placeholder="Ex: Alimentação" />
+                  <Input value={newDespTipo} onChange={(e) => setNewDespTipo(e.target.value)} placeholder="Ex: Alimentaηγo" />
                 </div>
                 <div className="w-32 space-y-1">
-                  <Label className="text-xs">Valor Máx.</Label>
+                  <Label className="text-xs">Valor Mαx.</Label>
                   <Input type="number" step="0.01" value={newDespValor} onChange={(e) => setNewDespValor(e.target.value)} placeholder="0.00" />
                 </div>
                 <Button variant="outline" size="icon" onClick={addDespesaLocal}><Plus className="h-4 w-4" /></Button>
@@ -1631,12 +1631,12 @@ export default function AdminProjetos() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Descrição</TableHead>
+                        <TableHead>Descriηγo</TableHead>
                         <TableHead>Probabilidade</TableHead>
                         <TableHead>Impacto</TableHead>
                         <TableHead>Status</TableHead>
-                        <TableHead className="hidden sm:table-cell">Responsável</TableHead>
-                        <TableHead className="hidden sm:table-cell">Ação Mitigadora</TableHead>
+                        <TableHead className="hidden sm:table-cell">Responsαvel</TableHead>
+                        <TableHead className="hidden sm:table-cell">Aηγo Mitigadora</TableHead>
                         <TableHead className="w-[80px]"></TableHead>
                       </TableRow>
                     </TableHeader>
@@ -1647,17 +1647,17 @@ export default function AdminProjetos() {
                           <TableRow key={r.id}>
                             <TableCell className="text-sm font-medium">{r.descricao}</TableCell>
                             <TableCell>
-                              <Badge variant={r.probabilidade === "Alta" ? "destructive" : r.probabilidade === "Média" ? "default" : "secondary"} className="text-xs">{r.probabilidade}</Badge>
+                              <Badge variant={r.probabilidade === "Alta" ? "destructive" : r.probabilidade === "Mιdia" ? "default" : "secondary"} className="text-xs">{r.probabilidade}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={r.impacto === "Alto" ? "destructive" : r.impacto === "Médio" ? "default" : "secondary"} className="text-xs">{r.impacto}</Badge>
+                              <Badge variant={r.impacto === "Alto" ? "destructive" : r.impacto === "Mιdio" ? "default" : "secondary"} className="text-xs">{r.impacto}</Badge>
                             </TableCell>
                             <TableCell>
-                              <Badge variant={r.status === "Encerrado" ? "secondary" : r.status === "Em Mitigação" ? "default" : "outline"} className="text-xs">{r.status}</Badge>
+                              <Badge variant={r.status === "Encerrado" ? "secondary" : r.status === "Em Mitigaηγo" ? "default" : "outline"} className="text-xs">{r.status}</Badge>
                             </TableCell>
                             <TableCell className="hidden sm:table-cell text-sm">
                               {responsavel
-                                ? `${responsavel.nome}${responsavel.cargo ? ` Â· ${responsavel.cargo}` : ""}`
+                                ? `${responsavel.nome}${responsavel.cargo ? ` Β· ${responsavel.cargo}` : ""}`
                                 : ""}
                             </TableCell>
                             <TableCell className="hidden sm:table-cell text-sm">{r.acao_mitigadora || ""}</TableCell>
@@ -1693,10 +1693,10 @@ export default function AdminProjetos() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead className="text-xs">Versão</TableHead>
-                      <TableHead className="text-xs">Descrição</TableHead>
+                      <TableHead className="text-xs">Versγo</TableHead>
+                      <TableHead className="text-xs">Descriηγo</TableHead>
                       <TableHead className="text-xs">Salvo em</TableHead>
-                      <TableHead className="text-xs w-24">Ações</TableHead>
+                      <TableHead className="text-xs w-24">Aηυes</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -1723,7 +1723,7 @@ export default function AdminProjetos() {
           </TabsContent>
 
           {/* TAB CONFIG */}
-          {/* TAB BACKLOG — BL-004-B */}
+          {/* TAB BACKLOG  BL-004-B */}
           <TabsContent value="backlog" className="mt-0">
             {detailProjeto ? (
               <BacklogBoard
@@ -1742,7 +1742,7 @@ export default function AdminProjetos() {
 
           {/* TAB CONFIG */}
           <TabsContent value="config" className="mt-0">
-            <p className="text-sm font-semibold mb-3">Integrações</p>
+            <p className="text-sm font-semibold mb-3">Integraηυes</p>
             {(() => {
               const integracoes: IntegracaoConfig[] = [
                 {
@@ -1756,10 +1756,10 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: detailProjeto?.monday_board_id ? "criado" : "nao_criado",
-                  statusLabel: detailProjeto?.monday_board_id ? "✔ Criado" : "Não criado",
+                  statusLabel: detailProjeto?.monday_board_id ? "? Criado" : "Nγo criado",
                   sub: detailProjeto?.monday_board_id
                     ? `${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
-                    : "Board Monday não vinculado a este projeto",
+                    : "Board Monday nγo vinculado a este projeto",
                   acoes: detailProjeto?.monday_board_id ? (
                     <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => window.open(detailProjeto.monday_board_url!, "_blank")}>
                       <ExternalLink className="h-3 w-3" /> Abrir board
@@ -1778,7 +1778,7 @@ export default function AdminProjetos() {
                           {resettingBoard === detailProjeto?.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <RotateCcw className="h-3 w-3" />}
                           Reset board
                         </Button>
-                        <span className="text-[9px] text-muted-foreground">arquiva e remove vínculo</span>
+                        <span className="text-[9px] text-muted-foreground">arquiva e remove vνnculo</span>
                       </div>
                     </div>
                   ) : null,
@@ -1792,8 +1792,8 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: "ativo",
-                  statusLabel: "✔ Ativo",
-                  sub: `Código cliente: ${detailProjeto?.codigo_cliente ?? ""}`,
+                  statusLabel: "? Ativo",
+                  sub: `Cσdigo cliente: ${detailProjeto?.codigo_cliente ?? ""}`,
                 },
                 {
                   key: "sharepoint",
@@ -1808,13 +1808,13 @@ export default function AdminProjetos() {
                     </svg>
                   ),
                   status: detailProjeto?.sharepoint_pasta_url ? "ativo" : "disponivel",
-                  statusLabel: detailProjeto?.sharepoint_pasta_url ? "✔ Ativo" : "Disponível",
+                  statusLabel: detailProjeto?.sharepoint_pasta_url ? "? Ativo" : "Disponνvel",
                   sub: detailProjeto?.sharepoint_pasta_url
                     ? `Documentos/${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
                     : "Nenhum documento enviado ainda para este projeto.",
                   help: detailProjeto?.sharepoint_pasta_url
                     ? undefined
-                    : "A pasta deste projeto no SharePoint é criada automaticamente no primeiro envio de documento. O status passa para Ativo assim que isso ocorrer.",
+                    : "A pasta deste projeto no SharePoint ι criada automaticamente no primeiro envio de documento. O status passa para Ativo assim que isso ocorrer.",
                   acoes: detailProjeto?.sharepoint_pasta_url ? (
                     <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => window.open(detailProjeto.sharepoint_pasta_url!, "_blank")}>
                       <ExternalLink className="h-3 w-3" /> Abrir pasta
@@ -1831,7 +1831,7 @@ export default function AdminProjetos() {
                   ),
                   status: "detalhamento",
                   statusLabel: "Em detalhamento",
-                  sub: "Versionamento e automações em breve",
+                  sub: "Versionamento e automaηυes em breve",
                 },
                 {
                   key: "autentique",
@@ -1842,13 +1842,13 @@ export default function AdminProjetos() {
                     </div>
                   ),
                   status: detailProjeto?.autentique_folder_id ? "ativo" : "disponivel",
-                  statusLabel: detailProjeto?.autentique_folder_id ? "✔ Ativo" : "Disponível",
+                  statusLabel: detailProjeto?.autentique_folder_id ? "? Ativo" : "Disponνvel",
                   sub: detailProjeto?.autentique_folder_id
                     ? `${detailProjeto.codigo_cliente} - ${detailProjeto.nome_cliente}`
                     : "Nenhum envelope de assinatura criado ainda para este projeto.",
                   help: detailProjeto?.autentique_folder_id
                     ? undefined
-                    : "A pasta e o envelope no Autentique são criados automaticamente quando o coordenador aciona o envio para assinatura em um item do cronograma. O status passa para Ativo assim que isso ocorrer.",
+                    : "A pasta e o envelope no Autentique sγo criados automaticamente quando o coordenador aciona o envio para assinatura em um item do cronograma. O status passa para Ativo assim que isso ocorrer.",
                   acoes: detailProjeto?.autentique_folder_url ? (
                     <Button size="sm" variant="outline" className="gap-1 h-7 text-xs" onClick={() => window.open(detailProjeto.autentique_folder_url!, "_blank")}>
                       <ExternalLink className="h-3 w-3" /> Abrir pasta
@@ -1894,15 +1894,15 @@ export default function AdminProjetos() {
               );
             })()}
 
-            {/* â"€â"€ ALERTAS PROATIVOS â"€â"€ */}
+            {/* β"β" ALERTAS PROATIVOS β"β" */}
             <p className="text-sm font-semibold mt-5 mb-3">Alertas Proativos</p>
             <Card>
               <CardContent className="p-4 space-y-4">
                 {([
-                  { key: "feeling",     icon: "📉", label: "Desvio de Feeling",     ativoKey: "alerta_feeling_ativo",     valorKey: "alerta_feeling_threshold",  valorLabel: "Desvio mínimo (pp):",       min: 5,  max: 50  },
-                  { key: "apontamento", icon: "📋", label: "Agenda s/ Apontamento", ativoKey: "alerta_apontamento_ativo", valorKey: "alerta_apontamento_dias",    valorLabel: "Dias sem apontamento:",     min: 1,  max: 30  },
-                  { key: "consumo",     icon: "â±",  label: "Consumo de Horas",      ativoKey: "alerta_consumo_ativo",     valorKey: "alerta_consumo_threshold",  valorLabel: "Threshold de consumo (%):", min: 50, max: 100 },
-                  { key: "parada",      icon: "â¸",  label: "Atividade Parada",      ativoKey: "alerta_parada_ativo",      valorKey: "alerta_parada_dias",        valorLabel: "Dias úteis sem agenda:",    min: 1,  max: 30  },
+                  { key: "feeling",     icon: "?", label: "Desvio de Feeling",     ativoKey: "alerta_feeling_ativo",     valorKey: "alerta_feeling_threshold",  valorLabel: "Desvio mνnimo (pp):",       min: 5,  max: 50  },
+                  { key: "apontamento", icon: "?", label: "Agenda s/ Apontamento", ativoKey: "alerta_apontamento_ativo", valorKey: "alerta_apontamento_dias",    valorLabel: "Dias sem apontamento:",     min: 1,  max: 30  },
+                  { key: "consumo",     icon: "β?±",  label: "Consumo de Horas",      ativoKey: "alerta_consumo_ativo",     valorKey: "alerta_consumo_threshold",  valorLabel: "Threshold de consumo (%):", min: 50, max: 100 },
+                  { key: "parada",      icon: "β?Έ",  label: "Atividade Parada",      ativoKey: "alerta_parada_ativo",      valorKey: "alerta_parada_dias",        valorLabel: "Dias ϊteis sem agenda:",    min: 1,  max: 30  },
                 ] as const).map((item, idx) => (
                   <div key={item.key}>
                     {idx > 0 && <div className="border-t border-dashed mb-4" />}
@@ -1946,14 +1946,14 @@ export default function AdminProjetos() {
                     if (error) {
                       toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
                     } else {
-                      toast({ title: "Configuração de alertas salva!" });
+                      toast({ title: "Configuraηγo de alertas salva!" });
                     }
                     setSavingAlertaConfig(false);
                   }}
                   disabled={savingAlertaConfig}
                 >
                   {savingAlertaConfig ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
-                  Salvar configuração de alertas
+                  Salvar configuraηγo de alertas
                 </Button>
               </CardContent>
             </Card>
@@ -1963,13 +1963,13 @@ export default function AdminProjetos() {
     );
   };
 
-  // â"€â"€â"€ Desktop list â"€â"€â"€
+  // β"β"β" Desktop list β"β"β"
   const renderDesktopList = () => (
     <div className="flex flex-col h-full">
       <div className="flex items-center border-b">
         <input
           className="flex-1 px-3 py-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
-          placeholder="Buscar cliente ou código..."
+          placeholder="Buscar cliente ou cσdigo..."
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
         />
@@ -2010,7 +2010,7 @@ export default function AdminProjetos() {
               <span className={cn("inline-block h-2 w-2 rounded-full shrink-0", p.status === "Liberado" ? "bg-emerald-500" : p.status === "Encerrado" ? "bg-red-500" : "bg-yellow-500")} />
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium truncate">{p.nome_cliente}</p>
-                <p className="text-[10px] text-muted-foreground truncate">{p.codigo_cliente} Â· {getCoordenadorName(p.coordenador_id)}</p>
+                <p className="text-[10px] text-muted-foreground truncate">{p.codigo_cliente} Β· {getCoordenadorName(p.coordenador_id)}</p>
               </div>
               {p.monday_board_id ? (
                 <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">Monday</span>
@@ -2071,7 +2071,7 @@ export default function AdminProjetos() {
 
       <div className="flex items-center border rounded-lg overflow-hidden">
         <input className="flex-1 px-3 py-2 text-sm bg-transparent outline-none placeholder:text-muted-foreground"
-          placeholder="Buscar cliente ou código..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
+          placeholder="Buscar cliente ou cσdigo..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
         <button className="w-10 h-10 flex items-center justify-center border-l text-primary hover:bg-muted/50 transition-colors shrink-0 text-lg font-light"
           title="Novo projeto" onClick={() => { openNew(); setSheetMode("new"); setSheetOpen(true); }}>+</button>
       </div>
@@ -2103,7 +2103,7 @@ export default function AdminProjetos() {
                 <span className={cn("inline-block h-2.5 w-2.5 rounded-full shrink-0", p.status === "Liberado" ? "bg-emerald-500" : p.status === "Encerrado" ? "bg-red-500" : "bg-yellow-500")} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{p.nome_cliente}</p>
-                  <p className="text-xs text-muted-foreground truncate">{p.codigo_cliente} Â· {getCoordenadorName(p.coordenador_id)}</p>
+                  <p className="text-xs text-muted-foreground truncate">{p.codigo_cliente} Β· {getCoordenadorName(p.coordenador_id)}</p>
                 </div>
                 {p.monday_board_id ? (
                   <span className="text-[9px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700 border border-blue-200 shrink-0">Monday</span>
@@ -2127,8 +2127,8 @@ export default function AdminProjetos() {
           </h2>
           {sheetMode !== "new" && detailProjeto && (
             <p className="text-xs text-muted-foreground truncate">
-              {detailProjeto.codigo_cliente} Â· {getCoordenadorName(detailProjeto.coordenador_id)} Â· {detailProjeto.status}
-              {detailProjeto.monday_board_id && " Â· Monday vinculado"}
+              {detailProjeto.codigo_cliente} Β· {getCoordenadorName(detailProjeto.coordenador_id)} Β· {detailProjeto.status}
+              {detailProjeto.monday_board_id && " Β· Monday vinculado"}
             </p>
           )}
         </div>
@@ -2136,7 +2136,7 @@ export default function AdminProjetos() {
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs shrink-0">
-                Outras ações <ChevronDown className="h-3 w-3" />
+                Outras aηυes <ChevronDown className="h-3 w-3" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -2180,7 +2180,7 @@ export default function AdminProjetos() {
         <Button variant="outline" onClick={() => { setSheetMode("view"); if (sheetMode === "new") setSheetOpen(false); }}>Cancelar</Button>
         <Button className="gap-2" onClick={handleSave} disabled={saving}>
           {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-          {sheetMode === "new" ? "Cadastrar Projeto" : "Salvar Alterações"}
+          {sheetMode === "new" ? "Cadastrar Projeto" : "Salvar Alteraηυes"}
         </Button>
       </div>
     );
@@ -2211,9 +2211,9 @@ export default function AdminProjetos() {
             <div className="grid grid-cols-4 gap-3">
               {[
                 { label: "Total de projetos", value: projetos.length, sub: "cadastrados", color: "" },
-                { label: "Liberados", value: countByStatus.liberado, sub: "em execução", color: "text-emerald-600" },
-                { label: "Em planejamento", value: countByStatus.planejamento, sub: "aguardando início", color: "text-yellow-600" },
-                { label: "Sem board Monday", value: projetos.filter(p => !p.monday_board_id).length, sub: "pendente criação", color: "text-red-500" },
+                { label: "Liberados", value: countByStatus.liberado, sub: "em execuηγo", color: "text-emerald-600" },
+                { label: "Em planejamento", value: countByStatus.planejamento, sub: "aguardando inνcio", color: "text-yellow-600" },
+                { label: "Sem board Monday", value: projetos.filter(p => !p.monday_board_id).length, sub: "pendente criaηγo", color: "text-red-500" },
               ].map(({ label, value, sub, color }) => (
                 <Card key={label} className="bg-muted/30">
                   <CardContent className="p-4">
@@ -2266,9 +2266,9 @@ export default function AdminProjetos() {
             </div>
             {shTipo === "Interno" && (
               <div className="col-span-2 space-y-1">
-                <Label className="text-xs">Vincular usuário do sistema</Label>
+                <Label className="text-xs">Vincular usuαrio do sistema</Label>
                 <Select value={shProfileUserId || ""} onValueChange={handleSelectUsuarioInterno}>
-                  <SelectTrigger><SelectValue placeholder="Selecione um usuário..." /></SelectTrigger>
+                  <SelectTrigger><SelectValue placeholder="Selecione um usuαrio..." /></SelectTrigger>
                   <SelectContent>{allUsers.map((u) => (<SelectItem key={u.user_id} value={u.user_id}>{u.name}</SelectItem>))}</SelectContent>
                 </Select>
               </div>
@@ -2281,7 +2281,7 @@ export default function AdminProjetos() {
             <div className="space-y-1"><Label className="text-xs">Departamento</Label><Input value={shDepartamento} onChange={(e) => setShDepartamento(e.target.value)} placeholder="Departamento" /></div>
             <div className="space-y-1"><Label className="text-xs">Empresa</Label><Input value={shEmpresa} onChange={(e) => setShEmpresa(e.target.value)} placeholder="Empresa" disabled={shProfileUserId !== null} className={shProfileUserId !== null ? "bg-muted text-muted-foreground cursor-not-allowed" : ""} /></div>
             <div className="space-y-1">
-              <Label className="text-xs">Nível Hierárquico</Label>
+              <Label className="text-xs">Nνvel Hierαrquico</Label>
               <Select value={shNivel} onValueChange={setShNivel}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
@@ -2299,7 +2299,7 @@ export default function AdminProjetos() {
               <Input value={shTelefone} onChange={(e) => { const raw = e.target.value.replace(/\D/g, "").slice(0, 11); let f = ""; if (raw.length > 0) f = `(${raw.slice(0, 2)}`; if (raw.length >= 3) f += `) ${raw.slice(2, 7)}`; if (raw.length >= 8) f += `-${raw.slice(7)}`; setShTelefone(raw.length === 0 ? "" : f); }} placeholder="(11) 99999-9999" type="tel" maxLength={15} disabled={shProfileUserId !== null} className={shProfileUserId !== null ? "bg-muted text-muted-foreground cursor-not-allowed" : ""} />
             </div>
             <div className="space-y-1">
-              <Label className="text-xs">Tipo de Influência</Label>
+              <Label className="text-xs">Tipo de Influκncia</Label>
               <Select value={shInfluencia} onValueChange={setShInfluencia}>
                 <SelectTrigger><SelectValue /></SelectTrigger>
                 <SelectContent>
@@ -2326,21 +2326,21 @@ export default function AdminProjetos() {
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader><DialogTitle>{editingRisco ? "Editar Risco" : "Novo Risco"}</DialogTitle></DialogHeader>
           <div className="grid grid-cols-2 gap-3">
-            <div className="col-span-2 space-y-1"><Label className="text-xs">Descrição *</Label><Textarea rows={2} value={rsDescricao} onChange={(e) => setRsDescricao(e.target.value)} placeholder="Descreva o risco..." /></div>
-            <div className="space-y-1"><Label className="text-xs">Probabilidade</Label><Select value={rsProbabilidade} onValueChange={setRsProbabilidade}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Baixa">Baixa</SelectItem><SelectItem value="Média">Média</SelectItem><SelectItem value="Alta">Alta</SelectItem></SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Impacto</Label><Select value={rsImpacto} onValueChange={setRsImpacto}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Baixo">Baixo</SelectItem><SelectItem value="Médio">Médio</SelectItem><SelectItem value="Alto">Alto</SelectItem></SelectContent></Select></div>
-            <div className="space-y-1"><Label className="text-xs">Status</Label><Select value={rsStatus} onValueChange={setRsStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Identificado">Identificado</SelectItem><SelectItem value="Em Mitigação">Em Mitigação</SelectItem><SelectItem value="Encerrado">Encerrado</SelectItem></SelectContent></Select></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Descriηγo *</Label><Textarea rows={2} value={rsDescricao} onChange={(e) => setRsDescricao(e.target.value)} placeholder="Descreva o risco..." /></div>
+            <div className="space-y-1"><Label className="text-xs">Probabilidade</Label><Select value={rsProbabilidade} onValueChange={setRsProbabilidade}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Baixa">Baixa</SelectItem><SelectItem value="Mιdia">Mιdia</SelectItem><SelectItem value="Alta">Alta</SelectItem></SelectContent></Select></div>
+            <div className="space-y-1"><Label className="text-xs">Impacto</Label><Select value={rsImpacto} onValueChange={setRsImpacto}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Baixo">Baixo</SelectItem><SelectItem value="Mιdio">Mιdio</SelectItem><SelectItem value="Alto">Alto</SelectItem></SelectContent></Select></div>
+            <div className="space-y-1"><Label className="text-xs">Status</Label><Select value={rsStatus} onValueChange={setRsStatus}><SelectTrigger><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Identificado">Identificado</SelectItem><SelectItem value="Em Mitigaηγo">Em Mitigaηγo</SelectItem><SelectItem value="Encerrado">Encerrado</SelectItem></SelectContent></Select></div>
             <div className="space-y-1">
-              <Label className="text-xs">Responsável</Label>
+              <Label className="text-xs">Responsαvel</Label>
               <Select value={rsResponsavelId || "none"} onValueChange={(v) => setRsResponsavelId(v === "none" ? null : v)}>
                 <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="none">Sem responsável</SelectItem>
-                  {stakeholders.map((s) => (<SelectItem key={s.id} value={s.id}>{s.nome}{s.cargo ? ` Â· ${s.cargo}` : ""}</SelectItem>))}
+                  <SelectItem value="none">Sem responsαvel</SelectItem>
+                  {stakeholders.map((s) => (<SelectItem key={s.id} value={s.id}>{s.nome}{s.cargo ? ` Β· ${s.cargo}` : ""}</SelectItem>))}
                 </SelectContent>
               </Select>
             </div>
-            <div className="col-span-2 space-y-1"><Label className="text-xs">Ação Mitigadora</Label><Textarea rows={2} value={rsAcao} onChange={(e) => setRsAcao(e.target.value)} placeholder="Descreva a ação mitigadora..." /></div>
+            <div className="col-span-2 space-y-1"><Label className="text-xs">Aηγo Mitigadora</Label><Textarea rows={2} value={rsAcao} onChange={(e) => setRsAcao(e.target.value)} placeholder="Descreva a aηγo mitigadora..." /></div>
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setRiscoDialogOpen(false)}>Cancelar</Button>
@@ -2358,7 +2358,7 @@ export default function AdminProjetos() {
             <div className="flex-1 min-w-0">
               <DialogTitle className="text-base font-semibold">Comparativo de Baseline</DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground mt-1">
-                {baselineComparando?.versao}{baselineComparando?.descricao ? ` Â· ${baselineComparando.descricao}` : ""}{" Â· "}
+                {baselineComparando?.versao}{baselineComparando?.descricao ? ` Β· ${baselineComparando.descricao}` : ""}{" Β· "}
                 {baselineComparando?.created_at ? new Date(baselineComparando.created_at).toLocaleDateString("pt-BR") : ""}{" vs. estado atual"}
               </DialogDescription>
             </div>
@@ -2397,7 +2397,7 @@ export default function AdminProjetos() {
                         <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-xs">
                           <span className="text-muted-foreground">Horas BL</span><span className="text-muted-foreground">Horas Atual</span>
                           <span>{bl.horas}h</span><span className={cn(diffH > 0 ? "text-red-600" : diffH < 0 ? "text-emerald-600" : "")}>{a.horas}h {diffH !== 0 && `(${diffH > 0 ? "+" : ""}${diffH}h)`}</span>
-                          <span className="text-muted-foreground">Início BL</span><span className="text-muted-foreground">Início Atual</span>
+                          <span className="text-muted-foreground">Inνcio BL</span><span className="text-muted-foreground">Inνcio Atual</span>
                           <span>{fmtD(bl.data_inicio)}</span><span>{fmtD(a.data_inicio)}</span>
                           <span className="text-muted-foreground">Fim BL</span><span className="text-muted-foreground">Fim Atual</span>
                           <span>{fmtD(bl.data_fim)}</span><span>{fmtD(a.data_fim)}</span>
@@ -2407,14 +2407,14 @@ export default function AdminProjetos() {
                   })}
                   {removidas.map((b: any) => (
                     <div key={b.id} className="rounded-md border p-3 text-muted-foreground">
-                      <div className="flex items-center justify-between gap-2"><span className="text-xs">{b.codigo} Â· {b.descricao}</span><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></div>
-                      <p className="text-xs mt-1">BL: {b.horas}h Â· {fmtD(b.data_inicio)} â†' {fmtD(b.data_fim)}</p>
+                      <div className="flex items-center justify-between gap-2"><span className="text-xs">{b.codigo} Β· {b.descricao}</span><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></div>
+                      <p className="text-xs mt-1">BL: {b.horas}h Β· {fmtD(b.data_inicio)} β' {fmtD(b.data_fim)}</p>
                     </div>
                   ))}
                   {novas.map(a => (
                     <div key={a.id} className="rounded-md border p-3">
-                      <div className="flex items-center justify-between gap-2"><span className="text-xs">{a.codigo} Â· {a.descricao}</span><Badge className="text-[10px] bg-blue-100 text-blue-800">Nova</Badge></div>
-                      <p className="text-xs mt-1 text-muted-foreground">Atual: {a.horas}h Â· {fmtD(a.data_inicio)} â†' {fmtD(a.data_fim)}</p>
+                      <div className="flex items-center justify-between gap-2"><span className="text-xs">{a.codigo} Β· {a.descricao}</span><Badge className="text-[10px] bg-blue-100 text-blue-800">Nova</Badge></div>
+                      <p className="text-xs mt-1 text-muted-foreground">Atual: {a.horas}h Β· {fmtD(a.data_inicio)} β' {fmtD(a.data_fim)}</p>
                     </div>
                   ))}
                 </div>
@@ -2423,10 +2423,10 @@ export default function AdminProjetos() {
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead className="text-xs">Código</TableHead><TableHead className="text-xs">Descrição</TableHead>
+                        <TableHead className="text-xs">Cσdigo</TableHead><TableHead className="text-xs">Descriηγo</TableHead>
                         <TableHead className="text-xs text-right">Horas BL</TableHead><TableHead className="text-xs text-right">Horas Atual</TableHead>
-                        <TableHead className="text-xs text-right">Diff</TableHead><TableHead className="text-xs">Início BL</TableHead>
-                        <TableHead className="text-xs">Início Atual</TableHead><TableHead className="text-xs">Fim BL</TableHead>
+                        <TableHead className="text-xs text-right">Diff</TableHead><TableHead className="text-xs">Inνcio BL</TableHead>
+                        <TableHead className="text-xs">Inνcio Atual</TableHead><TableHead className="text-xs">Fim BL</TableHead>
                         <TableHead className="text-xs">Fim Atual</TableHead><TableHead className="text-xs">Desvio</TableHead>
                       </TableRow>
                     </TableHeader>
@@ -2455,18 +2455,18 @@ export default function AdminProjetos() {
                       {removidas.map((b: any) => (
                         <TableRow key={b.id} className="text-muted-foreground">
                           <TableCell className="text-xs font-mono">{b.codigo}</TableCell><TableCell className="text-xs">{b.descricao}</TableCell>
-                          <TableCell className="text-xs text-right">{b.horas}h</TableCell><TableCell className="text-xs text-right">—</TableCell>
-                          <TableCell className="text-xs text-right">—</TableCell><TableCell className="text-xs">{fmtD(b.data_inicio)}</TableCell>
-                          <TableCell className="text-xs">—</TableCell><TableCell className="text-xs">{fmtD(b.data_fim)}</TableCell>
-                          <TableCell className="text-xs">—</TableCell><TableCell><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></TableCell>
+                          <TableCell className="text-xs text-right">{b.horas}h</TableCell><TableCell className="text-xs text-right"></TableCell>
+                          <TableCell className="text-xs text-right"></TableCell><TableCell className="text-xs">{fmtD(b.data_inicio)}</TableCell>
+                          <TableCell className="text-xs"></TableCell><TableCell className="text-xs">{fmtD(b.data_fim)}</TableCell>
+                          <TableCell className="text-xs"></TableCell><TableCell><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></TableCell>
                         </TableRow>
                       ))}
                       {novas.map(a => (
                         <TableRow key={a.id}>
                           <TableCell className="text-xs font-mono">{a.codigo}</TableCell><TableCell className="text-xs">{a.descricao}</TableCell>
-                          <TableCell className="text-xs text-right">—</TableCell><TableCell className="text-xs text-right">{a.horas}h</TableCell>
-                          <TableCell className="text-xs text-right">—</TableCell><TableCell className="text-xs">—</TableCell>
-                          <TableCell className="text-xs">{fmtD(a.data_inicio)}</TableCell><TableCell className="text-xs">—</TableCell>
+                          <TableCell className="text-xs text-right"></TableCell><TableCell className="text-xs text-right">{a.horas}h</TableCell>
+                          <TableCell className="text-xs text-right"></TableCell><TableCell className="text-xs"></TableCell>
+                          <TableCell className="text-xs">{fmtD(a.data_inicio)}</TableCell><TableCell className="text-xs"></TableCell>
                           <TableCell className="text-xs">{fmtD(a.data_fim)}</TableCell><TableCell><Badge className="text-[10px] bg-blue-100 text-blue-800">Nova</Badge></TableCell>
                         </TableRow>
                       ))}
@@ -2479,7 +2479,7 @@ export default function AdminProjetos() {
         </DialogContent>
       </Dialog>
 
-      {/* â"€â"€ DIALOG HEALTH SCORE ANALYTICS â"€â"€ */}
+      {/* β"β" DIALOG HEALTH SCORE ANALYTICS β"β" */}
       <Dialog open={healthOpen} onOpenChange={setHealthOpen}>
         <DialogContent className="flex flex-col gap-0 p-0 max-h-[90dvh] w-full max-w-2xl">
           <DialogHeader className="shrink-0 border-b px-5 py-4">
@@ -2487,7 +2487,7 @@ export default function AdminProjetos() {
               <Activity className="h-5 w-5 text-violet-600" />
               Health Score Analytics
               {detailProjeto && (
-                <span className="text-sm font-normal text-muted-foreground">— {detailProjeto.nome_cliente}</span>
+                <span className="text-sm font-normal text-muted-foreground"> {detailProjeto.nome_cliente}</span>
               )}
             </DialogTitle>
           </DialogHeader>
@@ -2500,18 +2500,18 @@ export default function AdminProjetos() {
             <Tabs defaultValue="score" className="flex-1 flex flex-col overflow-hidden">
               <TabsList className="mx-5 mt-4 shrink-0 w-fit">
                 <TabsTrigger value="score">Score Atual</TabsTrigger>
-                <TabsTrigger value="historico">Histórico</TabsTrigger>
-                <TabsTrigger value="config">Configuração</TabsTrigger>
+                <TabsTrigger value="historico">Histσrico</TabsTrigger>
+                <TabsTrigger value="config">Configuraηγo</TabsTrigger>
               </TabsList>
 
-              {/* â"€â"€ ABA SCORE â"€â"€ */}
+              {/* β"β" ABA SCORE β"β" */}
               <TabsContent value="score" className="flex-1 overflow-y-auto px-5 pb-5 space-y-4 mt-3">
                 {healthHistorico.length === 0 ? (
                   <div className="flex flex-col items-center justify-center gap-3 py-12 text-center">
                     <div className="w-14 h-14 rounded-full bg-muted flex items-center justify-center">
                       <Activity className="h-7 w-7 text-muted-foreground/40" />
                     </div>
-                    <p className="text-sm font-semibold text-muted-foreground">Nenhum cálculo disponível</p>
+                    <p className="text-sm font-semibold text-muted-foreground">Nenhum cαlculo disponνvel</p>
                     <p className="text-xs text-muted-foreground/60">Clique em "Recalcular agora" para gerar o primeiro score</p>
                     <Button size="sm" onClick={recalcularAgora} disabled={healthRecalculating} className="gap-2 mt-1">
                       {healthRecalculating && <Loader2 className="h-3 w-3 animate-spin" />}
@@ -2522,18 +2522,18 @@ export default function AdminProjetos() {
                   const snap = healthHistorico[0];
                   const semaforoCor = snap.semaforo === "verde" ? "text-emerald-600" : snap.semaforo === "amarelo" ? "text-amber-600" : "text-red-600";
                   const semaforoBg  = snap.semaforo === "verde" ? "bg-emerald-50 border-emerald-200" : snap.semaforo === "amarelo" ? "bg-amber-50 border-amber-200" : "bg-red-50 border-red-200";
-                  const semaforoEmoji = snap.semaforo === "verde" ? "🟢" : snap.semaforo === "amarelo" ? "🟡" : "🔴";
+                  const semaforoEmoji = snap.semaforo === "verde" ? "?" : snap.semaforo === "amarelo" ? "?" : "?";
                   const dimensoes = [
                     { label: "Prazo (IDP)", valor: snap.score_prazo,   detalhe: `IDP: ${Number(snap.idp_valor).toFixed(2)}`, cor: "bg-blue-500" },
                     { label: "Custo (IDC)", valor: snap.score_custo,   detalhe: `IDC: ${Number(snap.idc_valor).toFixed(2)}`, cor: "bg-violet-500" },
-                    { label: "Feeling",     valor: snap.score_feeling, detalhe: snap.feeling_medio !== null ? `Média: ${snap.feeling_medio}%` : "Sem dados", cor: "bg-amber-500" },
-                    { label: "Alertas",     valor: snap.score_alertas, detalhe: `${snap.alertas_criticos}C Â· ${snap.alertas_altos}A Â· ${snap.alertas_moderados}M`, cor: "bg-red-500" },
+                    { label: "Feeling",     valor: snap.score_feeling, detalhe: snap.feeling_medio !== null ? `Mιdia: ${snap.feeling_medio}%` : "Sem dados", cor: "bg-amber-500" },
+                    { label: "Alertas",     valor: snap.score_alertas, detalhe: `${snap.alertas_criticos}C Β· ${snap.alertas_altos}A Β· ${snap.alertas_moderados}M`, cor: "bg-red-500" },
                   ];
                   return (
                     <>
                       <div className={`rounded-xl border p-5 flex items-center justify-between ${semaforoBg}`}>
                         <div>
-                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Score de Saúde</div>
+                          <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Score de Saϊde</div>
                           <div className={`text-5xl font-black leading-none ${semaforoCor}`}>{snap.score_total}</div>
                           <div className="text-sm text-muted-foreground mt-1">
                             {semaforoEmoji} {snap.semaforo.charAt(0).toUpperCase() + snap.semaforo.slice(1)}
@@ -2570,10 +2570,10 @@ export default function AdminProjetos() {
                 })()}
               </TabsContent>
 
-              {/* â"€â"€ ABA HISTÁ"RICO â"€â"€ */}
+              {/* β"β" ABA HISTΑ"RICO β"β" */}
               <TabsContent value="historico" className="flex-1 overflow-y-auto px-5 pb-5 mt-3">
                 {healthHistorico.length === 0 ? (
-                  <p className="text-sm text-muted-foreground text-center py-8">Nenhum histórico disponível.</p>
+                  <p className="text-sm text-muted-foreground text-center py-8">Nenhum histσrico disponνvel.</p>
                 ) : (
                   <div className="space-y-2">
                     {healthHistorico.map((snap, i) => {
@@ -2618,13 +2618,13 @@ export default function AdminProjetos() {
                 )}
               </TabsContent>
 
-              {/* â"€â"€ ABA CONFIGURAÇÁƒO â"€â"€ */}
+              {/* β"β" ABA CONFIGURAΗΑO β"β" */}
               <TabsContent value="config" className="flex-1 overflow-y-auto px-5 pb-5 mt-3 space-y-5">
                 {healthConfigEdit && (
                   <>
                     <div className="space-y-3">
-                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pesos das Dimensões</div>
-                      <p className="text-xs text-muted-foreground">Soma deve ser 100%. Cada dimensão: 0% a 50%.</p>
+                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pesos das Dimensυes</div>
+                      <p className="text-xs text-muted-foreground">Soma deve ser 100%. Cada dimensγo: 0% a 50%.</p>
                       {([
                         { label: "Prazo (IDP)", key: "peso_prazo" },
                         { label: "Custo (IDC)", key: "peso_custo" },
@@ -2647,16 +2647,16 @@ export default function AdminProjetos() {
                           ? "text-emerald-600" : "text-red-600"
                       }`}>
                         Total: {healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas}%
-                        {(healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas) !== 100 && " — deve somar 100%"}
+                        {(healthConfigEdit.peso_prazo + healthConfigEdit.peso_custo + healthConfigEdit.peso_feeling + healthConfigEdit.peso_alertas) !== 100 && "  deve somar 100%"}
                       </div>
                     </div>
 
                     <div className="space-y-3 border-t pt-4">
-                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Semáforo Final</div>
+                      <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Semαforo Final</div>
                       <div className="grid grid-cols-2 gap-3">
                         {([
-                          { label: "Score mínimo Verde",   key: "score_verde" },
-                          { label: "Score mínimo Amarelo", key: "score_amarelo" },
+                          { label: "Score mνnimo Verde",   key: "score_verde" },
+                          { label: "Score mνnimo Amarelo", key: "score_amarelo" },
                         ] as { label: string; key: keyof HealthConfig }[]).map((f) => (
                           <div key={f.key} className="space-y-1">
                             <label className="text-xs text-muted-foreground">{f.label}</label>
@@ -2675,7 +2675,7 @@ export default function AdminProjetos() {
                       <div className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Penalidades por Alerta</div>
                       <div className="grid grid-cols-3 gap-3">
                         {([
-                          { label: "Crítico",  key: "penalidade_critico" },
+                          { label: "Crνtico",  key: "penalidade_critico" },
                           { label: "Alto",     key: "penalidade_alto" },
                           { label: "Moderado", key: "penalidade_moderado" },
                         ] as { label: string; key: keyof HealthConfig }[]).map((f) => (
@@ -2701,7 +2701,7 @@ export default function AdminProjetos() {
                       }
                     >
                       {healthSaving && <Loader2 className="h-4 w-4 animate-spin" />}
-                      Salvar Configuração
+                      Salvar Configuraηγo
                     </Button>
                   </>
                 )}

@@ -12,6 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
+import { BacklogOnboarding } from "./BacklogOnboarding";
 import {
   ListTodo, Plus, Search, Loader2, X, ChevronDown, ChevronUp,
   ArrowRight, Lock, Unlock, LayoutGrid, List,
@@ -334,6 +335,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   } = useBacklog(projetoId, userId);
 
   const [view, setView] = useState<"kanban" | "lista">("kanban");
+  const [ignorarOnboarding, setIgnorarOnboarding] = useState(false);
   const [busca, setBusca] = useState("");
   const [filtroMeus, setFiltroMeus] = useState(false);
   const [filtroVencidos, setFiltroVencidos] = useState(false);
@@ -1131,7 +1133,19 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           </div>
         </div>
 
-        {/* Filtros */}
+  
+    {/* Onboarding -- board vazio */}
+    {!loadingBoard && !temBoard && !ignorarOnboarding && isCoordinator && (
+      <BacklogOnboarding
+        projetoNome={projetoNome}
+        onAplicarTemplate={handleAplicarTemplate}
+        onComecarEmBranco={() => setIgnorarOnboarding(true)}
+      />
+    )}
+    {/* Board normal */}
+    {(temBoard || ignorarOnboarding || !isCoordinator) && (
+      <>
+      {/* Filtros */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[160px] max-w-[280px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
@@ -1595,6 +1609,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           </DialogContent>
         </Dialog>
       )}
+      </>
+    )}
     </>
   );
 }
