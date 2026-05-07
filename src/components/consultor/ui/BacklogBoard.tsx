@@ -1018,6 +1018,22 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   );
 
   // ?? VISTA KANBAN ??
+  const handleAplicarTemplate = async (itens: { titulo: string; tipo: string; prioridade: string; frente_modulo: string; descricao_solicitante: string }[]) => {
+    const primeiraColuna = colunas.find(col => col.status_sistema === "aberto") || colunas[0];
+    if (!primeiraColuna) return;
+    for (const item of itens) {
+      await criarItem({
+        titulo: item.titulo,
+        tipo: item.tipo,
+        prioridade: item.prioridade,
+        frente_modulo: item.frente_modulo,
+        descricao_solicitante: item.descricao_solicitante,
+        coluna_id: primeiraColuna.id,
+      });
+    }
+    setIgnorarOnboarding(true);
+  };
+
   const renderKanban = () => (
     <div className="flex gap-3 overflow-x-auto pb-2">
       {colunas.map(col => {
@@ -1133,19 +1149,17 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           </div>
         </div>
 
-  
-    {/* Onboarding -- board vazio */}
-    {!loadingBoard && !temBoard && !ignorarOnboarding && isCoordinator && (
-      <BacklogOnboarding
-        projetoNome={projetoNome}
-        onAplicarTemplate={handleAplicarTemplate}
-        onComecarEmBranco={() => setIgnorarOnboarding(true)}
-      />
-    )}
-    {/* Board normal */}
-    {(temBoard || ignorarOnboarding || !isCoordinator) && (
-      <>
-      {/* Filtros */}
+      {/* Onboarding -- board vazio */}
+      {!loadingBoard && !temBoard && !ignorarOnboarding && isCoordinator && (
+        <BacklogOnboarding
+          projetoNome={projetoNome}
+          onAplicarTemplate={handleAplicarTemplate}
+          onComecarEmBranco={() => setIgnorarOnboarding(true)}
+        />
+      )}
+      {(temBoard || ignorarOnboarding || !isCoordinator || loadingBoard) && (
+        <>
+        {/* Filtros */}
         <div className="flex items-center gap-2 flex-wrap">
           <div className="relative flex-1 min-w-[160px] max-w-[280px]">
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
@@ -1211,6 +1225,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
         {view === "kanban" ? renderKanban() : renderLista()}
       </div>
 
+        </>
+      )}
       {/* Modal novo item */}
       <NovoItemModal
         open={novoItemOpen}
@@ -1609,8 +1625,6 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           </DialogContent>
         </Dialog>
       )}
-      </>
-    )}
     </>
   );
 }
