@@ -1223,10 +1223,10 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
 
         {/* Board */}
         {view === "kanban" ? renderKanban() : renderLista()}
-      </div>
 
         </>
       )}
+      </div>
       {/* Modal novo item */}
       <NovoItemModal
         open={novoItemOpen}
