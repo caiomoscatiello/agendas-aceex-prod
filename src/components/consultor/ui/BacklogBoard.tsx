@@ -85,7 +85,7 @@ function PriBadge({ prioridade, reclassificada }: { prioridade: string; reclassi
 
 function ItemCard({
   item, colunaStatus, colunas, onMove, onOpen, isDragging, onDragStart, onDragEnd,
-  filhos, isCoordinator, dimmed,
+  filhos, isCoordinator, dimmed, onToggleCadeado, paiCodigo,
 }: {
   item: BacklogItem;
   colunaStatus: string | null;
@@ -98,6 +98,8 @@ function ItemCard({
   filhos: BacklogItem[];
   isCoordinator: boolean;
   dimmed?: boolean;
+  onToggleCadeado?: (item: BacklogItem) => void;
+  paiCodigo?: string; // codigo do item pai quando este item e filho
 }) {
   const [expanded, setExpanded] = useState(false);
   const vencido = isVencido(item.data_prevista, colunaStatus);
@@ -115,6 +117,12 @@ function ItemCard({
       onClick={() => onOpen(item)}
     >
       {/* Topo */}
+      {paiCodigo && (
+        <div className="text-[9px] text-muted-foreground flex items-center gap-0.5 mb-1">
+          <span className="opacity-50">&#8627;</span>
+          <span className="font-mono">{paiCodigo}</span>
+        </div>
+      )}
       <div className="flex items-start justify-between gap-2">
         <span className="text-[10px] font-mono text-muted-foreground">{item.codigo}</span>
         <PriBadge prioridade={item.prioridade} reclassificada={item.prioridade_reclassificada} />
@@ -155,14 +163,26 @@ function ItemCard({
         </div>
         <div className="flex items-center gap-1">
           {temFilhos && (
-            <button
-              onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
-              className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full flex items-center gap-0.5"
-            >
-              {item.hierarquia_bloqueada ? <Lock className="h-2.5 w-2.5" /> : <Unlock className="h-2.5 w-2.5" />}
-              {filhos.length}
-              {expanded ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
-            </button>
+            <div className="flex items-center gap-0.5">
+              {isCoordinator && onToggleCadeado && (
+                <button
+                  onClick={(e) => { e.stopPropagation(); onToggleCadeado(item); }}
+                  title={item.hierarquia_bloqueada ? "Cadeado fechado - clique para abrir" : "Cadeado aberto - clique para fechar"}
+                  className="text-muted-foreground hover:text-foreground transition-colors"
+                >
+                  {item.hierarquia_bloqueada
+                    ? <Lock className="h-2.5 w-2.5" />
+                    : <Unlock className="h-2.5 w-2.5 text-amber-500" />}
+                </button>
+              )}
+              <button
+                onClick={(e) => { e.stopPropagation(); setExpanded(v => !v); }}
+                className="text-[9px] text-muted-foreground bg-muted px-1.5 py-0.5 rounded-full flex items-center gap-0.5"
+              >
+                {filhos.length}
+                {expanded ? <ChevronUp className="h-2.5 w-2.5" /> : <ChevronDown className="h-2.5 w-2.5" />}
+              </button>
+            </div>
           )}
           {item.atribuido_para_nome && (
             <div className="w-5 h-5 rounded-full bg-violet-100 text-violet-700 text-[8px] font-bold flex items-center justify-center border-2 border-violet-300" title={item.atribuido_para_nome}>
@@ -209,7 +229,7 @@ function ItemCard({
 // ?? MODAL NOVO ITEM ???????????????????????????????????????????????????????????
 
 function NovoItemModal({
-  open, onClose, onSave, colunas, saving, projetoNome, colunaInicial,
+  open, onClose, onSave, colunas, saving, projetoNome, colunaInicial, itensPai,
 }: {
   open: boolean;
   onClose: () => void;
@@ -218,6 +238,7 @@ function NovoItemModal({
   saving: boolean;
   projetoNome: string;
   colunaInicial?: string;
+  itensPai?: BacklogItem[]; // itens sem pai_id disponiveis para vincular como pai
 }) {
   const [titulo, setTitulo] = useState("");
   const [tipo, setTipo] = useState("melhoria");
@@ -227,12 +248,14 @@ function NovoItemModal({
   const [horas, setHoras] = useState("");
   const [dataPrevista, setDataPrevista] = useState("");
   const [colunaId, setColunaId] = useState(colunaInicial || "");
+  const [paiId, setPaiId] = useState("none");
 
   useEffect(() => {
     if (open) {
       setTitulo(""); setTipo("melhoria"); setPrioridade("media");
       setFrente("outro"); setDesc(""); setHoras(""); setDataPrevista("");
       setColunaId(colunaInicial || colunas.find(c => c.status_sistema === "aberto")?.id || "");
+      setPaiId("none");
     }
   }, [open, colunaInicial, colunas]);
 
@@ -245,6 +268,7 @@ function NovoItemModal({
       estimativa_horas: horas ? parseFloat(horas) : null,
       data_prevista: dataPrevista || null,
       coluna_id: colunaId,
+      pai_id: paiId !== "none" ? paiId : null,
     });
   };
 
@@ -308,6 +332,22 @@ function NovoItemModal({
                 <SelectContent>{colunas.map(c => <SelectItem key={c.id} value={c.id}>{c.nome}</SelectItem>)}</SelectContent>
               </Select>
             </div>
+            {itensPai && itensPai.length > 0 && (
+              <div className="space-y-1 col-span-2">
+                <Label className="text-xs">Vincular como filho de (opcional)</Label>
+                <Select value={paiId} onValueChange={setPaiId}>
+                  <SelectTrigger><SelectValue placeholder="Nenhum (item independente)" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum (item independente)</SelectItem>
+                    {itensPai.map(p => (
+                      <SelectItem key={p.id} value={p.id}>
+                        {p.codigo} â€” {p.titulo.length > 40 ? p.titulo.slice(0, 40) + "..." : p.titulo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
           </div>
         </div>
         <DialogFooter className="shrink-0 border-t px-5 py-3 flex gap-2">
@@ -327,7 +367,7 @@ function NovoItemModal({
 export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = false, agendaData, agendaCliente }: Props) {
   const {
     colunas, items, loadingBoard, savingItem, aplicarTemplateColunas,
-    loadBoard, moverItem, criarItem, salvarItem, adicionarComentario,
+    loadBoard, moverItem, criarItem, salvarItem, toggleCadeado, adicionarComentario,
     loadComentarios, loadHistorico, loadHistoricoEvolutivo,
     criarColuna, renomearColuna, excluirColuna, reordenarColunas,
     loadParticipantes, adicionarParticipante, removerParticipante,
@@ -877,6 +917,19 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     setItemDetalhado(prev => prev ? { ...prev, ...editForm } : null);
   };
 
+  // BL-004-C: alterna cadeado do item pai com confirmacao e atualiza estado local
+  const handleToggleCadeado = async (item: BacklogItem) => {
+    const ok = await toggleCadeado(item.id);
+    if (ok) {
+      const novoEstado = !item.hierarquia_bloqueada;
+      setItemDetalhado(prev => prev ? { ...prev, hierarquia_bloqueada: novoEstado } : null);
+      toast({ title: novoEstado ? "Cadeado fechado" : "Cadeado aberto",
+              description: novoEstado
+                ? "Filhos se movem junto com o pai."
+                : "Pai e filhos se movem de forma independente." });
+    }
+  };
+
   const handleEnviarComentario = async () => {
     if (!itemDetalhado || !novoComentario.trim()) return;
     setSavingComentario(true);
@@ -888,6 +941,20 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
       toast({ title: "Comentario adicionado!" });
     }
     setSavingComentario(false);
+  };
+
+  // BL-004-C: Status calculado do pai quando cadeado aberto
+  const statusCalculadoPai = (itemId: string): string | null => {
+    const filhos = items.filter(i => i.pai_id === itemId);
+    if (filhos.length === 0) return null;
+    const colunasDosFilhos = filhos.map(f => colunas.find(c => c.id === f.coluna_id));
+    const todosConcluidos = colunasDosFilhos.every(c => c?.status_sistema === 'concluido');
+    const todosEmRevisao = colunasDosFilhos.every(c => c?.status_sistema === 'em_revisao' || c?.status_sistema === 'concluido');
+    const algumAndamento = colunasDosFilhos.some(c => c?.status_sistema === 'em_andamento');
+    if (todosConcluidos) return 'Concluido (calculado)';
+    if (todosEmRevisao) return 'Em revisao (calculado)';
+    if (algumAndamento) return 'Em andamento (calculado)';
+    return null;
   };
 
   const labelEvento = (tipo: string) => {
@@ -1082,6 +1149,8 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                   onDragEnd={() => { setDragItemId(null); setDragOverColuna(null); }}
                   filhos={filhosDoItem(item.id)}
                   isCoordinator={isCoordinator}
+                  onToggleCadeado={handleToggleCadeado}
+                  paiCodigo={item.pai_id ? (items.find(i => i.id === item.pai_id)?.codigo ?? undefined) : undefined}
                   dimmed={!!busca && !itemPassaFiltro(item)}
                 />
               ))}
@@ -1236,6 +1305,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
         saving={savingItem}
         projetoNome={projetoNome}
         colunaInicial={novoItemColuna}
+        itensPai={items.filter(i => !i.pai_id)}
       />
 
       {/* Modal detalhe do item - BL-004-C */}
@@ -1403,6 +1473,41 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                       </div>
                     )}
                   </>
+                )}
+                {/* BL-004-C: Painel de hierarquia (visivel apenas para itens pai com filhos) */}
+                {itemDetalhado && filhosDoItem(itemDetalhado.id).length > 0 && (
+                  <div className="p-3 rounded-xl border bg-muted/30 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        {itemDetalhado.hierarquia_bloqueada
+                          ? <Lock className="h-3.5 w-3.5 text-muted-foreground" />
+                          : <Unlock className="h-3.5 w-3.5 text-amber-500" />}
+                        <span className="text-xs font-semibold">
+                          {filhosDoItem(itemDetalhado.id).length} {filhosDoItem(itemDetalhado.id).length === 1 ? "filho" : "filhos"}
+                        </span>
+                        {!itemDetalhado.hierarquia_bloqueada && statusCalculadoPai(itemDetalhado.id) && (
+                          <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full">
+                            {statusCalculadoPai(itemDetalhado.id)}
+                          </span>
+                        )}
+                      </div>
+                      {isCoordinator && (
+                        <button
+                          onClick={() => handleToggleCadeado(itemDetalhado)}
+                          className="text-[10px] text-muted-foreground border border-border/60 rounded px-2 py-0.5 hover:bg-accent transition-colors flex items-center gap-1"
+                        >
+                          {itemDetalhado.hierarquia_bloqueada
+                            ? <><Unlock className="h-3 w-3" />Abrir cadeado</>
+                            : <><Lock className="h-3 w-3" />Fechar cadeado</>}
+                        </button>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-muted-foreground">
+                      {itemDetalhado.hierarquia_bloqueada
+                        ? "Cadeado fechado: mover este item move todos os filhos junto."
+                        : "Cadeado aberto: pai e filhos se movem independentemente."}
+                    </p>
+                  </div>
                 )}
               </TabsContent>
 

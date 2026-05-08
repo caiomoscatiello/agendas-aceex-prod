@@ -475,6 +475,49 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
     }));
   };
 
+
+  // ---------------------------------------------------------------------------
+  // TOGGLE CADEADO - BL-004-C (hierarquia pai/filho)
+  // Alterna hierarquia_bloqueada do item pai e registra evento no historico.
+  // So deve ser chamado para itens que tem filhos (pai_id IS NULL e tem filhos).
+  // ---------------------------------------------------------------------------
+  const toggleCadeado = async (itemId: string): Promise<boolean> => {
+    const item = items.find(i => i.id === itemId);
+    if (!item || !userId) return false;
+
+    const novoEstado = !item.hierarquia_bloqueada;
+
+    // Atualizar otimistamente
+    setItems(prev => prev.map(i =>
+      i.id === itemId ? { ...i, hierarquia_bloqueada: novoEstado } : i
+    ));
+
+    const { error } = await supabase
+      .from('projeto_backlog')
+      .update({ hierarquia_bloqueada: novoEstado })
+      .eq('id', itemId);
+
+    if (error) {
+      // Reverter em caso de erro
+      setItems(prev => prev.map(i =>
+        i.id === itemId ? { ...i, hierarquia_bloqueada: !novoEstado } : i
+      ));
+      console.error('[useBacklog] toggleCadeado error:', error);
+      return false;
+    }
+
+    // Registrar no historico
+    await supabase.from('projeto_backlog_historico').insert({
+      backlog_item_id: itemId,
+      para_coluna_id: item.coluna_id,
+      movido_por: userId,
+      tipo_evento: 'cadeado_alterado',
+      detalhe: { de: !novoEstado, para: novoEstado },
+    });
+
+    return true;
+  };
+
   const itemsPorColuna = (colunaId: string) =>
     items
       .filter(i => i.coluna_id === colunaId && !i.pai_id)
@@ -490,7 +533,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
 
   return {
     colunas, items, loadingBoard, savingItem,
-    loadBoard, moverItem, criarItem, salvarItem, adicionarComentario,
+    loadBoard, moverItem, criarItem, salvarItem, toggleCadeado, adicionarComentario,
     loadComentarios, loadHistorico, loadHistoricoEvolutivo,
     criarColuna, renomearColuna, excluirColuna, reordenarColunas, aplicarTemplateColunas,
     loadParticipantes, adicionarParticipante, removerParticipante,
