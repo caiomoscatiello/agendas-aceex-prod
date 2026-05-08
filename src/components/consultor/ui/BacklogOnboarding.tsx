@@ -1,17 +1,18 @@
 // src/components/consultor/ui/BacklogOnboarding.tsx
-// BL-004 Onboarding board vazio -- 3 templates Protheus/ERP
+// BL-004-H - Wizard de onboarding do backlog
+// Templates criam colunas de fase com status_sistema correto para compatibilidade
+// com KPIs, filtros de vencidos e relatorios PMO.
+// "Comecar em branco" cria 2 colunas minimas (Aberto + Cancelado).
 
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
-import { Loader2, Rocket, Headphones, TrendingUp, ArrowRight, FileDown } from "lucide-react";
+import { Loader2, Rocket, Headphones, TrendingUp, ArrowRight, FileDown, FilePlus } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
 
-type TemplateItem = {
-  titulo: string;
-  tipo: string;
-  prioridade: string;
-  frente_modulo: string;
-  descricao_solicitante: string;
+export type TemplateColuna = {
+  nome: string;
+  cor: string;
+  status_sistema: string | null;
 };
 
 type Template = {
@@ -22,76 +23,79 @@ type Template = {
   cor: string;
   corBg: string;
   corBorda: string;
-  itens: TemplateItem[];
+  colunas: TemplateColuna[];
 };
 
+// ---------------------------------------------------------------------------
+// TEMPLATES DE FASE - BL-004-H
+// Cada template replica a semantica do trigger_colunas_backlog_padrao,
+// mapeando status_sistema para compatibilidade com todos os calculos do board.
+// ---------------------------------------------------------------------------
 const TEMPLATES: Template[] = [
   {
     id: "implantacao",
     nome: "Implantacao",
-    descricao: "Roteiro completo para projetos de implantacao Protheus com fases de mapeamento, parametrizacao, testes e go-live.",
+    descricao: "Fluxo completo de projeto Protheus do mapeamento ao go-live.",
     icone: <Rocket className="h-6 w-6" />,
     cor: "text-violet-700",
     corBg: "bg-violet-50",
     corBorda: "border-violet-200 hover:border-violet-400",
-    itens: [
-      { titulo: "Mapeamento de processos atuais", tipo: "melhoria", prioridade: "alta", frente_modulo: "outro", descricao_solicitante: "Levantamento detalhado dos processos atuais do cliente para baseline da implantacao." },
-      { titulo: "Parametrizacao modulo Estoque", tipo: "configuracao", prioridade: "alta", frente_modulo: "estoque", descricao_solicitante: "Configuracao inicial do modulo de Estoque conforme requisitos mapeados." },
-      { titulo: "Parametrizacao modulo Financeiro", tipo: "configuracao", prioridade: "alta", frente_modulo: "financeiro", descricao_solicitante: "Configuracao inicial do modulo Financeiro conforme requisitos mapeados." },
-      { titulo: "Parametrizacao modulo Fiscal", tipo: "configuracao", prioridade: "alta", frente_modulo: "fiscal", descricao_solicitante: "Configuracao fiscal e tributaria conforme legislacao vigente." },
-      { titulo: "Carga inicial de dados mestres", tipo: "configuracao", prioridade: "critica", frente_modulo: "outro", descricao_solicitante: "Importacao de clientes, fornecedores, produtos e plano de contas." },
-      { titulo: "Testes integrados - ciclo 1", tipo: "teste", prioridade: "alta", frente_modulo: "outro", descricao_solicitante: "Execucao do primeiro ciclo de testes integrados com usuarios chave." },
-      { titulo: "Correcoes pos-teste ciclo 1", tipo: "bug", prioridade: "alta", frente_modulo: "outro", descricao_solicitante: "Tratamento das nao-conformidades identificadas no ciclo 1 de testes." },
-      { titulo: "Testes integrados - ciclo 2", tipo: "teste", prioridade: "media", frente_modulo: "outro", descricao_solicitante: "Execucao do segundo ciclo de testes com validacao das correcoes." },
-      { titulo: "Treinamento usuarios chave", tipo: "treinamento", prioridade: "alta", frente_modulo: "outro", descricao_solicitante: "Capacitacao dos usuarios chave antes do go-live." },
-      { titulo: "Treinamento usuarios finais", tipo: "treinamento", prioridade: "media", frente_modulo: "outro", descricao_solicitante: "Capacitacao dos usuarios finais do sistema." },
-      { titulo: "Go-live e acompanhamento", tipo: "melhoria", prioridade: "critica", frente_modulo: "outro", descricao_solicitante: "Entrada em producao e suporte intensivo nos primeiros dias." },
-      { titulo: "Documentacao tecnica final", tipo: "documentacao", prioridade: "baixa", frente_modulo: "outro", descricao_solicitante: "Elaboracao da documentacao tecnica e operacional do projeto." },
+    colunas: [
+      { nome: "Mapeamento", cor: "#E24B4A", status_sistema: "aberto" },
+      { nome: "Parametrizacao", cor: "#7F77DD", status_sistema: null },
+      { nome: "Testes", cor: "#EF9F27", status_sistema: "em_andamento" },
+      { nome: "Treinamento", cor: "#378ADD", status_sistema: "em_revisao" },
+      { nome: "Go-live", cor: "#639922", status_sistema: "concluido" },
+      { nome: "Cancelado", cor: "#888780", status_sistema: "cancelado" },
     ],
   },
   {
     id: "suporte",
     nome: "Suporte",
-    descricao: "Estrutura para gestao de chamados de suporte continuo, bugs e melhorias pontuais pos-implantacao.",
+    descricao: "Gestao de chamados, bugs e melhorias pontuais pos-implantacao.",
     icone: <Headphones className="h-6 w-6" />,
     cor: "text-blue-700",
     corBg: "bg-blue-50",
     corBorda: "border-blue-200 hover:border-blue-400",
-    itens: [
-      { titulo: "Fila de atendimento - Fiscal", tipo: "bug", prioridade: "alta", frente_modulo: "fiscal", descricao_solicitante: "Chamados de suporte relacionados ao modulo Fiscal." },
-      { titulo: "Fila de atendimento - Financeiro", tipo: "bug", prioridade: "alta", frente_modulo: "financeiro", descricao_solicitante: "Chamados de suporte relacionados ao modulo Financeiro." },
-      { titulo: "Fila de atendimento - Estoque", tipo: "bug", prioridade: "media", frente_modulo: "estoque", descricao_solicitante: "Chamados de suporte relacionados ao modulo de Estoque." },
-      { titulo: "Fila de atendimento - Compras", tipo: "bug", prioridade: "media", frente_modulo: "compras", descricao_solicitante: "Chamados de suporte relacionados ao modulo de Compras." },
-      { titulo: "Revisao de parametros pos-atualizacao", tipo: "configuracao", prioridade: "alta", frente_modulo: "outro", descricao_solicitante: "Verificacao de parametros apos atualizacao de patch ou versao." },
-      { titulo: "Ajuste de relatorios customizados", tipo: "melhoria", prioridade: "media", frente_modulo: "outro", descricao_solicitante: "Correcao e melhoria de relatorios personalizados existentes." },
-      { titulo: "Duvidas de operacao do sistema", tipo: "duvida", prioridade: "baixa", frente_modulo: "outro", descricao_solicitante: "Esclarecimento de duvidas operacionais dos usuarios." },
+    colunas: [
+      { nome: "Aberto", cor: "#E24B4A", status_sistema: "aberto" },
+      { nome: "Em analise", cor: "#BA7517", status_sistema: null },
+      { nome: "Em correcao", cor: "#EF9F27", status_sistema: "em_andamento" },
+      { nome: "Em homologacao", cor: "#378ADD", status_sistema: "em_revisao" },
+      { nome: "Concluido", cor: "#639922", status_sistema: "concluido" },
+      { nome: "Cancelado", cor: "#888780", status_sistema: "cancelado" },
     ],
   },
   {
     id: "melhoria",
-    nome: "Melhoria Continua",
-    descricao: "Evolucao continua do sistema com novas funcionalidades, otimizacoes de processos e integra??es.",
+    nome: "Melhoria continua",
+    descricao: "Evolucao pos go-live com novas funcionalidades e otimizacoes.",
     icone: <TrendingUp className="h-6 w-6" />,
     cor: "text-emerald-700",
     corBg: "bg-emerald-50",
     corBorda: "border-emerald-200 hover:border-emerald-400",
-    itens: [
-      { titulo: "Levantamento de melhorias priorizadas", tipo: "melhoria", prioridade: "alta", frente_modulo: "outro", descricao_solicitante: "Reuniao de alinhamento para priorizacao das melhorias do ciclo." },
-      { titulo: "Automacao de processo Fiscal", tipo: "melhoria", prioridade: "alta", frente_modulo: "fiscal", descricao_solicitante: "Identificacao e automacao de processos manuais no modulo Fiscal." },
-      { titulo: "Integracao com sistema legado", tipo: "melhoria", prioridade: "critica", frente_modulo: "outro", descricao_solicitante: "Desenvolvimento de interface de integracao com sistemas externos." },
-      { titulo: "Otimizacao de relatorios gerenciais", tipo: "melhoria", prioridade: "media", frente_modulo: "outro", descricao_solicitante: "Melhoria de performance e layout dos relatorios gerenciais." },
-      { titulo: "Desenvolvimento de BI/Dashboard", tipo: "melhoria", prioridade: "media", frente_modulo: "outro", descricao_solicitante: "Criacao de paineis de indicadores para gestao." },
-      { titulo: "Revisao de permissoes e acessos", tipo: "configuracao", prioridade: "alta", frente_modulo: "outro", descricao_solicitante: "Revisao e adequacao do perfil de acesso de usuarios." },
-      { titulo: "Treinamento em novas funcionalidades", tipo: "treinamento", prioridade: "media", frente_modulo: "outro", descricao_solicitante: "Capacitacao da equipe nas novas funcionalidades implementadas." },
-      { titulo: "Documentacao de evolucoes", tipo: "documentacao", prioridade: "baixa", frente_modulo: "outro", descricao_solicitante: "Registro das evolucoes e mudancas implementadas no periodo." },
+    colunas: [
+      { nome: "Ideia", cor: "#E24B4A", status_sistema: "aberto" },
+      { nome: "Aprovado", cor: "#7F77DD", status_sistema: null },
+      { nome: "Em desenvolvimento", cor: "#EF9F27", status_sistema: "em_andamento" },
+      { nome: "Em teste", cor: "#378ADD", status_sistema: "em_revisao" },
+      { nome: "Entregue", cor: "#639922", status_sistema: "concluido" },
+      { nome: "Cancelado", cor: "#888780", status_sistema: "cancelado" },
     ],
   },
 ];
 
+// Colunas para "Comecar em branco": minimo absoluto funcional.
+// O coordenador adiciona colunas intermediarias manualmente pelo board.
+export const COLUNAS_MINIMAS: TemplateColuna[] = [
+  { nome: "Aberto",   cor: "#E24B4A", status_sistema: "aberto"   },
+  { nome: "Cancelado",cor: "#888780", status_sistema: "cancelado" },
+];
+
 type Props = {
   projetoNome: string;
-  onAplicarTemplate: (itens: TemplateItem[]) => Promise<void>;
-  onComecarEmBranco: () => void;
+  onAplicarTemplate: (colunas: TemplateColuna[]) => Promise<boolean>;
+  onComecarEmBranco: () => Promise<boolean>;
 };
 
 export function BacklogOnboarding({ projetoNome, onAplicarTemplate, onComecarEmBranco }: Props) {
@@ -101,10 +105,30 @@ export function BacklogOnboarding({ projetoNome, onAplicarTemplate, onComecarEmB
   const handleAplicar = async (template: Template) => {
     setAplicando(template.id);
     try {
-      await onAplicarTemplate(template.itens);
-      toast({ title: `Template "${template.nome}" aplicado!`, description: `${template.itens.length} itens criados no backlog.` });
+      const ok = await onAplicarTemplate(template.colunas);
+      if (ok) {
+        toast({
+          title: `Template "${template.nome}" aplicado!`,
+          description: `${template.colunas.length} colunas criadas no board.`,
+        });
+      } else {
+        toast({ title: "Nao foi possivel aplicar o template", variant: "destructive" });
+      }
     } catch {
       toast({ title: "Erro ao aplicar template", variant: "destructive" });
+    }
+    setAplicando(null);
+  };
+
+  const handleComecarEmBranco = async () => {
+    setAplicando("__branco__");
+    try {
+      const ok = await onComecarEmBranco();
+      if (!ok) {
+        toast({ title: "Nao foi possivel inicializar o board", variant: "destructive" });
+      }
+    } catch {
+      toast({ title: "Erro ao inicializar o board", variant: "destructive" });
     }
     setAplicando(null);
   };
@@ -117,8 +141,8 @@ export function BacklogOnboarding({ projetoNome, onAplicarTemplate, onComecarEmB
         </div>
         <h2 className="text-lg font-semibold text-foreground mb-2">Backlog de {projetoNome}</h2>
         <p className="text-sm text-muted-foreground">
-          Escolha um template para iniciar rapidamente ou comece com um board em branco.
-          Os itens podem ser editados e personalizados a qualquer momento.
+          Escolha um template de fases para iniciar rapidamente ou comece com um board minimo.
+          Itens serao adicionados manualmente ou por upload posteriormente.
         </p>
       </div>
 
@@ -126,14 +150,27 @@ export function BacklogOnboarding({ projetoNome, onAplicarTemplate, onComecarEmB
         {TEMPLATES.map(template => (
           <button
             key={template.id}
+            type="button"
             onClick={() => setTemplateSelecionado(template.id === templateSelecionado ? null : template.id)}
-            className={`text-left rounded-xl border-2 p-4 transition-all ${template.corBorda} ${template.corBg} ${templateSelecionado === template.id ? "ring-2 ring-offset-1 ring-violet-400" : ""}`}
+            disabled={!!aplicando}
+            className={`text-left rounded-xl border-2 p-4 transition-all disabled:opacity-50 disabled:cursor-not-allowed ${template.corBorda} ${template.corBg} ${templateSelecionado === template.id ? "ring-2 ring-offset-1 ring-violet-400" : ""}`}
           >
             <div className={`${template.cor} mb-3`}>{template.icone}</div>
             <div className={`text-sm font-semibold ${template.cor} mb-1`}>{template.nome}</div>
             <p className="text-[11px] text-muted-foreground leading-relaxed mb-3">{template.descricao}</p>
-            <div className={`text-[10px] font-medium ${template.cor}`}>
-              {template.itens.length} itens inclusos
+            <div className={`text-[10px] font-medium ${template.cor} mb-2`}>
+              {template.colunas.length} colunas incluidas
+            </div>
+            <div className="flex flex-wrap gap-1">
+              {template.colunas.map((col, idx) => (
+                <span
+                  key={idx}
+                  className="inline-flex items-center gap-1 text-[9px] px-1.5 py-0.5 rounded bg-white/70 border border-white/80"
+                >
+                  <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: col.cor }} />
+                  <span className="text-gray-700">{col.nome}</span>
+                </span>
+              ))}
             </div>
           </button>
         ))}
@@ -143,10 +180,15 @@ export function BacklogOnboarding({ projetoNome, onAplicarTemplate, onComecarEmB
         <Button
           variant="outline"
           size="sm"
-          onClick={onComecarEmBranco}
-          className="text-xs"
+          onClick={handleComecarEmBranco}
+          disabled={!!aplicando}
+          className="text-xs gap-1.5"
         >
-          Comecar em branco
+          {aplicando === "__branco__" ? (
+            <><Loader2 className="h-3 w-3 animate-spin" />Inicializando...</>
+          ) : (
+            <><FilePlus className="h-3 w-3" />Comecar em branco</>
+          )}
         </Button>
         {templateSelecionado && (
           <Button
@@ -158,8 +200,8 @@ export function BacklogOnboarding({ projetoNome, onAplicarTemplate, onComecarEmB
               if (t) handleAplicar(t);
             }}
           >
-            {aplicando ? (
-              <><Loader2 className="h-3 w-3 animate-spin" />Criando itens...</>
+            {aplicando && aplicando !== "__branco__" ? (
+              <><Loader2 className="h-3 w-3 animate-spin" />Criando colunas...</>
             ) : (
               <><ArrowRight className="h-3 w-3" />Aplicar template</>
             )}

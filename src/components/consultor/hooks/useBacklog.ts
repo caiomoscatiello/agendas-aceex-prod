@@ -1,5 +1,5 @@
 ﻿// src/components/consultor/hooks/useBacklog.ts
-// BL-004-B � Backlog do Projeto
+// BL-004 - Backlog do Projeto (BL-004-G: wizard onboarding por template)
 
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
@@ -103,7 +103,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
         .order("ordem"),
     ]);
 
-    // Buscar nomes dos usu�rios
+    // Buscar nomes dos usu-rios
     const userIds = [
       ...new Set([
         ...(itemRes.data || []).map((i: any) => i.criado_por),
@@ -122,7 +122,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
 
     const itemsComNomes = (itemRes.data || []).map((i: any) => ({
       ...i,
-      criado_por_nome: profilesMap[i.criado_por] || "�",
+      criado_por_nome: profilesMap[i.criado_por] || "-",
       atribuido_para_nome: i.atribuido_para ? profilesMap[i.atribuido_para] : null,
     }));
 
@@ -152,7 +152,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
       .update({ coluna_id: novaColunaId })
       .in("id", idsParaMover);
 
-    // Registrar hist�rico
+    // Registrar hist-rico
     const tipo = moverFilhos && idsParaMover.length > 1 ? "movimentacao_bloco" : "movimentacao";
     await supabase.from("projeto_backlog_historico").insert({
       backlog_item_id: itemId,
@@ -198,7 +198,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
     setSavingItem(false);
     if (error || !novo) return null;
 
-    // Hist�rico de cria��o
+    // Hist-rico de cria--o
     await supabase.from("projeto_backlog_historico").insert({
       backlog_item_id: novo.id,
       para_coluna_id: novo.coluna_id,
@@ -278,7 +278,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
 
     return comentarios.map((c: any) => ({
       ...c,
-      autor_nome: profilesMap[c.autor_id] || "�",
+      autor_nome: profilesMap[c.autor_id] || "-",
     }));
   };
 
@@ -291,7 +291,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
 
     if (!historico?.length) return [];
 
-    // Buscar nomes das colunas e usu�rios
+    // Buscar nomes das colunas e usu-rios
     const colunaIds = [
       ...new Set([
         ...historico.map((h: any) => h.de_coluna_id).filter(Boolean),
@@ -318,7 +318,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
       ...h,
       de_coluna_nome: h.de_coluna_id ? colMap[h.de_coluna_id] : null,
       para_coluna_nome: h.para_coluna_id ? colMap[h.para_coluna_id] : null,
-      movido_por_nome: profMap[h.movido_por] || "�",
+      movido_por_nome: profMap[h.movido_por] || "-",
     }));
   };
 
@@ -369,6 +369,40 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
       supabase.from("projeto_backlog_colunas").update({ ordem: atual.ordem }).eq("id", alvo.id),
     ]);
     await loadBoard();
+  };
+
+
+  // ---------------------------------------------------------------------------
+  // APLICACAO DE TEMPLATE DE COLUNAS - BL-004-G
+  // Cria as colunas definidas pelo wizard de onboarding.
+  // Pre-condicao: board deve estar sem colunas e sem itens.
+  // Cada coluna recebe o status_sistema exato passado no array, garantindo
+  // compatibilidade com KPIs, filtros de vencidos e relatorios PMO.
+  // ---------------------------------------------------------------------------
+  const aplicarTemplateColunas = async (
+    colunasTemplate: { nome: string; cor: string; status_sistema: string | null }[]
+  ): Promise<boolean> => {
+    if (!projetoId) return false;
+    if (colunas.length > 0) return false;
+    if (items.length > 0) return false;
+    if (!colunasTemplate || colunasTemplate.length === 0) return false;
+
+    const inserts = colunasTemplate.map((c, idx) => ({
+      projeto_id: projetoId,
+      nome: c.nome,
+      cor: c.cor,
+      ordem: idx,
+      status_sistema: c.status_sistema,
+      wip_limite: null,
+    }));
+
+    const { error } = await supabase.from('projeto_backlog_colunas').insert(inserts);
+    if (error) {
+      console.error('[useBacklog] aplicarTemplateColunas error:', error);
+      return false;
+    }
+    await loadBoard();
+    return true;
   };
 
   // PARTICIPANTES
@@ -436,7 +470,7 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
       de_coluna_ordem: h.de_coluna_id ? colMap[h.de_coluna_id]?.ordem : null,
       para_coluna_nome: h.para_coluna_id ? colMap[h.para_coluna_id]?.nome : null,
       para_coluna_ordem: h.para_coluna_id ? colMap[h.para_coluna_id]?.ordem : null,
-      movido_por_nome: profMap[h.movido_por] || "�",
+      movido_por_nome: profMap[h.movido_por] || "-",
       atribuido_para_nome: h.atribuido_para_fase ? profMap[h.atribuido_para_fase] : null,
     }));
   };
@@ -449,13 +483,16 @@ export function useBacklog(projetoId: string | null, userId: string | undefined)
   const filhosDoItem = (itemId: string) =>
     items.filter(i => i.pai_id === itemId).sort((a, b) => a.ordem - b.ordem);
 
-  const temBoard = colunas.length > 0;
+  // BL-004-G: wizard aparece quando nao ha colunas nem itens.
+  // Apos remocao do trigger_colunas_backlog_padrao, projetos novos
+  // chegam sem colunas e o onboarding e exibido ao coordenador.
+  const temBoard = colunas.length > 0 || items.length > 0;
 
   return {
     colunas, items, loadingBoard, savingItem,
     loadBoard, moverItem, criarItem, salvarItem, adicionarComentario,
     loadComentarios, loadHistorico, loadHistoricoEvolutivo,
-    criarColuna, renomearColuna, excluirColuna, reordenarColunas,
+    criarColuna, renomearColuna, excluirColuna, reordenarColunas, aplicarTemplateColunas,
     loadParticipantes, adicionarParticipante, removerParticipante,
     itemsPorColuna, filhosDoItem, temBoard,
   };

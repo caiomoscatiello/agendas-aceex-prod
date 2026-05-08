@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { toast } from "@/hooks/use-toast";
-import { BacklogOnboarding } from "./BacklogOnboarding";
+import { BacklogOnboarding, TemplateColuna, COLUNAS_MINIMAS } from "./BacklogOnboarding";
 import {
   ListTodo, Plus, Search, Loader2, X, ChevronDown, ChevronUp,
   ArrowRight, Lock, Unlock, LayoutGrid, List,
@@ -326,7 +326,7 @@ function NovoItemModal({
 
 export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = false, agendaData, agendaCliente }: Props) {
   const {
-    colunas, items, loadingBoard, savingItem,
+    colunas, items, loadingBoard, savingItem, aplicarTemplateColunas,
     loadBoard, moverItem, criarItem, salvarItem, adicionarComentario,
     loadComentarios, loadHistorico, loadHistoricoEvolutivo,
     criarColuna, renomearColuna, excluirColuna, reordenarColunas,
@@ -1018,20 +1018,20 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   );
 
   // ?? VISTA KANBAN ??
-  const handleAplicarTemplate = async (itens: { titulo: string; tipo: string; prioridade: string; frente_modulo: string; descricao_solicitante: string }[]) => {
-    const primeiraColuna = colunas.find(col => col.status_sistema === "aberto") || colunas[0];
-    if (!primeiraColuna) return;
-    for (const item of itens) {
-      await criarItem({
-        titulo: item.titulo,
-        tipo: item.tipo,
-        prioridade: item.prioridade,
-        frente_modulo: item.frente_modulo,
-        descricao_solicitante: item.descricao_solicitante,
-        coluna_id: primeiraColuna.id,
-      });
-    }
-    setIgnorarOnboarding(true);
+  // BL-004-H: cria colunas do template escolhido no wizard de onboarding.
+  // Itens sao adicionados manualmente ou via upload apos configuracao do board.
+  const handleAplicarTemplate = async (colunasTemplate: TemplateColuna[]): Promise<boolean> => {
+    const ok = await aplicarTemplateColunas(colunasTemplate);
+    if (ok) setIgnorarOnboarding(true);
+    return ok;
+  };
+
+  // BL-004-I: "Comecar em branco" cria 2 colunas minimas (Aberto + Cancelado).
+  // O coordenador adiciona colunas intermediarias pelo gerenciador do board.
+  const handleComecarEmBranco = async (): Promise<boolean> => {
+    const ok = await aplicarTemplateColunas(COLUNAS_MINIMAS);
+    if (ok) setIgnorarOnboarding(true);
+    return ok;
   };
 
   const renderKanban = () => (
@@ -1149,12 +1149,12 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
           </div>
         </div>
 
-      {/* Onboarding -- board vazio */}
+      {/* Onboarding -- board vazio (BL-004-H) */}
       {!loadingBoard && !temBoard && !ignorarOnboarding && isCoordinator && (
         <BacklogOnboarding
           projetoNome={projetoNome}
           onAplicarTemplate={handleAplicarTemplate}
-          onComecarEmBranco={() => setIgnorarOnboarding(true)}
+          onComecarEmBranco={handleComecarEmBranco}
         />
       )}
       {(temBoard || ignorarOnboarding || !isCoordinator || loadingBoard) && (
