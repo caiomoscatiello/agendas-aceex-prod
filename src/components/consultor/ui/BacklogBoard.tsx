@@ -18,8 +18,7 @@ import {
   ArrowRight, Lock, Unlock, LayoutGrid, List,
   Tag, AlertCircle, CheckCircle2, Send,
   History, MessageSquare, Edit2, Save,
-  Settings2, ChevronLeft, ChevronRight, Trash2, Users, UserPlus, FileDown
-} from "lucide-react";
+  Settings2, ChevronLeft, ChevronRight, Trash2, Users, UserPlus, FileDown, Link} from "lucide-react";
 import { format, parseISO, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -341,7 +340,7 @@ function NovoItemModal({
                     <SelectItem value="none">Nenhum (item independente)</SelectItem>
                     {itensPai.map(p => (
                       <SelectItem key={p.id} value={p.id}>
-                        {p.codigo} â€” {p.titulo.length > 40 ? p.titulo.slice(0, 40) + "..." : p.titulo}
+                        {p.codigo}  -  {p.titulo.length > 40 ? p.titulo.slice(0, 40) + "..." : p.titulo}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -385,6 +384,9 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   const [ocultarCancelados, setOcultarCancelados] = useState(true);
   const [mostrarFiltros, setMostrarFiltros] = useState(false);
   const [novoItemOpen, setNovoItemOpen] = useState(false);
+  const [showGerenciarFilhos, setShowGerenciarFilhos] = useState(false);
+  const [filhosSelecionados, setFilhosSelecionados] = useState<string[]>([]);
+  const [salvandoFilhos, setSalvandoFilhos] = useState(false);
   const [novoItemColuna, setNovoItemColuna] = useState<string | undefined>();
   const [itemDetalhado, setItemDetalhado] = useState<BacklogItem | null>(null);
   const [dragItemId, setDragItemId] = useState<string | null>(null);
@@ -917,6 +919,27 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     setItemDetalhado(prev => prev ? { ...prev, ...editForm } : null);
   };
 
+  const handleVincularFilhos = async () => {
+    if (!itemDetalhado || filhosSelecionados.length === 0) return;
+    setSalvandoFilhos(true);
+    await Promise.all(
+      filhosSelecionados.map(id =>
+        supabase.from('projeto_backlog').update({ pai_id: itemDetalhado.id }).eq('id', id)
+      )
+    );
+    await loadBoard();
+    setFilhosSelecionados([]);
+    setShowGerenciarFilhos(false);
+    setSalvandoFilhos(false);
+    toast({ title: `${filhosSelecionados.length} ${filhosSelecionados.length === 1 ? 'item vinculado' : 'itens vinculados'} como filho${filhosSelecionados.length > 1 ? 's' : ''}.` });
+  };
+
+  const handleDesvincularFilho = async (filhoId: string) => {
+    await supabase.from('projeto_backlog').update({ pai_id: null }).eq('id', filhoId);
+    await loadBoard();
+    toast({ title: 'Vinculo removido.' });
+  };
+
   // BL-004-C: alterna cadeado do item pai com confirmacao e atualiza estado local
   const handleToggleCadeado = async (item: BacklogItem) => {
     const ok = await toggleCadeado(item.id);
@@ -1308,6 +1331,69 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
         itensPai={items.filter(i => !i.pai_id)}
       />
 
+      {/* Dialog Gerenciar Filhos - BL-004-C */}
+      {itemDetalhado && showGerenciarFilhos && (
+        <Dialog open={showGerenciarFilhos} onOpenChange={() => { setShowGerenciarFilhos(false); setFilhosSelecionados([]); }}>
+          <DialogContent className="flex flex-col gap-0 p-0 max-h-[80dvh] w-full max-w-md">
+            <DialogHeader className="shrink-0 border-b px-5 py-4">
+              <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+                <Link className="h-4 w-4 text-violet-600" />
+                Vincular filhos a {itemDetalhado.codigo}
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
+              <p className="text-[11px] text-muted-foreground mb-3">
+                Selecione um ou mais itens para tornar filhos deste item.
+              </p>
+              {items
+                .filter(i => !i.pai_id && i.id !== itemDetalhado.id && filhosDoItem(itemDetalhado.id).every(f => f.id !== i.id))
+                .map(item => {
+                  const sel = filhosSelecionados.includes(item.id);
+                  const col = colunas.find(c => c.id === item.coluna_id);
+                  return (
+                    <button key={item.id} type="button"
+                      onClick={() => setFilhosSelecionados(prev => sel ? prev.filter(id => id !== item.id) : [...prev, item.id])}
+                      className={`w-full text-left flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-all ${
+                        sel ? "border-violet-400 bg-violet-50 ring-1 ring-violet-300" : "border-border hover:bg-muted/30"
+                      }`}
+                    >
+                      <div className={`w-4 h-4 rounded border-2 flex items-center justify-center shrink-0 ${
+                        sel ? "border-violet-500 bg-violet-500" : "border-muted-foreground/30"
+                      }`}>
+                        {sel && <Check className="h-2.5 w-2.5 text-white" />}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[9px] font-mono text-muted-foreground">{item.codigo}</span>
+                          {col && <span className="text-[8px] px-1 py-0.5 rounded" style={{ background: col.cor + "22", color: col.cor }}>{col.nome}</span>}
+                        </div>
+                        <p className="text-xs font-medium truncate">{item.titulo}</p>
+                      </div>
+                    </button>
+                  );
+                })}
+              {items.filter(i => !i.pai_id && i.id !== itemDetalhado.id && filhosDoItem(itemDetalhado.id).every(f => f.id !== i.id)).length === 0 && (
+                <div className="flex flex-col items-center gap-2 py-8 text-center">
+                  <p className="text-xs text-muted-foreground">Nenhum item disponivel para vincular.</p>
+                </div>
+              )}
+            </div>
+            <div className="shrink-0 border-t px-5 py-3 flex items-center justify-between gap-3">
+              <span className="text-[11px] text-muted-foreground">
+                {filhosSelecionados.length} {filhosSelecionados.length === 1 ? "item selecionado" : "itens selecionados"}
+              </span>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setShowGerenciarFilhos(false); setFilhosSelecionados([]); }}>Cancelar</Button>
+                <Button size="sm" disabled={filhosSelecionados.length === 0 || salvandoFilhos} onClick={handleVincularFilhos} className="gap-1.5">
+                  {salvandoFilhos ? <Loader2 className="h-3 w-3 animate-spin" /> : <Link className="h-3 w-3" />}
+                  Vincular {filhosSelecionados.length > 0 ? filhosSelecionados.length : ""} {filhosSelecionados.length === 1 ? "item" : "itens"}
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* Modal detalhe do item - BL-004-C */}
       {itemDetalhado && (
         <Dialog open={!!itemDetalhado} onOpenChange={() => { setItemDetalhado(null); setEditando(false); }}>
@@ -1507,6 +1593,39 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
                         ? "Cadeado fechado: mover este item move todos os filhos junto."
                         : "Cadeado aberto: pai e filhos se movem independentemente."}
                     </p>
+                    {/* Lista de filhos com opcao de desvincular */}
+                    <div className="space-y-1 pt-1">
+                      {filhosDoItem(itemDetalhado.id).map(filho => (
+                        <div key={filho.id} className="flex items-center justify-between gap-2 bg-background rounded-lg px-2 py-1.5 border border-border/40">
+                          <div className="flex items-center gap-1.5 min-w-0">
+                            <span className="text-[8px] text-muted-foreground opacity-50">&#8627;</span>
+                            <span className="text-[9px] font-mono text-muted-foreground shrink-0">{filho.codigo}</span>
+                            <span className="text-[10px] text-foreground truncate">{filho.titulo}</span>
+                          </div>
+                          {isCoordinator && (
+                            <button onClick={() => handleDesvincularFilho(filho.id)} title="Remover vinculo"
+                              className="text-muted-foreground hover:text-destructive transition-colors shrink-0">
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                    {isCoordinator && (
+                      <button onClick={() => { setFilhosSelecionados([]); setShowGerenciarFilhos(true); }}
+                        className="text-[10px] text-violet-600 hover:text-violet-700 flex items-center gap-1 pt-1">
+                        <Plus className="h-3 w-3" />Vincular mais itens como filhos
+                      </button>
+                    )}
+                  </div>
+                )}
+                {/* Item sem filhos e sem pai: botao para comecar a vincular */}
+                {itemDetalhado && filhosDoItem(itemDetalhado.id).length === 0 && !itemDetalhado.pai_id && isCoordinator && (
+                  <div className="p-3 rounded-xl border border-dashed bg-muted/10">
+                    <button onClick={() => { setFilhosSelecionados([]); setShowGerenciarFilhos(true); }}
+                      className="text-[10px] text-muted-foreground hover:text-foreground flex items-center gap-1.5 transition-colors">
+                      <Plus className="h-3 w-3" />Vincular itens como filhos deste item
+                    </button>
                   </div>
                 )}
               </TabsContent>
