@@ -212,7 +212,7 @@ function ItemCard({
 
       {/* Filhos expandidos */}
       {expanded && temFilhos && (
-        <div className="border-t pt-2 space-y-1.5" onClick={(e) => e.stopPropagation()}>
+        <div className="border-t pt-2 space-y-1.5 max-h-32 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
           {filhos.map(filho => (
             <div key={filho.id} className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted/50 rounded-lg px-2 py-1.5">
               <span className="text-[8px] opacity-50">&#8627;</span>
@@ -1127,14 +1127,14 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
   };
 
   const renderKanban = () => (
-    <div className="flex gap-3 overflow-x-auto pb-2">
+    <div className="flex gap-3 overflow-x-auto pb-4 items-start">
       {colunas.map(col => {
         const colItems = sortItems(filtrarItems(itemsPorColuna(col.id)));
         const wipAtingido = col.wip_limite !== null && colItems.length >= col.wip_limite;
         return (
           <div
             key={col.id}
-            className="flex-shrink-0 w-52 flex flex-col gap-2"
+            className="flex-shrink-0 w-52 flex flex-col gap-2 max-h-[calc(100vh-280px)]"
             onDragOver={e => { e.preventDefault(); setDragOverColuna(col.id); }}
             onDragLeave={() => setDragOverColuna(null)}
             onDrop={() => handleDrop(col.id)}
@@ -1160,7 +1160,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             </div>
 
             {/* Cards */}
-            <div className={`flex flex-col gap-2 min-h-[80px] rounded-xl p-1 transition-colors ${dragOverColuna === col.id ? "bg-accent/20" : ""}`}>
+            <div className={`flex flex-col gap-2 min-h-[80px] overflow-y-auto rounded-xl p-1 transition-colors ${dragOverColuna === col.id ? "bg-accent/20" : ""}`}>
               {colItems.map(item => (
                 <ItemCard
                   key={item.id}
