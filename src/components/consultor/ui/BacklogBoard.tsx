@@ -192,27 +192,10 @@ function ItemCard({
         </div>
       </div>
 
-      {/* Botao mover (alternativa ao drag) */}
-      <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
-        {colunas
-          .filter(c => c.id !== item.coluna_id)
-          .slice(0, 3)
-          .map(c => (
-            <button
-              key={c.id}
-              onClick={() => onMove(item.id, c.id, temFilhos && item.hierarquia_bloqueada)}
-              className="text-[9px] text-muted-foreground border border-border/60 rounded px-1.5 py-0.5 hover:bg-accent transition-colors flex items-center gap-0.5"
-              title={`Mover para ${c.nome}`}
-            >
-              <ArrowRight className="h-2.5 w-2.5 shrink-0" />
-              <span className="truncate">{c.nome.length > 8 ? c.nome.slice(0, 8) + "..." : c.nome}</span>
-            </button>
-          ))}
-      </div>
 
       {/* Filhos expandidos */}
       {expanded && temFilhos && (
-        <div className="border-t pt-2 space-y-1.5 max-h-32 overflow-y-auto" onClick={(e) => e.stopPropagation()}>
+        <div className="border-t pt-2 space-y-1.5" onClick={(e) => e.stopPropagation()}>
           {filhos.map(filho => (
             <div key={filho.id} className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted/50 rounded-lg px-2 py-1.5">
               <span className="text-[8px] opacity-50">&#8627;</span>
@@ -1134,7 +1117,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
         return (
           <div
             key={col.id}
-            className="flex-shrink-0 w-52 flex flex-col gap-2 max-h-[calc(100vh-280px)]"
+            className="flex-shrink-0 w-52 flex flex-col gap-2"
             onDragOver={e => { e.preventDefault(); setDragOverColuna(col.id); }}
             onDragLeave={() => setDragOverColuna(null)}
             onDrop={() => handleDrop(col.id)}
@@ -1160,7 +1143,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
             </div>
 
             {/* Cards */}
-            <div className={`flex flex-col gap-2 min-h-[80px] overflow-y-auto rounded-xl p-1 transition-colors ${dragOverColuna === col.id ? "bg-accent/20" : ""}`}>
+            <div className={`flex flex-col gap-2 min-h-[80px] rounded-xl p-1 transition-colors ${dragOverColuna === col.id ? "bg-accent/20" : ""}`}>
               {colItems.map(item => (
                 <ItemCard
                   key={item.id}
