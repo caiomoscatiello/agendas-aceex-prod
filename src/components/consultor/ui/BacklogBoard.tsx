@@ -16,9 +16,10 @@ import { BacklogOnboarding, TemplateColuna, COLUNAS_MINIMAS } from "./BacklogOnb
 import {
   ListTodo, Plus, Search, Loader2, X, ChevronDown, ChevronUp,
   ArrowRight, Lock, Unlock, LayoutGrid, List,
-  Tag, AlertCircle, CheckCircle2, Send,
+  Tag, AlertCircle, Check, CheckCircle2, Send,
   History, MessageSquare, Edit2, Save,
-  Settings2, ChevronLeft, ChevronRight, Trash2, Users, UserPlus, FileDown, Link} from "lucide-react";
+  Settings2, ChevronLeft, ChevronRight, Trash2, Users, UserPlus,
+  FileDown, FilePlus, Link} from "lucide-react";
 import { format, parseISO, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
@@ -200,10 +201,11 @@ function ItemCard({
             <button
               key={c.id}
               onClick={() => onMove(item.id, c.id, temFilhos && item.hierarquia_bloqueada)}
-              className="text-[9px] text-muted-foreground border border-border/60 rounded px-1.5 py-0.5 hover:bg-accent transition-colors"
+              className="text-[9px] text-muted-foreground border border-border/60 rounded px-1.5 py-0.5 hover:bg-accent transition-colors flex items-center gap-0.5"
               title={`Mover para ${c.nome}`}
             >
-              ? {c.nome.length > 8 ? c.nome.slice(0, 8) + "" : c.nome}
+              <ArrowRight className="h-2.5 w-2.5 shrink-0" />
+              <span className="truncate">{c.nome.length > 8 ? c.nome.slice(0, 8) + "..." : c.nome}</span>
             </button>
           ))}
       </div>
@@ -213,7 +215,7 @@ function ItemCard({
         <div className="border-t pt-2 space-y-1.5" onClick={(e) => e.stopPropagation()}>
           {filhos.map(filho => (
             <div key={filho.id} className="flex items-center gap-2 text-[10px] text-muted-foreground bg-muted/50 rounded-lg px-2 py-1.5">
-              <span className="text-[8px] opacity-50">?</span>
+              <span className="text-[8px] opacity-50">&#8627;</span>
               <span className="font-mono text-[9px]">{filho.codigo}</span>
               <span className="flex-1 truncate font-medium text-foreground">{filho.titulo}</span>
               <PriBadge prioridade={filho.prioridade} />
