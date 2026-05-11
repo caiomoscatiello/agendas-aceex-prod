@@ -1524,6 +1524,7 @@ export default function AdminProjetos() {
             )}
 
             {isEditable && (
+              <>
               <div className="mt-4 grid grid-cols-2 sm:flex sm:flex-wrap gap-2 items-end">
                 <div className="w-full sm:w-24 space-y-1">
                   <Label className="text-xs">Código</Label>
@@ -1573,6 +1574,7 @@ export default function AdminProjetos() {
                   Baixar modelo CSV
                 </Button>
               </div>
+            </>
             )}
           </TabsContent>
 
