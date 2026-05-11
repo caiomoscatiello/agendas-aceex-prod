@@ -1499,9 +1499,9 @@ export default function AdminProjetos() {
                               }
                             }}
                           />
-                          <Input type="date" className="h-7 text-xs w-[150px]" value={a.data_inicio || ""}
+                          <Input type="date" className="h-7 text-xs min-w-[170px]" value={a.data_inicio || ""}
                             onChange={(e) => setAtividades(prev => prev.map(at => at.id === a.id ? { ...at, data_inicio: e.target.value || null } : at))} />
-                          <Input type="date" className="h-7 text-xs w-[150px]" value={a.data_fim || ""}
+                          <Input type="date" className="h-7 text-xs min-w-[170px]" value={a.data_fim || ""}
                             onChange={(e) => setAtividades(prev => prev.map(at => at.id === a.id ? { ...at, data_fim: e.target.value || null } : at))} />
                           <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => removeAtividadeLocal(i)}>
                             <Trash2 className="h-3.5 w-3.5 text-destructive" />
@@ -1542,13 +1542,13 @@ export default function AdminProjetos() {
                   <Label className="text-xs">Horas</Label>
                   <Input type="number" value={newAtivHoras} onChange={(e) => setNewAtivHoras(e.target.value)} placeholder="0" />
                 </div>
-                <div className="w-full sm:w-32 space-y-1">
+                <div className="w-full sm:min-w-[170px] space-y-1">
                   <Label className="text-[10px]">Data início</Label>
-                  <Input type="date" className="h-8 text-xs" value={newAtivDataInicio} onChange={(e) => setNewAtivDataInicio(e.target.value)} />
+                  <Input type="date" className="h-8 text-xs w-full" value={newAtivDataInicio} onChange={(e) => setNewAtivDataInicio(e.target.value)} />
                 </div>
-                <div className="w-full sm:w-32 space-y-1">
+                <div className="w-full sm:min-w-[170px] space-y-1">
                   <Label className="text-[10px]">Data fim</Label>
-                  <Input type="date" className="h-8 text-xs" value={newAtivDataFim} onChange={(e) => setNewAtivDataFim(e.target.value)} />
+                  <Input type="date" className="h-8 text-xs w-full" value={newAtivDataFim} onChange={(e) => setNewAtivDataFim(e.target.value)} />
                 </div>
                 <div className="col-span-2 sm:col-span-1">
                   <Button variant="outline" className="w-full sm:w-8 h-8 gap-1" onClick={addAtividadeLocal}>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+﻿import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -248,11 +248,11 @@ export default function AdminCronogramaItens({ atividadeId, atividadeCodigo, ati
           </div>
           <div className="min-w-[150px] space-y-1">
             <Label className="text-[10px]">Data início</Label>
-            <Input className="h-8 text-xs min-w-[150px]" type="date" value={newDataInicio} onChange={(e) => setNewDataInicio(e.target.value)} />
+            <Input className="h-8 text-xs min-w-[170px]" type="date" value={newDataInicio} onChange={(e) => setNewDataInicio(e.target.value)} />
           </div>
           <div className="min-w-[150px] space-y-1">
             <Label className="text-[10px]">Data fim</Label>
-            <Input className="h-8 text-xs min-w-[150px]" type="date" value={newDataFim} onChange={(e) => setNewDataFim(e.target.value)} />
+            <Input className="h-8 text-xs min-w-[170px]" type="date" value={newDataFim} onChange={(e) => setNewDataFim(e.target.value)} />
           </div>
           {/* Toggle doc exigido */}
           <div className="flex items-center gap-1.5 h-8">
