@@ -21,6 +21,7 @@ import { cn } from "@/lib/utils";
 import { useIsMobile } from "@/hooks/use-mobile";
 import AdminCronogramaItens, { CronogramaItem, TipoDocumento } from "./AdminCronogramaItens";
 import { BacklogBoard } from "@/components/consultor/ui/BacklogBoard";
+import { AtividadesCsvWizard } from "@/components/admin/AtividadesCsvWizard";
 import { BacklogCsvWizard } from "@/components/admin/BacklogCsvWizard";
 
 type Projeto = {
@@ -204,7 +205,7 @@ export default function AdminProjetos() {
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([]);
   const [saving, setSaving] = useState(false);
   const [syncingMondayId, setSyncingMondayId] = useState<string | null>(null);
-  const [uploadCsvOpen, setUploadCsvOpen] = useState(false);
+  const [atividadesCsvOpen, setAtividadesCsvOpen] = useState(false);
   const [csvPreview, setCsvPreview] = useState<{ atividades: any[]; itens: any[]; erros: string[] } | null>(null);
   const [csvProcessando, setCsvProcessando] = useState(false);
   const [resettingBoard, setResettingBoard] = useState<string | null>(null);
@@ -1237,7 +1238,7 @@ export default function AdminProjetos() {
         }));
     }
     setCronogramaMap(prev => ({ ...prev, ...novoMap }));
-    setUploadCsvOpen(false); setCsvPreview(null);
+    setAtividadesCsvOpen(false); setCsvPreview(null);
     toast({ title: `${novasAtivs.length} atividade(s) e ${parsed.itens.length} item(ns) importados!` });
   };
 
@@ -1472,7 +1473,7 @@ export default function AdminProjetos() {
                                     : "border-amber-500 text-amber-700 dark:text-amber-400"
                                 )}
                               >
-                                {item.doc_satisfeito ? "? Doc" : "? Doc"}
+                                {item.doc_satisfeito ? "✓ Doc OK" : "⚠ Doc Pend."}
                               </Badge>
                             )}
                           </div>
@@ -1484,7 +1485,7 @@ export default function AdminProjetos() {
                       <div className="space-y-2">
                         <div className="flex flex-wrap gap-2 items-center">
                           <Input
-                            type="number" min="0.5" step="0.5" className="h-7 text-xs w-16"
+                            type="number" min="0.5" step="0.5" className="h-7 text-xs w-20"
                             value={a.horas}
                             onChange={(e) => {
                               const val = parseFloat(e.target.value) || 0;
@@ -1562,20 +1563,12 @@ export default function AdminProjetos() {
                   variant="outline"
                   size="sm"
                   className="text-xs gap-1.5 h-7"
-                  onClick={() => setUploadCsvOpen(true)}
+                  onClick={() => setAtividadesCsvOpen(true)}
                 >
                   <Upload className="h-3 w-3" />
                   Importar CSV
                 </Button>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="text-xs gap-1.5 h-7 text-muted-foreground"
-                  onClick={downloadModeloCsv}
-                >
-                  <CalendarClock className="h-3 w-3" />
-                  Baixar modelo CSV
-                </Button>
+
               </div>
             </>
             )}
@@ -2857,94 +2850,46 @@ export default function AdminProjetos() {
         />
       )}
 
-      {/* Dialog Upload CSV Atividades - BL-004-CSV */}
-      {uploadCsvOpen && (
-        <Dialog open={uploadCsvOpen} onOpenChange={(v) => { setUploadCsvOpen(v); if(!v){setCsvPreview(null);} }}>
-          <DialogContent className="flex flex-col gap-0 p-0 max-h-[80dvh] w-full max-w-lg">
-            <DialogHeader className="shrink-0 border-b px-5 py-4">
-              <DialogTitle className="text-sm font-semibold flex items-center gap-2">
-                <Upload className="h-4 w-4 text-violet-600" />
-                Importar atividades via CSV
-              </DialogTitle>
-            </DialogHeader>
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
-              <p className="text-[11px] text-muted-foreground">
-                Selecione um arquivo CSV no formato do modelo. As atividades e itens de cronograma serao adicionados ao projeto sem substituir os existentes.
-              </p>
-              <input
-                type="file"
-                accept=".csv,text/csv"
-                className="text-xs w-full"
-                onChange={async (e) => {
-                  const file = e.target.files?.[0];
-                  if (!file) return;
-                  setCsvProcessando(true);
-                  const text = await file.text();
-                  const horas = parseFloat(horasContratadas) || 0;
-                  const result = parseCsvAtividades(text, horas);
-                  setCsvPreview(result);
-                  setCsvProcessando(false);
-                }}
-              />
-              {csvProcessando && (
-                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                  Processando...
-                </div>
-              )}
-              {csvPreview && (
-                <div className="space-y-3">
-                  {/* Erros */}
-                  {csvPreview.erros.length > 0 && (
-                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-1">
-                      <p className="text-xs font-semibold text-red-700">{csvPreview.erros.length} erro(s) encontrado(s):</p>
-                      {csvPreview.erros.map((e, i) => (
-                        <p key={i} className="text-[11px] text-red-600">{e}</p>
-                      ))}
-                    </div>
-                  )}
-                  {/* Preview de sucesso */}
-                  {csvPreview.atividades.length > 0 && (
-                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 space-y-2">
-                      <p className="text-xs font-semibold text-emerald-700">
-                        Pronto para importar: {(csvPreview as any).atividades.length} atividade(s) e {(csvPreview as any).itens.length} item(ns)
-                      </p>
-                      {(csvPreview as any).atividades.map((a: any) => {
-                        const itensAtv = (csvPreview as any).itens.filter((i: any) => i.codigo_atividade === a.codigo);
-                        return (
-                          <div key={a.codigo} className="text-[11px] text-emerald-800">
-                            <span className="font-mono font-medium">{a.codigo}</span> — {a.descricao} ({a.horas}h)
-                            {itensAtv.length > 0 && (
-                              <span className="text-emerald-600"> + {itensAtv.length} item(ns)</span>
-                            )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-            <div className="shrink-0 border-t px-5 py-3 flex justify-between gap-3">
-              <Button variant="ghost" size="sm" onClick={downloadModeloCsv} className="text-xs gap-1.5">
-                <CalendarClock className="h-3 w-3" />
-                Baixar modelo
-              </Button>
-              <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={() => { setUploadCsvOpen(false); setCsvPreview(null); }}>Cancelar</Button>
-                <Button
-                  size="sm"
-                  disabled={!csvPreview || (csvPreview as any).erros.length > 0 || (csvPreview as any).atividades.length === 0 || csvProcessando}
-                  onClick={() => aplicarCsvAtividades(csvPreview as any)}
-                  className="gap-1.5"
-                >
-                  <Upload className="h-3 w-3" />
-                  Importar
-                </Button>
-              </div>
-            </div>
-          </DialogContent>
-        </Dialog>
+      {/* AtividadesCsvWizard - BL-004-CSV */}
+      {atividadesCsvOpen && detailProjeto && (
+        <AtividadesCsvWizard
+          open={atividadesCsvOpen}
+          onClose={() => setAtividadesCsvOpen(false)}
+          projetoNome={detailProjeto.nome_cliente}
+          horasContratadas={parseFloat(detailProjeto.horas_contratadas) || 0}
+          horasJaPlanejadas={atividades.reduce((s, a) => s + a.horas, 0)}
+          atividadesExistentes={atividades.map(a => ({ codigo: a.codigo, descricao: a.descricao }))}
+          onImportConcluido={(atvsImport, itensMap) => {
+            const novasAtivs = atvsImport.map(a => ({
+              ...a,
+              id: `temp_csv_${Date.now()}_${a.codigo}`,
+              projeto_id: detailProjeto.id,
+              monday_group_id: null,
+            }));
+            setAtividades(prev => [...prev, ...novasAtivs]);
+            const novoMap: Record<string, any[]> = {};
+            for (const a of novasAtivs) {
+              novoMap[a.id] = (itensMap[a.codigo] || []).map((it, idx) => ({
+                id: `temp_csv_i_${Date.now()}_${idx}`,
+                atividade_id: a.id,
+                codigo: `${a.codigo}-${String(idx+1).padStart(2,"0")}`,
+                descricao: it.descricao,
+                horas_reservadas: it.horas_reservadas,
+                user_id: "",
+                data_inicio: it.data_inicio,
+                data_fim: it.data_fim,
+                doc_exigido: false,
+                tipo_documento_id: null,
+                doc_satisfeito: false,
+                doc_satisfeito_em: null,
+                monday_item_id: null,
+              }));
+            }
+            setCronogramaMap(prev => ({ ...prev, ...novoMap }));
+            setAtividadesCsvOpen(false);
+            toast({ title: `${novasAtivs.length} atividade(s) importada(s)!`, description: "Salve o projeto para persistir." });
+          }}
+        />
       )}
     </div>
   );

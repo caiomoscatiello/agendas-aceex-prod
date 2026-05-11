@@ -231,7 +231,7 @@ export default function AdminCronogramaItens({ atividadeId, atividadeCodigo, ati
           </div>
           <div className="w-16 space-y-1">
             <Label className="text-[10px]">Horas</Label>
-            <Input className="h-8 text-xs" type="number" min="0" step="0.5" value={newHoras} onChange={(e) => setNewHoras(e.target.value)} placeholder="0" />
+            <Input className="h-8 text-xs w-20" type="number" min="0" step="0.5" value={newHoras} onChange={(e) => setNewHoras(e.target.value)} placeholder="0" />
           </div>
           <div className="w-40 space-y-1">
             <Label className="text-[10px]">Responsável</Label>
