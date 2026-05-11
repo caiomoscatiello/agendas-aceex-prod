@@ -1552,7 +1552,7 @@ export default function AdminProjetos() {
                   </Button>
                 </div>
               </div>
-              /* Upload CSV de atividades e itens de cronograma */
+              {/* Upload CSV de atividades e itens de cronograma */}
               <div className="flex items-center gap-2 mt-2 pt-2 border-t border-dashed">
                 <Button
                   variant="outline"
