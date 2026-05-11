@@ -155,10 +155,10 @@ export default function AdminCronogramaItens({ atividadeId, atividadeCodigo, ati
   return (
     <Collapsible open={open} onOpenChange={setOpen}>
       <CollapsibleTrigger asChild>
-        <Button variant="ghost" size="sm" className="gap-1 h-7 text-xs px-2">
-          {open ? <ChevronDown className="h-3 w-3" /> : <ChevronRight className="h-3 w-3" />}
-          <CalendarClock className="h-3 w-3" />
-          Cronograma ({itens.length}) — {totalHorasUsadas}h / {atividadeHoras}h
+        <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs px-2 flex items-center">
+          {open ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+          <CalendarClock className="h-3.5 w-3.5 shrink-0" />
+          <span>Cronograma ({itens.length}) — {totalHorasUsadas}h / {atividadeHoras}h</span>
         </Button>
       </CollapsibleTrigger>
       <CollapsibleContent className="mt-2 ml-4 space-y-2 overflow-visible">
@@ -284,7 +284,7 @@ export default function AdminCronogramaItens({ atividadeId, atividadeCodigo, ati
                   ) : (
                     tiposDocumento.map((t) => (
                       <SelectItem key={t.id} value={t.id}>
-                        {t.codigo} — {t.descricao}
+                        {t.codigo} - {t.descricao}
                       </SelectItem>
                     ))
                   )}

@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle, Activity, TrendingUp, TrendingDown, Minus, Sliders, ListTodo, Upload } from "lucide-react";
+import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle, Activity, TrendingUp, TrendingDown, Minus, Sliders, ListTodo, Upload, CalendarClock, CalendarDays, Zap, AlertOctagon } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -1082,7 +1082,7 @@ export default function AdminProjetos() {
           if (fresh) setDetailProjeto(fresh as any);
         }
       } else if (data?.skipped) {
-        toast({ title: "Integração desativada", description: "Ative em Settings ??' Integ. Monday.", variant: "destructive" });
+        toast({ title: "Integração desativada", description: "Ative em Settings → Integ. Monday.", variant: "destructive" });
       } else {
         throw new Error(data?.error || "Erro desconhecido");
       }
@@ -1134,6 +1134,108 @@ export default function AdminProjetos() {
       toast({ title: "Erro Monday", description: "Falha na sincronização.", variant: "destructive" });
     }
     setSyncingMondayId(null);
+  };
+
+  // Download do modelo CSV de atividades
+  const downloadModeloCsv = () => {
+    const linhas = [
+      "# MODELO DE IMPORTACAO DE ATIVIDADES E ITENS - Aceex",
+      "# Instrucoes: linhas com # sao comentarios | datas: DD/MM/AAAA | horas: numeros positivos",
+      "# tipo=atividade: campos obrigatorios: tipo,codigo,descricao,horas",
+      "# tipo=item: campos obrigatorios: tipo,codigo_atividade,descricao,horas_reservadas",
+      "# Validacoes: soma(horas_atividades) <= horas_contratadas | soma(horas_itens) <= horas_atividade",
+      "tipo,codigo,descricao,horas,data_inicio,data_fim,codigo_atividade,horas_reservadas,modalidade",
+      "atividade,A01,Mapeamento de processos,50,10/05/2026,10/06/2026,,,",
+      "atividade,A02,Parametrizacao fiscal,80,11/06/2026,11/07/2026,,,",
+      "item,,Levantamento AS-IS,,,20/05/2026,A01,20,presencial",
+      "item,,Validacao com cliente,,,10/06/2026,A01,30,remoto",
+      "item,,Configuracao parametros,,,30/06/2026,A02,40,presencial",
+      "item,,Homologacao fiscal,,,11/07/2026,A02,40,remoto",
+    ];
+    const blob = new Blob([linhas.join("\n")], { type: "text/csv;charset=utf-8;" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url; a.download = "modelo_atividades_cronograma.csv"; a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const parseCsvAtividades = (csvText: string, horasContratadas: number) => {
+    const erros: string[] = [];
+    const atividades: any[] = [];
+    const itens: any[] = [];
+    const linhas = csvText.split(/\r?\n/).filter(l => l.trim() && !l.trim().startsWith("#"));
+    if (linhas.length < 2) { erros.push("CSV vazio ou sem dados."); return { atividades, itens, erros }; }
+    const header = linhas[0].split(",").map(h => h.trim().toLowerCase());
+    const col = (row: string[], nome: string) => row[header.indexOf(nome)]?.trim() ?? "";
+    const parseData = (s: string) => {
+      if (!s) return null;
+      const p = s.includes("/") ? s.split("/").reverse() : s.split("-");
+      if (p.length !== 3) return null;
+      const iso = `${p[0]}-${p[1].padStart(2,"0")}-${p[2].padStart(2,"0")}`;
+      return /^\d{4}-\d{2}-\d{2}$/.test(iso) ? iso : null;
+    };
+    for (let i = 1; i < linhas.length; i++) {
+      const row = linhas[i].split(",").map(c => c.trim());
+      const tipo = col(row, "tipo").toLowerCase();
+      if (tipo === "atividade") {
+        const codigo = col(row,"codigo"); const descricao = col(row,"descricao");
+        const horas = parseFloat(col(row,"horas"));
+        const di = parseData(col(row,"data_inicio")); const df = parseData(col(row,"data_fim"));
+        if (!codigo)            { erros.push(`L${i+1}: codigo obrigatorio.`); continue; }
+        if (!descricao)         { erros.push(`L${i+1}: descricao obrigatoria.`); continue; }
+        if (isNaN(horas)||horas<=0){ erros.push(`L${i+1}: horas invalidas.`); continue; }
+        if (atividades.some(a => a.codigo===codigo)){ erros.push(`L${i+1}: codigo duplicado "${codigo}".`); continue; }
+        if (di && df && df<di)  { erros.push(`L${i+1}: data_fim anterior a data_inicio.`); continue; }
+        atividades.push({ codigo, descricao, horas, data_inicio: di, data_fim: df, id: `temp_csv_a_${i}` });
+      } else if (tipo === "item") {
+        const codAtiv = col(row,"codigo_atividade"); const descricao = col(row,"descricao");
+        const horasRes = parseFloat(col(row,"horas_reservadas"));
+        const di = parseData(col(row,"data_inicio")); const df = parseData(col(row,"data_fim"));
+        const mod = col(row,"modalidade") || "presencial";
+        if (!codAtiv)               { erros.push(`L${i+1}: codigo_atividade obrigatorio.`); continue; }
+        if (!descricao)             { erros.push(`L${i+1}: descricao obrigatoria.`); continue; }
+        if (isNaN(horasRes)||horasRes<=0){ erros.push(`L${i+1}: horas_reservadas invalidas.`); continue; }
+        if (!["presencial","remoto","hibrido"].includes(mod)){ erros.push(`L${i+1}: modalidade invalida "${mod}".`); continue; }
+        itens.push({ codigo_atividade: codAtiv, descricao, horas_reservadas: horasRes, data_inicio: di, data_fim: df, modalidade: mod });
+      } else { erros.push(`L${i+1}: tipo desconhecido "${tipo}".`); }
+    }
+    const totalAtiv = atividades.reduce((s,a)=>s+a.horas,0);
+    if (horasContratadas>0 && totalAtiv>horasContratadas)
+      erros.push(`Total atividades (${totalAtiv}h) excede horas contratadas (${horasContratadas}h).`);
+    for (const item of itens) {
+      const atv = atividades.find(a=>a.codigo===item.codigo_atividade);
+      if (!atv){ erros.push(`Item "${item.descricao}": atividade "${item.codigo_atividade}" nao encontrada.`); continue; }
+      if (item.data_inicio && atv.data_inicio && item.data_inicio < atv.data_inicio)
+        erros.push(`Item "${item.descricao}": data_inicio antes da atividade.`);
+      if (item.data_fim && atv.data_fim && item.data_fim > atv.data_fim)
+        erros.push(`Item "${item.descricao}": data_fim apos atividade.`);
+    }
+    for (const atv of atividades) {
+      const tot = itens.filter(i=>i.codigo_atividade===atv.codigo).reduce((s,i)=>s+i.horas_reservadas,0);
+      if (tot>atv.horas) erros.push(`Atividade "${atv.codigo}": itens (${tot}h) excedem atividade (${atv.horas}h).`);
+    }
+    return { atividades, itens, erros };
+  };
+
+  const aplicarCsvAtividades = (parsed: { atividades: any[]; itens: any[] }) => {
+    const novasAtivs = parsed.atividades.map(a => ({ ...a, projeto_id: projeto?.id ?? "", monday_group_id: null }));
+    setAtividades(prev => [...prev, ...novasAtivs]);
+    const novoMap: Record<string, CronogramaItem[]> = {};
+    for (const a of novasAtivs) {
+      novoMap[a.id] = parsed.itens
+        .filter(i=>i.codigo_atividade===a.codigo)
+        .map((i, idx) => ({
+          id: `temp_csv_i_${Date.now()}_${idx}`,
+          atividade_id: a.id, codigo: `${a.codigo}-${String(idx+1).padStart(2,"0")}`,
+          descricao: i.descricao, horas_reservadas: i.horas_reservadas,
+          user_id: "", data_inicio: i.data_inicio, data_fim: i.data_fim,
+          doc_exigido: false, tipo_documento_id: null, doc_satisfeito: false,
+          doc_satisfeito_em: null, monday_item_id: null,
+        }));
+    }
+    setCronogramaMap(prev => ({ ...prev, ...novoMap }));
+    setUploadCsvOpen(false); setCsvPreview(null);
+    toast({ title: `${novasAtivs.length} atividade(s) e ${parsed.itens.length} item(ns) importados!` });
   };
 
   // ?"??"??"? Shared sheet content ?"??"??"?
@@ -1346,7 +1448,7 @@ export default function AdminProjetos() {
                       <span className="text-sm flex-1 font-medium">{a.descricao}</span>
                       <span className="text-xs text-muted-foreground">
                         {a.data_inicio ? a.data_inicio.split("-").reverse().join("/") : ""}
-                        {a.data_fim ? ` ??' ${a.data_fim.split("-").reverse().join("/")}` : ""}
+                        {a.data_fim ? ` → ${a.data_fim.split("-").reverse().join("/")}` : ""}
                       </span>
                       <Badge variant="outline" className="text-xs font-mono">{a.horas}h</Badge>
                     </div>
@@ -1449,6 +1551,27 @@ export default function AdminProjetos() {
                     <span className="sm:hidden">Adicionar</span>
                   </Button>
                 </div>
+              </div>
+              {/* Upload CSV de atividades e itens de cronograma */}
+              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-dashed">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="text-xs gap-1.5 h-7"
+                  onClick={() => setUploadCsvOpen(true)}
+                >
+                  <Upload className="h-3 w-3" />
+                  Importar CSV
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="text-xs gap-1.5 h-7 text-muted-foreground"
+                  onClick={downloadModeloCsv}
+                >
+                  <CalendarClock className="h-3 w-3" />
+                  Baixar modelo CSV
+                </Button>
               </div>
             )}
           </TabsContent>
@@ -1899,10 +2022,10 @@ export default function AdminProjetos() {
             <Card>
               <CardContent className="p-4 space-y-4">
                 {([
-                  { key: "feeling",     icon: "?", label: "Desvio de Feeling",     ativoKey: "alerta_feeling_ativo",     valorKey: "alerta_feeling_threshold",  valorLabel: "Desvio mínimo (pp):",       min: 5,  max: 50  },
-                  { key: "apontamento", icon: "?", label: "Agenda s/ Apontamento", ativoKey: "alerta_apontamento_ativo", valorKey: "alerta_apontamento_dias",    valorLabel: "Dias sem apontamento:",     min: 1,  max: 30  },
-                  { key: "consumo",     icon: "??±",  label: "Consumo de Horas",      ativoKey: "alerta_consumo_ativo",     valorKey: "alerta_consumo_threshold",  valorLabel: "Threshold de consumo (%):", min: 50, max: 100 },
-                  { key: "parada",      icon: "??É",  label: "Atividade Parada",      ativoKey: "alerta_parada_ativo",      valorKey: "alerta_parada_dias",        valorLabel: "Dias üteis sem agenda:",    min: 1,  max: 30  },
+                  { key: "feeling",     icon: "trending", label: "Desvio de Feeling",     ativoKey: "alerta_feeling_ativo",     valorKey: "alerta_feeling_threshold",  valorLabel: "Desvio mínimo (pp):",       min: 5,  max: 50  },
+                  { key: "apontamento", icon: "calendar", label: "Agenda s/ Apontamento", ativoKey: "alerta_apontamento_ativo", valorKey: "alerta_apontamento_dias",    valorLabel: "Dias sem apontamento:",     min: 1,  max: 30  },
+                  { key: "consumo",     icon: "zap", label: "Consumo de Horas",      ativoKey: "alerta_consumo_ativo",     valorKey: "alerta_consumo_threshold",  valorLabel: "Threshold de consumo (%):", min: 50, max: 100 },
+                  { key: "parada",      icon: "stop", label: "Atividade Parada",      ativoKey: "alerta_parada_ativo",      valorKey: "alerta_parada_dias",        valorLabel: "Dias úteis sem agenda:",    min: 1,  max: 30  },
                 ] as const).map((item, idx) => (
                   <div key={item.key}>
                     {idx > 0 && <div className="border-t border-dashed mb-4" />}
@@ -2408,13 +2531,13 @@ export default function AdminProjetos() {
                   {removidas.map((b: any) => (
                     <div key={b.id} className="rounded-md border p-3 text-muted-foreground">
                       <div className="flex items-center justify-between gap-2"><span className="text-xs">{b.codigo}  ·  {b.descricao}</span><Badge className="text-[10px] bg-red-100 text-red-800">Removida</Badge></div>
-                      <p className="text-xs mt-1">BL: {b.horas}h  ·  {fmtD(b.data_inicio)} ??' {fmtD(b.data_fim)}</p>
+                      <p className="text-xs mt-1">BL: {b.horas}h  ·  {fmtD(b.data_inicio)} → {fmtD(b.data_fim)}</p>
                     </div>
                   ))}
                   {novas.map(a => (
                     <div key={a.id} className="rounded-md border p-3">
                       <div className="flex items-center justify-between gap-2"><span className="text-xs">{a.codigo}  ·  {a.descricao}</span><Badge className="text-[10px] bg-blue-100 text-blue-800">Nova</Badge></div>
-                      <p className="text-xs mt-1 text-muted-foreground">Atual: {a.horas}h  ·  {fmtD(a.data_inicio)} ??' {fmtD(a.data_fim)}</p>
+                      <p className="text-xs mt-1 text-muted-foreground">Atual: {a.horas}h  ·  {fmtD(a.data_inicio)} → {fmtD(a.data_fim)}</p>
                     </div>
                   ))}
                 </div>
@@ -2727,6 +2850,96 @@ export default function AdminProjetos() {
             toast({ title: "Backlog atualizado!", description: "Itens importados com sucesso." });
           }}
         />
+      )}
+
+      {/* Dialog Upload CSV Atividades - BL-004-CSV */}
+      {uploadCsvOpen && (
+        <Dialog open={uploadCsvOpen} onOpenChange={(v) => { setUploadCsvOpen(v); if(!v){setCsvPreview(null);} }}>
+          <DialogContent className="flex flex-col gap-0 p-0 max-h-[80dvh] w-full max-w-lg">
+            <DialogHeader className="shrink-0 border-b px-5 py-4">
+              <DialogTitle className="text-sm font-semibold flex items-center gap-2">
+                <Upload className="h-4 w-4 text-violet-600" />
+                Importar atividades via CSV
+              </DialogTitle>
+            </DialogHeader>
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-4">
+              <p className="text-[11px] text-muted-foreground">
+                Selecione um arquivo CSV no formato do modelo. As atividades e itens de cronograma serao adicionados ao projeto sem substituir os existentes.
+              </p>
+              <input
+                type="file"
+                accept=".csv,text/csv"
+                className="text-xs w-full"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0];
+                  if (!file) return;
+                  setCsvProcessando(true);
+                  const text = await file.text();
+                  const horas = parseFloat(horasContratadas) || 0;
+                  const result = parseCsvAtividades(text, horas);
+                  setCsvPreview(result);
+                  setCsvProcessando(false);
+                }}
+              />
+              {csvProcessando && (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  Processando...
+                </div>
+              )}
+              {csvPreview && (
+                <div className="space-y-3">
+                  {/* Erros */}
+                  {csvPreview.erros.length > 0 && (
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-3 space-y-1">
+                      <p className="text-xs font-semibold text-red-700">{csvPreview.erros.length} erro(s) encontrado(s):</p>
+                      {csvPreview.erros.map((e, i) => (
+                        <p key={i} className="text-[11px] text-red-600">{e}</p>
+                      ))}
+                    </div>
+                  )}
+                  {/* Preview de sucesso */}
+                  {csvPreview.atividades.length > 0 && (
+                    <div className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-emerald-700">
+                        Pronto para importar: {(csvPreview as any).atividades.length} atividade(s) e {(csvPreview as any).itens.length} item(ns)
+                      </p>
+                      {(csvPreview as any).atividades.map((a: any) => {
+                        const itensAtv = (csvPreview as any).itens.filter((i: any) => i.codigo_atividade === a.codigo);
+                        return (
+                          <div key={a.codigo} className="text-[11px] text-emerald-800">
+                            <span className="font-mono font-medium">{a.codigo}</span> — {a.descricao} ({a.horas}h)
+                            {itensAtv.length > 0 && (
+                              <span className="text-emerald-600"> + {itensAtv.length} item(ns)</span>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+            <div className="shrink-0 border-t px-5 py-3 flex justify-between gap-3">
+              <Button variant="ghost" size="sm" onClick={downloadModeloCsv} className="text-xs gap-1.5">
+                <CalendarClock className="h-3 w-3" />
+                Baixar modelo
+              </Button>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" onClick={() => { setUploadCsvOpen(false); setCsvPreview(null); }}>Cancelar</Button>
+                <Button
+                  size="sm"
+                  disabled={!csvPreview || (csvPreview as any).erros.length > 0 || (csvPreview as any).atividades.length === 0 || csvProcessando}
+                  onClick={() => aplicarCsvAtividades(csvPreview as any)}
+                  className="gap-1.5"
+                >
+                  <Upload className="h-3 w-3" />
+                  Importar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
       )}
     </div>
   );
