@@ -1557,19 +1557,6 @@ export default function AdminProjetos() {
                   </Button>
                 </div>
               </div>
-              {/* Upload CSV de atividades e itens de cronograma */}
-              <div className="flex items-center gap-2 mt-2 pt-2 border-t border-dashed">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="text-xs gap-1.5 h-7"
-                  onClick={() => setAtividadesCsvOpen(true)}
-                >
-                  <Upload className="h-3 w-3" />
-                  Importar CSV
-                </Button>
-
-              </div>
             </>
             )}
           </TabsContent>
@@ -2277,6 +2264,12 @@ export default function AdminProjetos() {
                 onClick={() => handleAbrirCsvWizard()}
               >
                 <Upload className="h-4 w-4" /> Importar CSV Backlog
+              </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2 text-sm"
+                onClick={() => setAtividadesCsvOpen(true)}
+              >
+                <Upload className="h-4 w-4" /> Importar CSV Atividades
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem className="gap-2 text-sm text-destructive focus:text-destructive" onClick={() => { if (detailProjeto) handleDelete(detailProjeto.id); }}>
