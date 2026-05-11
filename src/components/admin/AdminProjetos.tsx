@@ -204,6 +204,9 @@ export default function AdminProjetos() {
   const [tiposDocumento, setTiposDocumento] = useState<TipoDocumento[]>([]);
   const [saving, setSaving] = useState(false);
   const [syncingMondayId, setSyncingMondayId] = useState<string | null>(null);
+  const [uploadCsvOpen, setUploadCsvOpen] = useState(false);
+  const [csvPreview, setCsvPreview] = useState<{ atividades: any[]; itens: any[]; erros: string[] } | null>(null);
+  const [csvProcessando, setCsvProcessando] = useState(false);
   const [resettingBoard, setResettingBoard] = useState<string | null>(null);
   const [creatingBoard, setCreatingBoard] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState("");
