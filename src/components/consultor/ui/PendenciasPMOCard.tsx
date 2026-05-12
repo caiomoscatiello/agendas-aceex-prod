@@ -21,10 +21,20 @@ type Props = {
 
 function BadgeDias({ dias }: { dias: number }) {
   if (dias === 0) return null;
-  const cor = dias >= 5 ? "bg-red-100 text-red-700" : dias >= 3 ? "bg-amber-100 text-amber-700" : "bg-gray-100 text-gray-600";
+
+  // Semaforo: verde 1-2d / amarelo 3-4d / vermelho 5d+
+  const config = dias >= 5
+    ? { bolinha: "bg-red-500",   fundo: "bg-red-50   border-red-200",   texto: "text-red-700",   label: `${dias}d em atraso` }
+    : dias >= 3
+    ? { bolinha: "bg-amber-500", fundo: "bg-amber-50 border-amber-200", texto: "text-amber-700", label: `${dias}d em atraso` }
+    : { bolinha: "bg-yellow-400",fundo: "bg-yellow-50 border-yellow-200",texto: "text-yellow-700",label: `${dias}d em aberto` };
+
   return (
-    <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full ${cor}`}>
-      {dias}d {dias >= 5 ? "!" : ""}
+    <span className={`inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 ${config.fundo}`}>
+      <span className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${config.bolinha}`} />
+      <span className={`text-[10px] font-semibold whitespace-nowrap ${config.texto}`}>
+        {config.label}
+      </span>
     </span>
   );
 }

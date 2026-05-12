@@ -28,9 +28,18 @@ export type SLAResultado = {
 
 // Calculo client-side (mirror do sla-evaluator)
 export function calcularSLA(dataRef: string, cfg: SLAConfig): SLAResultado {
+  // Guard: data invalida retorna concluido (badge oculto)
+  if (!dataRef || dataRef === "null" || dataRef === "undefined") {
+    return { status: "concluido", diasDecorridos: 0, diasRestantes: 0,
+      label: "", cor: "", corBg: "", corBorda: "" };
+  }
   const hoje = new Date();
   hoje.setHours(0, 0, 0, 0);
   const dRef = new Date(dataRef + "T00:00:00");
+  if (isNaN(dRef.getTime())) {
+    return { status: "concluido", diasDecorridos: 0, diasRestantes: 0,
+      label: "", cor: "", corBg: "", corBorda: "" };
+  }
   const msDay = 1000 * 60 * 60 * 24;
   const diasDecorridos = Math.max(0, Math.floor((hoje.getTime() - dRef.getTime()) / msDay));
   const diasRestantes = cfg.dias_sla - diasDecorridos;
