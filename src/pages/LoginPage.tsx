@@ -16,9 +16,10 @@ import { motion, AnimatePresence } from "framer-motion";
 // --- COMPONENTES 3D (O SCAPE DINÂMICO) ---
 
 function PredictiveCore() {
-  const meshRef = useRef<any>();
+  const meshRef = useRef<any>(null); // Garantir inicialização como null
   
   useFrame((state) => {
+    if (!meshRef.current) return; // Check de segurança para evitar o erro 'undefined'
     const t = state.clock.getElapsedTime();
     meshRef.current.rotation.y = t * 0.15;
     meshRef.current.rotation.z = t * 0.1;
@@ -26,7 +27,6 @@ function PredictiveCore() {
 
   return (
     <group>
-      {/* Núcleo de IA Preditiva - Icosaedro em Wireframe */}
       <mesh ref={meshRef}>
         <icosahedronGeometry args={[2.2, 1]} />
         <meshStandardMaterial 
@@ -35,19 +35,17 @@ function PredictiveCore() {
           transparent 
           opacity={0.4} 
           emissive="#8B5CF6" 
-          emissiveIntensity={1.5}
+          emissiveIntensity={1.5} 
         />
       </mesh>
-      
-      {/* Esfera central de processamento */}
       <Sphere args={[1, 64, 64]}>
-        <MeshDistortMaterial
-          color="#22d3ee"
-          speed={3}
-          distort={0.4}
-          radius={1}
-          emissive="#22d3ee"
-          emissiveIntensity={0.5}
+        <MeshDistortMaterial 
+          color="#22d3ee" 
+          speed={3} 
+          distort={0.4} 
+          radius={1} 
+          emissive="#22d3ee" 
+          emissiveIntensity={0.5} 
         />
       </Sphere>
     </group>
@@ -228,25 +226,25 @@ export default function LoginPage() {
           Tecnologia Preditiva & Gestão Integrada
         </div>
       </motion.div>
+      import { Suspense } from "react"; // Adicione este import no topo
 
-      {/* LADO DIREITO: SHOWCASE 3D (67%) */}
-      <div className="hidden md:block w-[67%] h-full relative overflow-hidden bg-black">
-        {/* Camada 1: Canvas 3D */}
-        <Canvas camera={{ position: [0, 0, 8], fov: 45 }}>
-          <color attach="background" args={["#0B0E14"]} />
-          <ambientLight intensity={0.4} />
-          <pointLight position={[10, 10, 10]} intensity={1} color="#8B5CF6" />
-          <pointLight position={[-10, -10, -10]} intensity={0.5} color="#22d3ee" />
-          
-          <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-          
-          <Float speed={2} rotationIntensity={1.5} floatIntensity={2}>
-            <PredictiveCore />
-          </Float>
-          
-          <DataParticles count={300} />
-        </Canvas>
-
+// ... dentro do seu JSX, no lado direito (67%)
+<div className="hidden md:block w-[67%] h-full relative bg-black">
+  <Suspense fallback={<div className="bg-[#0B0E14] w-full h-full" />}>
+    <Canvas camera={{ position: [0, 0, 8] }} gl={{ antialias: true }}>
+      <color attach="background" args={["#0B0E14"]} />
+      <ambientLight intensity={0.4} />
+      <pointLight position={[10, 10, 10]} color="#8B5CF6" />
+      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+      <Float speed={2} rotationIntensity={1.5} floatIntensity={2}>
+        <PredictiveCore />
+      </Float>
+      <DataParticles />
+      <OrbitControls enableZoom={false} />
+    </Canvas>
+  </Suspense>
+</div>
+      
         {/* Camada 2: Overlay de Texto Aspiracional */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-20">
           <motion.div 
