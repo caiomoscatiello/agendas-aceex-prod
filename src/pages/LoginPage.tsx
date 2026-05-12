@@ -1,13 +1,11 @@
-import { useState, lazy, Suspense } from "react";
+import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2 } from "lucide-react";
+import { Loader2, ShieldCheck, Cpu, Activity } from "lucide-react";
+import { motion, AnimatePresence } from "framer-motion";
 import aceexLogo from "@/assets/aceex_logo.jpg";
-
-// IMPORTANTE: Isso força a Vercel a criar um arquivo separado para o 3D
-const PredictiveScene = lazy(() => import("./PredictiveScene"));
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -26,43 +24,122 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="flex h-screen w-full bg-[#0B0E14] overflow-hidden">
-      {/* LADO ESQUERDO: LOGIN */}
-      <div className="w-full md:w-[400px] h-full bg-[#0B0E14] border-r border-white/5 flex flex-col justify-center px-10 z-20">
-        <div className="mb-10 text-center md:text-left">
-          <img src={aceexLogo} alt="ACEEX" className="h-10 mb-6 grayscale brightness-200 mx-auto md:mx-0" />
-          <h2 className="text-2xl font-bold text-white">ACEEX <span className="text-violet-500">V2</span></h2>
+    <div className="flex h-screen w-full bg-[#0B0E14] overflow-hidden font-sans">
+      
+      {/* LADO ESQUERDO: PAINEL DE LOGIN */}
+      <motion.div 
+        initial={{ x: -50, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        className="w-full md:w-[400px] h-full bg-[#0B0E14] border-r border-white/5 flex flex-col justify-center px-10 z-20 shadow-2xl"
+      >
+        <div className="mb-10">
+          <img src={aceexLogo} alt="ACEEX" className="h-10 mb-6 grayscale brightness-200" />
+          <div className="flex items-center gap-2">
+            <h2 className="text-2xl font-bold text-white tracking-tighter uppercase">ACEEX</h2>
+            <span className="px-2 py-0.5 bg-violet-600 text-[10px] text-white font-bold rounded">V2</span>
+          </div>
+          <p className="text-slate-500 text-xs mt-2 uppercase tracking-widest">Sistemas Preditivos</p>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div className="space-y-2">
-            <Label className="text-[10px] uppercase text-slate-500 tracking-widest">Acesso</Label>
-            <Input type="email" className="bg-[#161B22] border-white/5 text-white h-11" value={email} onChange={(e) => setEmail(e.target.value)} required />
+            <Label className="text-[10px] text-slate-500 uppercase tracking-widest">Identificação</Label>
+            <Input 
+              type="email" 
+              placeholder="usuario@aceex.com"
+              className="bg-[#161B22] border-white/10 text-white h-12 focus:ring-violet-500" 
+              value={email} 
+              onChange={(e) => setEmail(e.target.value)} 
+              required 
+            />
           </div>
           <div className="space-y-2">
-            <Label className="text-[10px] uppercase text-slate-500 tracking-widest">Senha</Label>
-            <Input type="password" className="bg-[#161B22] border-white/5 text-white h-11" value={password} onChange={(e) => setPassword(e.target.value)} required />
+            <Label className="text-[10px] text-slate-500 uppercase tracking-widest">Chave de Acesso</Label>
+            <Input 
+              type="password" 
+              placeholder="••••••••"
+              className="bg-[#161B22] border-white/10 text-white h-12 focus:ring-violet-500" 
+              value={password} 
+              onChange={(e) => setPassword(e.target.value)} 
+              required 
+            />
           </div>
-          {error && <p className="text-xs text-red-400 font-medium">{error}</p>}
-          <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-500 h-12 font-bold shadow-lg shadow-violet-600/20" disabled={loading}>
-            {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "ENTRAR NO SISTEMA"}
+          
+          {error && (
+            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-red-400 bg-red-400/10 p-3 rounded border border-red-400/20">
+              {error}
+            </motion.p>
+          )}
+
+          <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-500 h-12 font-bold transition-all" disabled={loading}>
+            {loading ? <Loader2 className="animate-spin" /> : "INICIAR SESSÃO"}
           </Button>
         </form>
-      </div>
 
-      {/* LADO DIREITO: 3D ISOLADO */}
-      <div className="hidden md:block flex-1 relative bg-black">
-        <Suspense fallback={<div className="w-full h-full bg-[#0B0E14]" />}>
-          <PredictiveScene />
-        </Suspense>
+        <div className="mt-auto py-8 text-[10px] text-slate-600 uppercase tracking-[0.3em] text-center border-t border-white/5">
+          ACEEX Group &copy; 2024
+        </div>
+      </motion.div>
+
+      {/* LADO DIREITO: NÚCLEO PREDITIVO (CSS ANIMATION) */}
+      <div className="hidden md:flex flex-1 bg-[#090B10] relative items-center justify-center overflow-hidden">
         
-        <div className="absolute inset-0 flex items-center justify-end p-20 pointer-events-none z-10">
-          <div className="text-right">
-            <h1 className="text-white text-4xl font-light tracking-tighter opacity-80 uppercase">
-              Gestão <span className="font-bold text-violet-500">Preditiva</span>
-            </h1>
-            <p className="text-slate-500 text-sm mt-2 tracking-[0.3em]">ACEEX V2 INTELLIGENCE</p>
+        {/* Grid de fundo */}
+        <div className="absolute inset-0 opacity-10" 
+             style={{ backgroundImage: 'linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px)', size: '40px 40px', backgroundSize: '40px 40px' }} />
+
+        {/* Núcleo Visual Central */}
+        <div className="relative flex items-center justify-center">
+          {/* Anéis Orbitais */}
+          <motion.div 
+            animate={{ rotate: 360 }} 
+            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+            className="absolute w-[400px] h-[400px] border border-violet-500/20 rounded-full border-dashed" 
+          />
+          <motion.div 
+            animate={{ rotate: -360 }} 
+            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+            className="absolute w-[300px] h-[300px] border border-cyan-500/10 rounded-full" 
+          />
+          
+          {/* O "Cérebro" da IA */}
+          <motion.div 
+            animate={{ scale: [1, 1.05, 1] }}
+            transition={{ duration: 4, repeat: Infinity }}
+            className="relative z-10 w-48 h-48 bg-gradient-to-br from-violet-600 to-cyan-500 rounded-3xl rotate-45 flex items-center justify-center shadow-[0_0_100px_rgba(139,92,246,0.3)]"
+          >
+            <div className="rotate-[-45deg] text-white flex flex-col items-center">
+              <Cpu size={48} strokeWidth={1} className="mb-2" />
+              <div className="text-[10px] tracking-[0.4em] font-bold opacity-80 uppercase">Core V2</div>
+            </div>
+          </motion.div>
+
+          {/* Partículas flutuantes com labels de dados */}
+          <div className="absolute inset-0 flex items-center justify-center">
+            {[
+              { icon: <Activity size={12} />, label: "Real-time Sync", pos: "top-[-120px] left-[-150px]" },
+              { icon: <ShieldCheck size={12} />, label: "Secure Layer", pos: "bottom-[-100px] right-[-140px]" }
+            ].map((item, i) => (
+              <motion.div 
+                key={i}
+                animate={{ y: [0, -10, 0] }}
+                transition={{ duration: 3, delay: i, repeat: Infinity }}
+                className={`absolute ${item.pos} bg-white/5 backdrop-blur-md border border-white/10 p-3 rounded-lg flex items-center gap-3`}
+              >
+                <div className="text-violet-400">{item.icon}</div>
+                <div className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">{item.label}</div>
+              </motion.div>
+            ))}
           </div>
+        </div>
+
+        {/* Rodapé do mockup */}
+        <div className="absolute bottom-20 right-20 text-right">
+          <h1 className="text-white text-5xl font-light tracking-tighter leading-none">
+            Controle <span className="font-bold text-violet-500">Absoluto.</span><br/>
+            Resultados <span className="font-bold text-cyan-400 italic">Preditivos.</span>
+          </h1>
+          <p className="text-slate-500 mt-4 text-xs tracking-widest uppercase">Performance Monitorada em Tempo Real</p>
         </div>
       </div>
     </div>
