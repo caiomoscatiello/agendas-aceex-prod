@@ -1383,7 +1383,7 @@ setTsAgendadas(totalAgendadas);
                           <p className="font-medium text-sm">{a.cliente}</p>
                           <div className="flex items-center gap-1.5">
                             {/* BL-013 -- SLA apontamento */}
-                            <SLABadgeSimples dominio="apontamento" dataRef={a.data} compacto />
+                            <SLABadgeSimples dominio="apontamento" dataRef={a.data} />
                             <Badge className={`text-xs ${statusDisplay.color}`}>{statusDisplay.label}</Badge>
                           </div>
                         </div>

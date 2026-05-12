@@ -8,14 +8,15 @@ import { SLAResultado, StatusSLA } from "@/components/consultor/hooks/useSLA";
 
 type Props = {
   resultado: SLAResultado;
-  // Modo compacto (so icone + dias) ou completo (icone + label + dias)
+  // Modo compacto: apenas icone colorido (sem texto)
+  // Modo completo: icone + label legivel
   compacto?: boolean;
 };
 
 const ICONE: Record<StatusSLA, string> = {
-  no_prazo: "??",
-  em_risco: "??",
-  vencido:  "??",
+  no_prazo:  "??",
+  em_risco:  "??",
+  vencido:   "??",
   concluido: "?",
 };
 
@@ -24,23 +25,32 @@ export function SLABadge({ resultado, compacto = false }: Props) {
 
   if (status === "concluido") return null;
 
+  if (compacto) {
+    // Modo compacto: apenas icone, sem borda, sem tooltip agressivo
+    return (
+      <span
+        aria-label={`SLA: ${label}`}
+        className="text-[11px] leading-none select-none"
+      >
+        {ICONE[status]}
+      </span>
+    );
+  }
+
+  // Modo completo: icone + label + dias — legivel
   return (
     <span
-      className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 ${corBg} ${corBorda}`}
-      title={`SLA: ${label}`}
+      className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 ${corBg} ${corBorda}`}
     >
-      <span className="text-[9px] leading-none">{ICONE[status]}</span>
-      {!compacto && (
-        <span className={`text-[9px] font-semibold ${cor} whitespace-nowrap`}>
-          {label}
-        </span>
-      )}
+      <span className="text-[10px] leading-none">{ICONE[status]}</span>
+      <span className={`text-[10px] font-semibold ${cor} whitespace-nowrap`}>
+        {label}
+      </span>
     </span>
   );
 }
 
-// Versao sem resultado pre-calculado -- calcula direto da data
-// Usa os defaults globais (sem config de projeto carregada)
+// Versao sem resultado pre-calculado -- calcula direto da data com defaults globais
 import { calcularSLA, SLA_DEFAULTS, DominioSLA } from "@/components/consultor/hooks/useSLA";
 
 type PropsSimples = {
