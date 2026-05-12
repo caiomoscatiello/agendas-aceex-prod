@@ -1,4 +1,4 @@
-import { useState, useMemo, useRef } from "react";
+import { useState, useMemo, useRef, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -10,16 +10,17 @@ import aceexLogo from "@/assets/aceex_logo.jpg";
 
 // Three.js Imports
 import { Canvas, useFrame } from "@react-three/fiber";
-import { Float, Sphere, MeshDistortMaterial, Stars } from "@react-three/drei";
+import { Float, Sphere, MeshDistortMaterial, Stars, OrbitControls } from "@react-three/drei";
 import { motion, AnimatePresence } from "framer-motion";
 
-// --- COMPONENTES 3D (O SCAPE DINÂMICO) ---
+
+// --- COMPONENTES 3D ---
 
 function PredictiveCore() {
-  const meshRef = useRef<any>(null); // Garantir inicialização como null
+  const meshRef = useRef<any>(null);
   
   useFrame((state) => {
-    if (!meshRef.current) return; // Check de segurança para evitar o erro 'undefined'
+    if (!meshRef.current) return;
     const t = state.clock.getElapsedTime();
     meshRef.current.rotation.y = t * 0.15;
     meshRef.current.rotation.z = t * 0.1;
@@ -131,7 +132,7 @@ export default function LoginPage() {
   return (
     <div className="flex h-screen w-full bg-[#0F172A] overflow-hidden font-sans">
       
-      {/* LADO ESQUERDO: BARRA DE LOGIN FIXA (33%) */}
+      {/* LADO ESQUERDO: LOGIN (33%) */}
       <motion.div 
         initial={{ x: -100, opacity: 0 }}
         animate={{ x: 0, opacity: 1 }}
@@ -169,7 +170,7 @@ export default function LoginPage() {
                 />
               </div>
               {error && <p className="text-sm text-red-400 font-medium">{error}</p>}
-              <Button type="submit" className="w-full h-12 bg-violet-600 hover:bg-violet-500 text-white font-bold transition-all shadow-lg shadow-violet-600/20" disabled={resetLoading}>
+              <Button type="submit" className="w-full h-12 bg-violet-600 hover:bg-violet-500 text-white font-bold" disabled={resetLoading}>
                 {resetLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Recuperar Acesso"}
               </Button>
               <Button type="button" variant="ghost" className="w-full text-slate-500 hover:text-white" onClick={() => { setForgotMode(false); setError(""); }}>
@@ -198,9 +199,7 @@ export default function LoginPage() {
                 />
               </div>
               <div className="space-y-2">
-                <div className="flex justify-between">
-                  <Label htmlFor="password" className="text-xs uppercase tracking-widest text-slate-500">Senha</Label>
-                </div>
+                <Label htmlFor="password" className="text-xs uppercase tracking-widest text-slate-500">Senha</Label>
                 <Input
                   id="password"
                   type="password"
@@ -212,7 +211,7 @@ export default function LoginPage() {
                 />
               </div>
               {error && <p className="text-sm text-red-400 font-medium">{error}</p>}
-              <Button type="submit" className="w-full h-12 bg-violet-600 hover:bg-violet-500 text-white font-bold transition-all shadow-lg shadow-violet-600/20" disabled={loading}>
+              <Button type="submit" className="w-full h-12 bg-violet-600 hover:bg-violet-500 text-white font-bold" disabled={loading}>
                 {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Entrar no Dashboard"}
               </Button>
               <Button type="button" variant="link" className="w-full text-sm text-slate-500 hover:text-violet-400" onClick={() => { setForgotMode(true); setError(""); }}>
@@ -226,27 +225,25 @@ export default function LoginPage() {
           Tecnologia Preditiva & Gestão Integrada
         </div>
       </motion.div>
-      import { Suspense } from "react"; // Adicione este import no topo
 
-// ... dentro do seu JSX, no lado direito (67%)
-<div className="hidden md:block w-[67%] h-full relative bg-black">
-  <Suspense fallback={<div className="bg-[#0B0E14] w-full h-full" />}>
-    <Canvas camera={{ position: [0, 0, 8] }} gl={{ antialias: true }}>
-      <color attach="background" args={["#0B0E14"]} />
-      <ambientLight intensity={0.4} />
-      <pointLight position={[10, 10, 10]} color="#8B5CF6" />
-      <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
-      <Float speed={2} rotationIntensity={1.5} floatIntensity={2}>
-        <PredictiveCore />
-      </Float>
-      <DataParticles />
-      <OrbitControls enableZoom={false} />
-    </Canvas>
-  </Suspense>
-</div>
-      
-        {/* Camada 2: Overlay de Texto Aspiracional */}
-        <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-20">
+      {/* LADO DIREITO: 3D (67%) */}
+      <div className="hidden md:block w-[67%] h-full relative bg-black">
+        <Suspense fallback={<div className="bg-[#0B0E14] w-full h-full" />}>
+          <Canvas camera={{ position: [0, 0, 8] }} gl={{ antialias: true }}>
+            <color attach="background" args={["#0B0E14"]} />
+            <ambientLight intensity={0.4} />
+            <pointLight position={[10, 10, 10]} color="#8B5CF6" />
+            <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+            <Float speed={2} rotationIntensity={1.5} floatIntensity={2}>
+              <PredictiveCore />
+            </Float>
+            <DataParticles />
+            <OrbitControls enableZoom={false} />
+          </Canvas>
+        </Suspense>
+
+        {/* Overlay de Texto */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none p-20 z-10">
           <motion.div 
             initial={{ opacity: 0, scale: 0.9 }}
             animate={{ opacity: 1, scale: 1 }}
@@ -257,18 +254,19 @@ export default function LoginPage() {
               Controle <span className="font-bold text-violet-500">Absoluto.</span><br/>
               Resultados <span className="font-bold text-cyan-400 italic">Preditivos.</span>
             </h3>
-            <p className="text-slate-500 mt-6 text-sm max-w-sm ml-auto uppercase tracking-widest">
+            <p className="text-slate-500 mt-6 text-sm max-w-sm ml-auto uppercase tracking-widest leading-relaxed">
               Integração completa com ERPs, CRMs e Automação via Inteligência Artificial.
             </p>
           </motion.div>
         </div>
 
-        {/* Efeito de Glow no fundo */}
+        {/* Efeito Glow */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-violet-600/10 blur-[120px] rounded-full pointer-events-none"></div>
       </div>
     </div>
   );
 }
+
 /*import { useState } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
