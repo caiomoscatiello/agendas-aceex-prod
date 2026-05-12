@@ -77,6 +77,9 @@ export default function ConsultorDashboard() {
   const [atividadesApontadas, setAtividadesApontadas] = useState<AtividadeApontada[]>([]);
   const [apontModalidade, setApontModalidade] = useState("Remoto");
   const [apontDescricao, setApontDescricao] = useState("");
+  // BL-009 -- Diario de bordo: campo observacao no apontamento
+  const [diarioObs, setDiarioObs] = useState("");
+  const [diarioCategoria, setDiarioCategoria] = useState<"geral"|"decisao"|"ocorrencia"|"marco"|"alerta">("geral");
 
   // Despesas state
   const [despesaOpen, setDespesaOpen] = useState(false);
@@ -610,6 +613,9 @@ export default function ConsultorDashboard() {
     setAtividadesApontadas([{ atividade_codigo: "", atividade_descricao: "", horas: 0, percentual_feeling: null }]);
     setApontModalidade("Remoto");
     setApontDescricao((reqData as any)?.descricao_atividade || "");
+    // BL-009 -- resetar campos do diario ao abrir modal
+    setDiarioObs("");
+    setDiarioCategoria("geral");
     setApontamentoOpen(true);
   };
 
@@ -802,6 +808,24 @@ export default function ConsultorDashboard() {
       toast({ title: "Erro", description: error.message, variant: "destructive" });
       setResumoLoading(false);
       return;
+    }
+
+    // BL-009 -- Gravar entrada no diario se observacao preenchida (fire-and-forget)
+    if (diarioObs.trim() && selectedAgenda) {
+      const projeto = offProjetos.find((p) => p.nome_cliente === selectedAgenda.cliente);
+      if (projeto) {
+        supabase.functions.invoke("diario-entry", {
+          body: {
+            action: "insert",
+            projeto_id: projeto.id,
+            texto: diarioObs.trim(),
+            categoria: diarioCategoria,
+            origem: "consultor",
+            agenda_id: selectedAgenda.id,
+            data: selectedDate,
+          },
+        }).catch(() => {});
+      }
     }
 
     // Check if apontamento matches the approved request exactly (auto-approve)
@@ -2639,6 +2663,36 @@ setTsAgendadas(totalAgendadas);
                 placeholder="Descreva as atividades realizadas..."
                 rows={3}
               />
+            </div>
+
+            {/* BL-009 -- Observacao do dia para o diario de bordo */}
+            <div className="border-t pt-3 mt-1 space-y-1">
+              <Label className="text-xs font-medium text-blue-700 flex items-center gap-1.5">
+                <svg xmlns="http://www.w3.org/2000/svg" className="h-3.5 w-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M8 10h.01M12 10h.01M16 10h.01M9 16H5a2 2 0 01-2-2V6a2 2 0 012-2h14a2 2 0 012 2v8a2 2 0 01-2 2h-5l-3 3v-3z" />
+                </svg>
+                Observacao do dia
+                <span className="text-[10px] font-normal text-muted-foreground">— opcional, alimenta o diario e a IA</span>
+              </Label>
+              <Textarea
+                rows={2}
+                className="text-xs resize-none border-blue-200 bg-blue-50/40 placeholder:text-muted-foreground/60"
+                placeholder="Ex: cliente solicitou ajuste no CFOP 5102, pendencia mapeada para proxima visita..."
+                value={diarioObs}
+                onChange={(e) => setDiarioObs(e.target.value)}
+              />
+              <Select value={diarioCategoria} onValueChange={(v) => setDiarioCategoria(v as "geral"|"decisao"|"ocorrencia"|"marco"|"alerta")}>
+                <SelectTrigger className="h-7 text-[11px] w-36 border-blue-200">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="geral">Geral</SelectItem>
+                  <SelectItem value="ocorrencia">Ocorrencia</SelectItem>
+                  <SelectItem value="decisao">Decisao</SelectItem>
+                  <SelectItem value="alerta">Alerta</SelectItem>
+                  <SelectItem value="marco">Marco</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           </div>
           <div className="shrink-0 border-t px-4 py-3 flex flex-col-reverse sm:flex-row sm:justify-end gap-2">
