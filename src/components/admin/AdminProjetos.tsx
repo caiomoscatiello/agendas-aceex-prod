@@ -24,6 +24,8 @@ import { BacklogBoard } from "@/components/consultor/ui/BacklogBoard";
 import { AtividadesCsvWizard } from "@/components/admin/AtividadesCsvWizard";
 import { BacklogCsvWizard } from "@/components/admin/BacklogCsvWizard";
 import { useDiario, type CategoriaDiario } from "@/components/consultor/hooks/useDiario";
+import { useSLA, type DominioSLA } from "@/components/consultor/hooks/useSLA";
+import { Settings2 } from "lucide-react";
 
 type Projeto = {
   id: string;
@@ -280,6 +282,10 @@ export default function AdminProjetos() {
   const [healthOpen, setHealthOpen] = useState(false);
   // BL-009 -- Diario de bordo
   const [diarioOpen, setDiarioOpen] = useState(false);
+  // BL-013 -- Config SLA
+  const [slaOpen, setSlaOpen] = useState(false);
+  const { configs: slaConfigs, loading: slaLoading, loadConfigs: loadSLA,
+          saveConfigProjeto: saveSLA, deleteConfigProjeto: deleteSLA } = useSLA();
   const [diarioTexto, setDiarioTexto] = useState("");
   const [diarioCategoria, setDiarioCategoria] = useState<CategoriaDiario>("geral");
   const {
@@ -2295,6 +2301,12 @@ export default function AdminProjetos() {
               >
                 <BookOpen className="h-3.5 w-3.5" /> Diario de bordo
               </DropdownMenuItem>
+              <DropdownMenuItem
+                className="gap-2 text-sm"
+                onClick={() => { if (detailProjeto) { loadSLA(detailProjeto.id); setSlaOpen(true); } }}
+              >
+                <Settings2 className="h-3.5 w-3.5" /> Config SLA
+              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="gap-2 text-sm"
@@ -2920,6 +2932,100 @@ export default function AdminProjetos() {
             toast({ title: `${novasAtivs.length} atividade(s) importada(s)!`, description: "Salve o projeto para persistir." });
           }}
         />
+      )}
+
+      {/* BL-013 -- Sheet Config SLA */}
+      {slaOpen && detailProjeto && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="fixed inset-0 bg-black/30" onClick={() => setSlaOpen(false)} />
+          <div className="relative z-50 flex h-full w-[380px] sm:w-[420px] flex-col bg-background border-l shadow-lg">
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30 shrink-0">
+              <div className="flex items-center gap-2">
+                <Settings2 className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Config SLA</span>
+                <span className="text-xs text-muted-foreground">— {detailProjeto.nome_cliente}</span>
+              </div>
+              <button onClick={() => setSlaOpen(false)} className="rounded-md p-1 hover:bg-muted transition-colors">
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-3">
+              <p className="text-[11px] text-muted-foreground">
+                Valores em branco usam o padrao global do sistema. Defina valores especificos para sobrescrever por dominio.
+              </p>
+              {slaLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {(["apontamento","documentacao","ocorrencia","kanban_fase","pendencia"] as DominioSLA[]).map((dom) => {
+                    const cfg = slaConfigs[dom];
+                    return (
+                      <div key={dom} className="border rounded-lg p-3 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-semibold capitalize">{dom.replace("_", " ")}</span>
+                          <span className="text-[10px] text-muted-foreground bg-muted px-2 py-0.5 rounded">
+                            padrao: {cfg?.dias_sla ?? "—"}d
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-3 gap-2">
+                          <div>
+                            <label className="text-[10px] text-muted-foreground">Dias SLA</label>
+                            <input
+                              type="number" min="1" max="90"
+                              defaultValue={cfg?.dias_sla}
+                              className="w-full h-7 text-xs border rounded px-2 bg-background mt-0.5"
+                              id={`sla-dias-${dom}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground">Risco (dias antes)</label>
+                            <input
+                              type="number" min="0" max="30"
+                              defaultValue={cfg?.dias_risco_antes}
+                              className="w-full h-7 text-xs border rounded px-2 bg-background mt-0.5"
+                              id={`sla-risco-${dom}`}
+                            />
+                          </div>
+                          <div>
+                            <label className="text-[10px] text-muted-foreground">% risco</label>
+                            <input
+                              type="number" min="1" max="100"
+                              defaultValue={cfg?.pct_risco}
+                              className="w-full h-7 text-xs border rounded px-2 bg-background mt-0.5"
+                              id={`sla-pct-${dom}`}
+                            />
+                          </div>
+                        </div>
+                        <button
+                          className="text-[10px] text-primary hover:underline"
+                          onClick={async () => {
+                            const dias = parseInt((document.getElementById(`sla-dias-${dom}`) as HTMLInputElement)?.value || "0");
+                            const risco = parseInt((document.getElementById(`sla-risco-${dom}`) as HTMLInputElement)?.value || "0");
+                            const pct = parseInt((document.getElementById(`sla-pct-${dom}`) as HTMLInputElement)?.value || "80");
+                            if (dias > 0) {
+                              await saveSLA(detailProjeto.id, dom, { dias_sla: dias, dias_risco_antes: risco, pct_risco: pct });
+                              toast({ title: `SLA de ${dom} salvo!` });
+                            }
+                          }}
+                        >
+                          Salvar este dominio
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+            <div className="px-4 py-2 border-t shrink-0">
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                <Zap className="h-3 w-3 text-blue-400" />
+                Configuracoes aplicadas no proximo ciclo do sla-evaluator (diario)
+              </p>
+            </div>
+          </div>
+        </div>
       )}
 
       {/* BL-009 -- Sheet Diario de Bordo */}

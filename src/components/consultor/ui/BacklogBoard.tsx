@@ -24,6 +24,7 @@ import { format, parseISO, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { useBacklog, BacklogItem, BacklogColuna, BacklogComentario, BacklogHistorico, BacklogParticipante } from "../hooks/useBacklog";
+import { SLABadgeSimples } from "@/components/ui/SLABadge";
 
 // ?? TIPOS ?????????????????????????????????????????????????????????????????????
 
@@ -154,6 +155,10 @@ function ItemCard({
               {vencido && "! "}
               {format(parseISO(item.data_prevista), "dd/MM", { locale: ptBR })}
             </span>
+          )}
+          {/* BL-013 -- SLA badge de fase */}
+          {item.created_at && (
+            <SLABadgeSimples dominio="kanban_fase" dataRef={item.created_at.split("T")[0]} compacto />
           )}
           {(item as any).data_conclusao_desejada && (
             <span className="text-[9px] text-amber-600 font-semibold">

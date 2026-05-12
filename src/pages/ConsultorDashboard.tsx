@@ -27,6 +27,7 @@ import { VisaoGeralCard } from "@/components/consultor/ui/VisaoGeralCard";
 import { TimesheetCard } from "@/components/consultor/ui/TimesheetCard";
 import { PendenciasPMOCard } from "@/components/consultor/ui/PendenciasPMOCard";
 import { BacklogBoard } from "@/components/consultor/ui/BacklogBoard";
+import { SLABadgeSimples } from "@/components/ui/SLABadge";
 
 type Agenda = {
   id: string;
@@ -1380,7 +1381,11 @@ setTsAgendadas(totalAgendadas);
                       >
                         <div className="flex items-center justify-between">
                           <p className="font-medium text-sm">{a.cliente}</p>
-                          <Badge className={`text-xs ${statusDisplay.color}`}>{statusDisplay.label}</Badge>
+                          <div className="flex items-center gap-1.5">
+                            {/* BL-013 -- SLA apontamento */}
+                            <SLABadgeSimples dominio="apontamento" dataRef={a.data} compacto />
+                            <Badge className={`text-xs ${statusDisplay.color}`}>{statusDisplay.label}</Badge>
+                          </div>
                         </div>
                         {/* Atividade com hierarquia visual */}
                         <div className="mt-1 space-y-0.5">
