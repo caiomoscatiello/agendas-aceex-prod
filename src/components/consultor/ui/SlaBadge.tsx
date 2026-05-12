@@ -4,7 +4,6 @@
 // Merge de OPP-1 (badge de status) + OPP-2 (contador regressivo)
 // Encoding: UTF-8 sem BOM
 
-
 import { SLAResultado, StatusSLA } from "@/components/consultor/hooks/useSLA";
 
 type Props = {

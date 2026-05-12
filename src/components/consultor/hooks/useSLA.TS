@@ -3,7 +3,6 @@
 // CRIAR arquivo novo -- nao altera nenhum arquivo existente
 // Encoding: UTF-8 sem BOM
 
-
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
