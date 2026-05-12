@@ -2920,6 +2920,7 @@ export default function AdminProjetos() {
             toast({ title: `${novasAtivs.length} atividade(s) importada(s)!`, description: "Salve o projeto para persistir." });
           }}
         />
+      )}
 
       {/* BL-009 -- Sheet Diario de Bordo */}
       {diarioOpen && detailProjeto && (
