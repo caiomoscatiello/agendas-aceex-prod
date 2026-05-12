@@ -3,20 +3,19 @@ import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, ShieldCheck, Cpu, Activity } from "lucide-react";
-import { motion, AnimatePresence } from "framer-motion";
+import { Loader2, Cpu, Activity, ShieldCheck } from "lucide-react";
+import { motion } from "framer-motion";
 import aceexLogo from "@/assets/aceex_logo.jpg";
 
 export default function LoginPage() {
   const { signIn } = useAuth();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setError("");
     setLoading(true);
     const { error } = await signIn(email, password);
     if (error) setError(error);
@@ -26,12 +25,8 @@ export default function LoginPage() {
   return (
     <div className="flex h-screen w-full bg-[#0B0E14] overflow-hidden font-sans">
       
-      {/* LADO ESQUERDO: PAINEL DE LOGIN */}
-      <motion.div 
-        initial={{ x: -50, opacity: 0 }}
-        animate={{ x: 0, opacity: 1 }}
-        className="w-full md:w-[400px] h-full bg-[#0B0E14] border-r border-white/5 flex flex-col justify-center px-10 z-20 shadow-2xl"
-      >
+      {/* LADO ESQUERDO: LOGIN (Fiel ao Mockup) */}
+      <div className="w-full md:w-[400px] h-full bg-[#0B0E14] border-r border-white/5 flex flex-col justify-center px-10 z-20 shadow-2xl">
         <div className="mb-10">
           <img src={aceexLogo} alt="ACEEX" className="h-10 mb-6 grayscale brightness-200" />
           <div className="flex items-center gap-2">
@@ -46,8 +41,7 @@ export default function LoginPage() {
             <Label className="text-[10px] text-slate-500 uppercase tracking-widest">Identificação</Label>
             <Input 
               type="email" 
-              placeholder="usuario@aceex.com"
-              className="bg-[#161B22] border-white/10 text-white h-12 focus:ring-violet-500" 
+              className="bg-[#161B22] border-white/10 text-white h-12" 
               value={email} 
               onChange={(e) => setEmail(e.target.value)} 
               required 
@@ -57,89 +51,64 @@ export default function LoginPage() {
             <Label className="text-[10px] text-slate-500 uppercase tracking-widest">Chave de Acesso</Label>
             <Input 
               type="password" 
-              placeholder="••••••••"
-              className="bg-[#161B22] border-white/10 text-white h-12 focus:ring-violet-500" 
+              className="bg-[#161B22] border-white/10 text-white h-12" 
               value={password} 
               onChange={(e) => setPassword(e.target.value)} 
               required 
             />
           </div>
-          
-          {error && (
-            <motion.p initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="text-xs text-red-400 bg-red-400/10 p-3 rounded border border-red-400/20">
-              {error}
-            </motion.p>
-          )}
-
-          <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-500 h-12 font-bold transition-all" disabled={loading}>
+          {error && <p className="text-xs text-red-400 bg-red-400/10 p-3 rounded border border-red-400/20">{error}</p>}
+          <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-500 h-12 font-bold" disabled={loading}>
             {loading ? <Loader2 className="animate-spin" /> : "INICIAR SESSÃO"}
           </Button>
         </form>
 
         <div className="mt-auto py-8 text-[10px] text-slate-600 uppercase tracking-[0.3em] text-center border-t border-white/5">
-          ACEEX Group &copy; 2024
+          ACEEX Group &copy; 2026
         </div>
-      </motion.div>
+      </div>
 
-      {/* LADO DIREITO: NÚCLEO PREDITIVO (CSS ANIMATION) */}
+      {/* LADO DIREITO: NÚCLEO VISUAL (A prova de erros 'S') */}
       <div className="hidden md:flex flex-1 bg-[#090B10] relative items-center justify-center overflow-hidden">
-        
-        {/* Grid de fundo */}
-        <div className="absolute inset-0 opacity-10" 
-             style={{ backgroundImage: 'linear-gradient(#1e293b 1px, transparent 1px), linear-gradient(90deg, #1e293b 1px, transparent 1px)', size: '40px 40px', backgroundSize: '40px 40px' }} />
+        {/* Grid Background */}
+        <div className="absolute inset-0 opacity-[0.03]" style={{ backgroundImage: 'radial-gradient(#ffffff 1px, transparent 1px)', backgroundSize: '30px 30px' }} />
 
-        {/* Núcleo Visual Central */}
         <div className="relative flex items-center justify-center">
-          {/* Anéis Orbitais */}
-          <motion.div 
-            animate={{ rotate: 360 }} 
-            transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
-            className="absolute w-[400px] h-[400px] border border-violet-500/20 rounded-full border-dashed" 
-          />
-          <motion.div 
-            animate={{ rotate: -360 }} 
-            transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-            className="absolute w-[300px] h-[300px] border border-cyan-500/10 rounded-full" 
-          />
+          {/* Anéis Orbitais Animados */}
+          <motion.div animate={{ rotate: 360 }} transition={{ duration: 25, repeat: Infinity, ease: "linear" }} className="absolute w-[450px] h-[450px] border border-violet-500/10 rounded-full border-dashed" />
+          <motion.div animate={{ rotate: -360 }} transition={{ duration: 20, repeat: Infinity, ease: "linear" }} className="absolute w-[350px] h-[350px] border border-cyan-500/5 rounded-full" />
           
-          {/* O "Cérebro" da IA */}
+          {/* CORE V2 central */}
           <motion.div 
-            animate={{ scale: [1, 1.05, 1] }}
+            animate={{ scale: [1, 1.05, 1], shadow: ["0 0 20px #8b5cf633", "0 0 50px #8b5cf666", "0 0 20px #8b5cf633"] }}
             transition={{ duration: 4, repeat: Infinity }}
-            className="relative z-10 w-48 h-48 bg-gradient-to-br from-violet-600 to-cyan-500 rounded-3xl rotate-45 flex items-center justify-center shadow-[0_0_100px_rgba(139,92,246,0.3)]"
+            className="z-10 w-40 h-40 bg-gradient-to-br from-violet-600 to-cyan-500 rounded-3xl rotate-45 flex items-center justify-center"
           >
             <div className="rotate-[-45deg] text-white flex flex-col items-center">
-              <Cpu size={48} strokeWidth={1} className="mb-2" />
-              <div className="text-[10px] tracking-[0.4em] font-bold opacity-80 uppercase">Core V2</div>
+              <Cpu size={40} strokeWidth={1.5} className="mb-2" />
+              <div className="text-[10px] tracking-[0.3em] font-bold opacity-80 uppercase">Core V2</div>
             </div>
           </motion.div>
 
-          {/* Partículas flutuantes com labels de dados */}
-          <div className="absolute inset-0 flex items-center justify-center">
-            {[
-              { icon: <Activity size={12} />, label: "Real-time Sync", pos: "top-[-120px] left-[-150px]" },
-              { icon: <ShieldCheck size={12} />, label: "Secure Layer", pos: "bottom-[-100px] right-[-140px]" }
-            ].map((item, i) => (
-              <motion.div 
-                key={i}
-                animate={{ y: [0, -10, 0] }}
-                transition={{ duration: 3, delay: i, repeat: Infinity }}
-                className={`absolute ${item.pos} bg-white/5 backdrop-blur-md border border-white/10 p-3 rounded-lg flex items-center gap-3`}
-              >
-                <div className="text-violet-400">{item.icon}</div>
-                <div className="text-[10px] text-slate-300 font-medium uppercase tracking-widest">{item.label}</div>
-              </motion.div>
-            ))}
-          </div>
+          {/* Floating Data Nodes do Mockup */}
+          <motion.div animate={{ y: [0, -10, 0] }} transition={{ duration: 3, repeat: Infinity }} className="absolute top-[-100px] left-[-120px] bg-white/5 backdrop-blur-md border border-white/10 p-3 rounded-lg flex items-center gap-3">
+            <Activity size={14} className="text-violet-400" />
+            <span className="text-[9px] text-slate-300 uppercase tracking-widest font-semibold">Real-Time Sync</span>
+          </motion.div>
+
+          <motion.div animate={{ y: [0, 10, 0] }} transition={{ duration: 4, delay: 1, repeat: Infinity }} className="absolute bottom-[-80px] right-[-100px] bg-white/5 backdrop-blur-md border border-white/10 p-3 rounded-lg flex items-center gap-3">
+            <ShieldCheck size={14} className="text-cyan-400" />
+            <span className="text-[9px] text-slate-300 uppercase tracking-widest font-semibold">Secure Layer</span>
+          </motion.div>
         </div>
 
-        {/* Rodapé do mockup */}
+        {/* Texto Aspiracional (Mockup) */}
         <div className="absolute bottom-20 right-20 text-right">
           <h1 className="text-white text-5xl font-light tracking-tighter leading-none">
-            Controle <span className="font-bold text-violet-500">Absoluto.</span><br/>
-            Resultados <span className="font-bold text-cyan-400 italic">Preditivos.</span>
+            Controle <span className="font-bold text-violet-500 font-sans">Absoluto.</span><br/>
+            Resultados <span className="font-bold text-cyan-400 italic font-sans">Preditivos.</span>
           </h1>
-          <p className="text-slate-500 mt-4 text-xs tracking-widest uppercase">Performance Monitorada em Tempo Real</p>
+          <p className="text-slate-500 mt-4 text-xs tracking-widest uppercase font-sans">Performance Monitorada em Tempo Real</p>
         </div>
       </div>
     </div>
