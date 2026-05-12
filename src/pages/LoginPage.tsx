@@ -1,11 +1,13 @@
-import { useState } from "react";
+import { useState, lazy, Suspense } from "react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Loader2 } from "lucide-react";
 import aceexLogo from "@/assets/aceex_logo.jpg";
-import PredictiveScene from "./PredictiveScene"; // O arquivo que criamos acima
+
+// IMPORTANTE: Isso força a Vercel a criar um arquivo separado para o 3D
+const PredictiveScene = lazy(() => import("./PredictiveScene"));
 
 export default function LoginPage() {
   const { signIn } = useAuth();
@@ -25,50 +27,41 @@ export default function LoginPage() {
 
   return (
     <div className="flex h-screen w-full bg-[#0B0E14] overflow-hidden">
-      {/* LADO ESQUERDO: LOGIN (BARRA LATERAL FIXA) */}
+      {/* LADO ESQUERDO: LOGIN */}
       <div className="w-full md:w-[400px] h-full bg-[#0B0E14] border-r border-white/5 flex flex-col justify-center px-10 z-20">
-        <div className="mb-10">
-          <img src={aceexLogo} alt="ACEEX" className="h-10 mb-6 grayscale brightness-200" />
-          <h2 className="text-2xl font-bold text-white tracking-tight">ACEEX <span className="text-violet-500">V2</span></h2>
+        <div className="mb-10 text-center md:text-left">
+          <img src={aceexLogo} alt="ACEEX" className="h-10 mb-6 grayscale brightness-200 mx-auto md:mx-0" />
+          <h2 className="text-2xl font-bold text-white">ACEEX <span className="text-violet-500">V2</span></h2>
         </div>
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="space-y-2">
-            <Label className="text-[10px] uppercase text-slate-500 tracking-widest">Acesso Corporativo</Label>
-            <Input 
-              type="email" 
-              className="bg-[#161B22] border-white/5 text-white h-11" 
-              value={email} 
-              onChange={(e) => setEmail(e.target.value)} 
-              required 
-            />
+            <Label className="text-[10px] uppercase text-slate-500 tracking-widest">Acesso</Label>
+            <Input type="email" className="bg-[#161B22] border-white/5 text-white h-11" value={email} onChange={(e) => setEmail(e.target.value)} required />
           </div>
           <div className="space-y-2">
             <Label className="text-[10px] uppercase text-slate-500 tracking-widest">Senha</Label>
-            <Input 
-              type="password" 
-              className="bg-[#161B22] border-white/5 text-white h-11" 
-              value={password} 
-              onChange={(e) => setPassword(e.target.value)} 
-              required 
-            />
+            <Input type="password" className="bg-[#161B22] border-white/5 text-white h-11" value={password} onChange={(e) => setPassword(e.target.value)} required />
           </div>
           {error && <p className="text-xs text-red-400 font-medium">{error}</p>}
-          <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-500 h-12 font-bold" disabled={loading}>
+          <Button type="submit" className="w-full bg-violet-600 hover:bg-violet-500 h-12 font-bold shadow-lg shadow-violet-600/20" disabled={loading}>
             {loading ? <Loader2 className="animate-spin h-5 w-5" /> : "ENTRAR NO SISTEMA"}
           </Button>
         </form>
       </div>
 
-      {/* LADO DIREITO: CENA 3D ISOLADA */}
+      {/* LADO DIREITO: 3D ISOLADO */}
       <div className="hidden md:block flex-1 relative bg-black">
-        <PredictiveScene />
-        <div className="absolute inset-0 flex items-center justify-end p-20 pointer-events-none">
+        <Suspense fallback={<div className="w-full h-full bg-[#0B0E14]" />}>
+          <PredictiveScene />
+        </Suspense>
+        
+        <div className="absolute inset-0 flex items-center justify-end p-20 pointer-events-none z-10">
           <div className="text-right">
             <h1 className="text-white text-4xl font-light tracking-tighter opacity-80 uppercase">
-              Tecnologia <span className="font-bold text-violet-500">Preditiva</span>
+              Gestão <span className="font-bold text-violet-500">Preditiva</span>
             </h1>
-            <p className="text-slate-500 text-sm mt-2">GESTÃO DE PROJETOS ACEEX V2</p>
+            <p className="text-slate-500 text-sm mt-2 tracking-[0.3em]">ACEEX V2 INTELLIGENCE</p>
           </div>
         </div>
       </div>
