@@ -12,7 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
-import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle, Activity, TrendingUp, TrendingDown, Minus, Sliders, ListTodo, Upload, CalendarClock, CalendarDays, Zap, AlertOctagon } from "lucide-react";
+import { FolderPlus, Plus, Trash2, Save, Loader2, Edit, Eye, Users, ShieldAlert, X, Link2, ExternalLink, RotateCcw, ChevronDown, Settings, HelpCircle, Activity, TrendingUp, TrendingDown, Minus, Sliders, ListTodo, Upload, CalendarClock, CalendarDays, Zap, AlertOctagon, BookOpen } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 
@@ -23,6 +23,7 @@ import AdminCronogramaItens, { CronogramaItem, TipoDocumento } from "./AdminCron
 import { BacklogBoard } from "@/components/consultor/ui/BacklogBoard";
 import { AtividadesCsvWizard } from "@/components/admin/AtividadesCsvWizard";
 import { BacklogCsvWizard } from "@/components/admin/BacklogCsvWizard";
+import { useDiario, type CategoriaDiario } from "@/components/consultor/hooks/useDiario";
 
 type Projeto = {
   id: string;
@@ -277,9 +278,38 @@ export default function AdminProjetos() {
 
   // ?"??"? HEALTH SCORE ?"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"??"?
   const [healthOpen, setHealthOpen] = useState(false);
+  // BL-009 -- Diario de bordo
+  const [diarioOpen, setDiarioOpen] = useState(false);
+  const [diarioTexto, setDiarioTexto] = useState("");
+  const [diarioCategoria, setDiarioCategoria] = useState<CategoriaDiario>("geral");
+  const {
+    entradas: diarioEntradas,
+    loading: diarioLoading,
+    saving: diarioSaving,
+    loadEntradas: loadDiario,
+    insertEntrada: insertDiario,
+    getCategoriaLabel,
+    getCategoriaCores,
+  } = useDiario();
   const [csvWizardOpen, setCsvWizardOpen] = useState(false);
   const [backlogReloadKey, setBacklogReloadKey] = useState(0);
   const [backlogColunasCache, setBacklogColunasCache] = useState<{id: string; nome: string; status_sistema: string | null}[]>([]);
+
+  // BL-009 -- Handler diario de bordo
+  const handleRegistrarDiario = async () => {
+    if (!detailProjeto || !diarioTexto.trim()) return;
+    const ok = await insertDiario({
+      projeto_id: detailProjeto.id,
+      texto: diarioTexto.trim(),
+      categoria: diarioCategoria,
+      origem: "coordenador",
+    });
+    if (ok) {
+      setDiarioTexto("");
+      setDiarioCategoria("geral");
+      toast({ title: "Entrada registrada no diario!" });
+    }
+  };
 
   const handleAbrirCsvWizard = async () => {
     if (!detailProjeto) return;
@@ -2261,6 +2291,13 @@ export default function AdminProjetos() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="gap-2 text-sm"
+                onClick={() => { if (detailProjeto) { loadDiario(detailProjeto.id); setDiarioOpen(true); } }}
+              >
+                <BookOpen className="h-3.5 w-3.5" /> Diario de bordo
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem
+                className="gap-2 text-sm"
                 onClick={() => handleAbrirCsvWizard()}
               >
                 <Upload className="h-4 w-4" /> Importar CSV Backlog
@@ -2883,6 +2920,102 @@ export default function AdminProjetos() {
             toast({ title: `${novasAtivs.length} atividade(s) importada(s)!`, description: "Salve o projeto para persistir." });
           }}
         />
+
+      {/* BL-009 -- Sheet Diario de Bordo */}
+      {diarioOpen && detailProjeto && (
+        <div className="fixed inset-0 z-50 flex justify-end">
+          <div className="fixed inset-0 bg-black/30" onClick={() => { setDiarioOpen(false); setDiarioTexto(""); setDiarioCategoria("geral"); }} />
+          <div className="relative z-50 flex h-full w-[340px] sm:w-[380px] flex-col bg-background border-l shadow-lg">
+            {/* Header */}
+            <div className="flex items-center justify-between px-4 py-3 border-b bg-muted/30 shrink-0">
+              <div className="flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-primary" />
+                <span className="text-sm font-medium">Diario de bordo</span>
+                <span className="text-xs text-muted-foreground">— {detailProjeto.nome_cliente}</span>
+              </div>
+              <button
+                onClick={() => { setDiarioOpen(false); setDiarioTexto(""); setDiarioCategoria("geral"); }}
+                className="rounded-md p-1 hover:bg-muted transition-colors"
+              >
+                <X className="h-4 w-4 text-muted-foreground" />
+              </button>
+            </div>
+            {/* Nova entrada */}
+            <div className="px-4 pt-3 pb-3 border-b shrink-0 space-y-2">
+              <textarea
+                rows={3}
+                className="w-full text-xs resize-none rounded-md border px-3 py-2 bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
+                placeholder="Registre uma decisao, ocorrencia ou marco..."
+                value={diarioTexto}
+                onChange={(e) => setDiarioTexto(e.target.value)}
+              />
+              <div className="flex items-center justify-between gap-2">
+                <select
+                  value={diarioCategoria}
+                  onChange={(e) => setDiarioCategoria(e.target.value as CategoriaDiario)}
+                  className="h-7 text-[11px] rounded-md border px-2 bg-background w-36 focus:outline-none focus:ring-1 focus:ring-ring"
+                >
+                  <option value="geral">Geral</option>
+                  <option value="decisao">Decisao</option>
+                  <option value="ocorrencia">Ocorrencia</option>
+                  <option value="marco">Marco</option>
+                  <option value="alerta">Alerta</option>
+                </select>
+                <button
+                  onClick={handleRegistrarDiario}
+                  disabled={diarioSaving || !diarioTexto.trim()}
+                  className="inline-flex items-center gap-1.5 h-7 px-3 text-xs rounded-md bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+                >
+                  {diarioSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : <Plus className="h-3 w-3" />}
+                  Registrar
+                </button>
+              </div>
+            </div>
+            {/* Feed de entradas */}
+            <div className="flex-1 overflow-y-auto px-4 py-3 space-y-2">
+              {diarioLoading ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : diarioEntradas.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-8 text-center gap-2">
+                  <BookOpen className="h-8 w-8 text-muted-foreground/30" />
+                  <p className="text-xs text-muted-foreground">Nenhum registro ainda.</p>
+                  <p className="text-[10px] text-muted-foreground/60">Registre decisoes, ocorrencias e marcos do projeto.</p>
+                </div>
+              ) : (
+                diarioEntradas.map((entrada) => {
+                  const cores = getCategoriaCores(entrada.categoria);
+                  const [y, m, d] = entrada.data.split("-");
+                  const dataFmt = `${d}/${m}`;
+                  return (
+                    <div key={entrada.id} className={`rounded-lg border p-3 ${cores.bg} ${cores.border}`}>
+                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${cores.bg} ${cores.text} ${cores.border}`}>
+                          {getCategoriaLabel(entrada.categoria)}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground">
+                          {dataFmt}{entrada.autor_nome ? ` · ${entrada.autor_nome}` : ""}
+                        </span>
+                        {entrada.origem === "consultor" && (
+                          <span className="text-[9px] px-1 py-0.5 rounded bg-white/60 border text-muted-foreground">consultor</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-foreground leading-relaxed">{entrada.texto}</p>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+            {/* Footer */}
+            <div className="px-4 py-2 border-t shrink-0">
+              <p className="text-[10px] text-muted-foreground flex items-center gap-1.5">
+                <Zap className="h-3 w-3 text-blue-400" />
+                Alimenta resumos automaticos da IA (BL-010)
+              </p>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );
