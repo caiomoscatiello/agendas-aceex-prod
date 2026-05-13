@@ -433,6 +433,7 @@ export default function AdminManutencaoAgendas() {
             cliente: agendaCompleta.cliente,
             data: novaData,
             atividade: editAtividade,
+            atividade_descricao: agendaCompleta.atividade_descricao || null,
             item_cronograma: (editItemCronograma && editItemCronograma !== "__none__") ? editItemCronograma : null,
             status: agendaCompleta.status,
             flag_integracao: "LOVABLE",

@@ -156,9 +156,9 @@ function ItemCard({
               {format(parseISO(item.data_prevista), "dd/MM", { locale: ptBR })}
             </span>
           )}
-          {/* BL-013 -- SLA de fase: usa updated_at (atualizado ao mover o card) */}
-          {item.updated_at && (
-            <SLABadgeSimples dominio="kanban_fase" dataRef={item.updated_at.split("T")[0]} compacto />
+          {/* BL-013 -- SLA de fase: usa data_prevista quando definida */}
+          {item.data_prevista && (
+            <SLABadgeSimples dominio="kanban_fase" dataRef={item.data_prevista} compacto />
           )}
           {(item as any).data_conclusao_desejada && (
             <span className="text-[9px] text-amber-600 font-semibold">
