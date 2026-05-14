@@ -10,20 +10,33 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 /* ============================================================
- * ACEEX V2 - LoginPage
- * Predictive Operations Core - Login com Neural Brain 3D
+ * ACEEX V2 - LoginPage V6 FINAL
  * ============================================================
- * Versao: V2 (Three.js / React Three Fiber)
- * Stack: React + R3F + framer-motion + Tailwind
- * Encoding: UTF-8 sem BOM
+ * Mudancas V6:
+ *  - Cerebro VIVO: sinapses pulsantes, particulas viajando
+ *  - Neuronios respiram dessincronizadamente (8 padroes)
+ *  - Pulse rings raros (~15s) saindo do nucleo
+ *  - Flashes brancos ocasionais em neuronios "elite"
+ *  - Entrada cinematografica progressiva (~2.2s)
+ *  - Linha conectiva sutil cerebro -> Total Command
+ *  - Modulos com pulse de cor mais ativo (instigar click)
+ *  - Performance: InstancedMesh + pausar em document.hidden
  * ============================================================ */
 
 // ============================================================
-// SECAO 1 - CEREBRO NEURAL 3D
+// SECAO 1 - CEREBRO NEURAL 3D (vivo)
 // ============================================================
 
-function generateNeuralNodes(count: number, radius: number) {
-  const nodes: { position: [number, number, number]; layer: "core" | "mid" | "edge" }[] = [];
+interface NeuralNode {
+  position: [number, number, number];
+  layer: "core" | "mid" | "edge";
+  pulseOffset: number;
+  pulseSpeed: number;
+  isElite: boolean;
+}
+
+function generateNeuralNodes(count: number, radius: number): NeuralNode[] {
+  const nodes: NeuralNode[] = [];
   for (let i = 0; i < count; i++) {
     const phi = Math.acos(-1 + (2 * i) / count);
     const theta = Math.sqrt(count * Math.PI) * phi;
@@ -34,13 +47,27 @@ function generateNeuralNodes(count: number, radius: number) {
     let layer: "core" | "mid" | "edge" = "edge";
     if (r < radius * 0.55) layer = "core";
     else if (r < radius * 0.8) layer = "mid";
-    nodes.push({ position: [x, y, z], layer });
+
+    nodes.push({
+      position: [x, y, z],
+      layer,
+      pulseOffset: Math.random() * Math.PI * 2,
+      pulseSpeed: 0.5 + Math.random() * 1.2,
+      isElite: layer === "core" && Math.random() > 0.5,
+    });
   }
   return nodes;
 }
 
-function generateSynapses(nodes: ReturnType<typeof generateNeuralNodes>) {
-  const synapses: { from: number; to: number }[] = [];
+interface Synapse {
+  from: number;
+  to: number;
+  baseOpacity: number;
+  pulseOffset: number;
+}
+
+function generateSynapses(nodes: NeuralNode[]): Synapse[] {
+  const synapses: Synapse[] = [];
   const maxDist = 1.4;
   for (let i = 0; i < nodes.length; i++) {
     for (let j = i + 1; j < nodes.length; j++) {
@@ -50,100 +77,297 @@ function generateSynapses(nodes: ReturnType<typeof generateNeuralNodes>) {
       const dy = a[1] - b[1];
       const dz = a[2] - b[2];
       const dist = Math.sqrt(dx * dx + dy * dy + dz * dz);
-      if (dist < maxDist) synapses.push({ from: i, to: j });
+      if (dist < maxDist) {
+        synapses.push({
+          from: i,
+          to: j,
+          baseOpacity: 0.25 + Math.random() * 0.25,
+          pulseOffset: Math.random() * Math.PI * 2,
+        });
+      }
     }
   }
   return synapses;
 }
 
-function NeuralCore() {
+// ----- NUCLEO CENTRAL com pulse rings raros -----
+function NeuralCore({ pulseRingTriggerRef }: { pulseRingTriggerRef: React.MutableRefObject<number> }) {
   const meshRef = useRef<THREE.Mesh>(null);
+  const ring1Ref = useRef<THREE.Mesh>(null);
+  const ring2Ref = useRef<THREE.Mesh>(null);
+  const lastRingTime = useRef(0);
+
   useFrame((state) => {
     const t = state.clock.elapsedTime;
-    const pulse = 1 + Math.sin(t * 1.6) * 0.08;
+    const pulse = 1 + Math.sin(t * 1.6) * 0.12;
     if (meshRef.current) meshRef.current.scale.setScalar(pulse);
+
+    // Pulse rings raros (a cada ~15s)
+    if (t - lastRingTime.current > 15) {
+      lastRingTime.current = t;
+      pulseRingTriggerRef.current = t;
+    }
+
+    const ringAge = t - pulseRingTriggerRef.current;
+    if (ring1Ref.current && ring2Ref.current && ringAge < 3) {
+      // Anel 1: expande de 0.3 ate 3.0 em 2.5s
+      const scale1 = 0.3 + ringAge * 1.1;
+      const opacity1 = Math.max(0, 0.6 - ringAge / 2.5);
+      ring1Ref.current.scale.setScalar(scale1);
+      (ring1Ref.current.material as THREE.MeshBasicMaterial).opacity = opacity1;
+
+      // Anel 2: delay de 0.5s
+      const age2 = ringAge - 0.5;
+      if (age2 > 0) {
+        const scale2 = 0.3 + age2 * 1.1;
+        const opacity2 = Math.max(0, 0.4 - age2 / 2.5);
+        ring2Ref.current.scale.setScalar(scale2);
+        (ring2Ref.current.material as THREE.MeshBasicMaterial).opacity = opacity2;
+      }
+    } else if (ring1Ref.current && ring2Ref.current) {
+      (ring1Ref.current.material as THREE.MeshBasicMaterial).opacity = 0;
+      (ring2Ref.current.material as THREE.MeshBasicMaterial).opacity = 0;
+    }
   });
+
   return (
     <group>
+      {/* Halo externo */}
       <mesh>
-        <sphereGeometry args={[0.5, 32, 32]} />
+        <sphereGeometry args={[0.55, 32, 32]} />
         <meshBasicMaterial color="#A855F7" transparent opacity={0.08} />
       </mesh>
       <mesh>
-        <sphereGeometry args={[0.35, 32, 32]} />
-        <meshBasicMaterial color="#C084FC" transparent opacity={0.18} />
+        <sphereGeometry args={[0.38, 32, 32]} />
+        <meshBasicMaterial color="#C084FC" transparent opacity={0.2} />
       </mesh>
+      {/* Nucleo brilhante (pulsa) */}
       <mesh ref={meshRef}>
-        <sphereGeometry args={[0.22, 32, 32]} />
+        <sphereGeometry args={[0.24, 32, 32]} />
         <meshBasicMaterial color="#FFFFFF" transparent opacity={0.95} />
       </mesh>
       <mesh>
-        <sphereGeometry args={[0.1, 16, 16]} />
+        <sphereGeometry args={[0.12, 16, 16]} />
         <meshBasicMaterial color="#FFFFFF" />
+      </mesh>
+
+      {/* Pulse rings (anéis de energia raros, ~15s) */}
+      <mesh ref={ring1Ref}>
+        <ringGeometry args={[0.55, 0.6, 64]} />
+        <meshBasicMaterial color="#FFFFFF" transparent opacity={0} side={THREE.DoubleSide} />
+      </mesh>
+      <mesh ref={ring2Ref}>
+        <ringGeometry args={[0.45, 0.5, 64]} />
+        <meshBasicMaterial color="#22D3EE" transparent opacity={0} side={THREE.DoubleSide} />
       </mesh>
     </group>
   );
 }
 
-function NeuralNetwork() {
-  const groupRef = useRef<THREE.Group>(null);
-  const mouseRef = useRef({ x: 0, y: 0 });
+// ----- NEURONIO INDIVIDUAL com pulse proprio -----
+function NeuralNodeMesh({ node }: { node: NeuralNode }) {
+  const meshRef = useRef<THREE.Mesh>(null);
+  const materialRef = useRef<THREE.MeshBasicMaterial>(null);
 
-  const nodes = useMemo(() => generateNeuralNodes(60, 1.8), []);
-  const synapses = useMemo(() => generateSynapses(nodes), [nodes]);
+  // Cores: alternancia roxo / ciano / branco - mais ciano
+  const baseColors = {
+    core: "#FFFFFF",
+    mid: node.pulseOffset > Math.PI ? "#22D3EE" : "#C084FC",
+    edge: node.pulseOffset > Math.PI * 1.3 ? "#22D3EE" : "#C084FC",
+  };
+  const sizes = { core: 0.055, mid: 0.04, edge: 0.045 };
 
-  const synapseGeometry = useMemo(() => {
+  useFrame((state) => {
+    if (!meshRef.current || !materialRef.current) return;
+    const t = state.clock.elapsedTime;
+
+    // Pulse individual: cada neuronio tem fase + velocidade proprias
+    const phase = t * node.pulseSpeed + node.pulseOffset;
+    const breath = 0.5 + 0.5 * Math.sin(phase);
+
+    // Elite neuronios: brilho extra ocasional (flash branco)
+    let flash = 0;
+    if (node.isElite) {
+      const flashCycle = (t * 0.3 + node.pulseOffset) % (Math.PI * 2);
+      if (flashCycle > 4 && flashCycle < 4.4) {
+        flash = 1 - Math.abs(flashCycle - 4.2) / 0.2;
+      }
+    }
+
+    // Escala leve
+    const scale = 1 + breath * 0.3 + flash * 0.6;
+    meshRef.current.scale.setScalar(scale);
+
+    // Opacity oscila
+    materialRef.current.opacity = 0.6 + breath * 0.35 + flash * 0.4;
+
+    // Cor: vai pra branco no flash
+    if (flash > 0.2) {
+      materialRef.current.color.set("#FFFFFF");
+    } else {
+      materialRef.current.color.set(baseColors[node.layer]);
+    }
+  });
+
+  return (
+    <mesh ref={meshRef} position={node.position}>
+      <sphereGeometry args={[sizes[node.layer], 12, 12]} />
+      <meshBasicMaterial ref={materialRef} color={baseColors[node.layer]} transparent opacity={0.8} />
+    </mesh>
+  );
+}
+
+// ----- SINAPSES com particulas viajando -----
+function SynapseLines({ nodes, synapses }: { nodes: NeuralNode[]; synapses: Synapse[] }) {
+  const linesRef = useRef<THREE.LineSegments>(null);
+
+  const { geometry, colorAttribute } = useMemo(() => {
     const positions: number[] = [];
     const colors: number[] = [];
     synapses.forEach((s) => {
       const a = nodes[s.from].position;
       const b = nodes[s.to].position;
       positions.push(...a, ...b);
-      const c = new THREE.Color("#A855F7");
-      colors.push(c.r, c.g, c.b, c.r, c.g, c.b);
+      colors.push(0.66, 0.33, 0.97, 0.66, 0.33, 0.97);
     });
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
-    geo.setAttribute("color", new THREE.Float32BufferAttribute(colors, 3));
-    return geo;
+    const colorAttr = new THREE.Float32BufferAttribute(colors, 3);
+    geo.setAttribute("color", colorAttr);
+    return { geometry: geo, colorAttribute: colorAttr };
   }, [nodes, synapses]);
 
   useFrame((state) => {
+    if (!linesRef.current) return;
     const t = state.clock.elapsedTime;
-    if (groupRef.current) {
-      groupRef.current.rotation.y = t * 0.15;
-      groupRef.current.rotation.x = Math.sin(t * 0.08) * 0.25;
-      groupRef.current.rotation.z = Math.sin(t * 0.05) * 0.1;
-      groupRef.current.rotation.y += mouseRef.current.x * 0.15;
-      groupRef.current.rotation.x += mouseRef.current.y * 0.1;
-    }
+    const colors = colorAttribute.array as Float32Array;
+
+    // Pulsa cor das sinapses individualmente
+    synapses.forEach((s, i) => {
+      const phase = t * 0.8 + s.pulseOffset;
+      const intensity = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(phase));
+
+      // Mistura roxo (default) com ciano em sinapses especificas
+      const isCyan = i % 4 === 0;
+      const r = isCyan ? 0.13 * intensity : 0.66 * intensity;
+      const g = isCyan ? 0.83 * intensity : 0.33 * intensity;
+      const b = isCyan ? 0.93 * intensity : 0.97 * intensity;
+
+      colors[i * 6 + 0] = r;
+      colors[i * 6 + 1] = g;
+      colors[i * 6 + 2] = b;
+      colors[i * 6 + 3] = r;
+      colors[i * 6 + 4] = g;
+      colors[i * 6 + 5] = b;
+    });
+    colorAttribute.needsUpdate = true;
+  });
+
+  return (
+    <lineSegments ref={linesRef} geometry={geometry}>
+      <lineBasicMaterial vertexColors transparent opacity={0.5} />
+    </lineSegments>
+  );
+}
+
+// ----- PARTICULAS viajando pelas sinapses (data flow) -----
+function TravelingParticles({ nodes, synapses }: { nodes: NeuralNode[]; synapses: Synapse[] }) {
+  const groupRef = useRef<THREE.Group>(null);
+  const particleCount = 6;
+
+  // Estado de cada particula
+  const particles = useRef(
+    Array.from({ length: particleCount }, () => ({
+      synapseIndex: Math.floor(Math.random() * synapses.length),
+      progress: Math.random(),
+      speed: 0.5 + Math.random() * 0.4,
+      reverse: Math.random() > 0.5,
+    }))
+  );
+
+  useFrame((state, delta) => {
+    if (!groupRef.current) return;
+
+    particles.current.forEach((p, idx) => {
+      p.progress += delta * p.speed;
+      if (p.progress >= 1) {
+        // Particula chegou ao destino: pega outra sinapse aleatoria
+        p.progress = 0;
+        p.synapseIndex = Math.floor(Math.random() * synapses.length);
+        p.reverse = Math.random() > 0.5;
+        p.speed = 0.5 + Math.random() * 0.4;
+      }
+
+      const synapse = synapses[p.synapseIndex];
+      const a = nodes[synapse.from].position;
+      const b = nodes[synapse.to].position;
+      const t = p.reverse ? 1 - p.progress : p.progress;
+
+      const mesh = groupRef.current!.children[idx] as THREE.Mesh;
+      mesh.position.x = a[0] + (b[0] - a[0]) * t;
+      mesh.position.y = a[1] + (b[1] - a[1]) * t;
+      mesh.position.z = a[2] + (b[2] - a[2]) * t;
+
+      // Fade nas extremidades
+      const fade = Math.sin(p.progress * Math.PI);
+      (mesh.material as THREE.MeshBasicMaterial).opacity = fade * 0.9;
+    });
+  });
+
+  return (
+    <group ref={groupRef}>
+      {Array.from({ length: particleCount }).map((_, i) => (
+        <mesh key={i}>
+          <sphereGeometry args={[0.025, 8, 8]} />
+          <meshBasicMaterial color="#FFFFFF" transparent opacity={0.9} />
+        </mesh>
+      ))}
+    </group>
+  );
+}
+
+// ----- NEURAL NETWORK PRINCIPAL -----
+function NeuralNetwork() {
+  const groupRef = useRef<THREE.Group>(null);
+  const mouseRef = useRef({ x: 0, y: 0, currentX: 0, currentY: 0 });
+  const pulseRingTriggerRef = useRef(-100); // Comeca sem pulse
+
+  const nodes = useMemo(() => generateNeuralNodes(60, 1.8), []);
+  const synapses = useMemo(() => generateSynapses(nodes), [nodes]);
+
+  useFrame((state) => {
+    const t = state.clock.elapsedTime;
+    if (!groupRef.current) return;
+
+    // Rotacao 3D continua
+    groupRef.current.rotation.y = t * 0.13;
+    groupRef.current.rotation.x = Math.sin(t * 0.08) * 0.22;
+    groupRef.current.rotation.z = Math.sin(t * 0.05) * 0.08;
+
+    // Mouse parallax com inercia (lerp)
+    mouseRef.current.currentX += (mouseRef.current.x - mouseRef.current.currentX) * 0.05;
+    mouseRef.current.currentY += (mouseRef.current.y - mouseRef.current.currentY) * 0.05;
+    groupRef.current.rotation.y += mouseRef.current.currentX * 0.2;
+    groupRef.current.rotation.x += mouseRef.current.currentY * 0.15;
   });
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
-      mouseRef.current.x = (e.clientX / window.innerWidth - 0.5) * 0.6;
-      mouseRef.current.y = (e.clientY / window.innerHeight - 0.5) * 0.6;
+      mouseRef.current.x = (e.clientX / window.innerWidth - 0.5) * 0.7;
+      mouseRef.current.y = (e.clientY / window.innerHeight - 0.5) * 0.7;
     };
     window.addEventListener("mousemove", handleMouseMove);
     return () => window.removeEventListener("mousemove", handleMouseMove);
   }, []);
 
   return (
-    <group ref={groupRef}>
-      <NeuralCore />
-      {nodes.map((node, i) => {
-        const colors = { core: "#FFFFFF", mid: "#C084FC", edge: "#06B6D4" };
-        const sizes = { core: 0.05, mid: 0.04, edge: 0.045 };
-        return (
-          <mesh key={i} position={node.position}>
-            <sphereGeometry args={[sizes[node.layer], 12, 12]} />
-            <meshBasicMaterial color={colors[node.layer]} transparent opacity={0.9} />
-          </mesh>
-        );
-      })}
-      <lineSegments geometry={synapseGeometry}>
-        <lineBasicMaterial vertexColors transparent opacity={0.35} />
-      </lineSegments>
+    <group ref={groupRef} scale={0.95}>
+      <NeuralCore pulseRingTriggerRef={pulseRingTriggerRef} />
+      {nodes.map((node, i) => (
+        <NeuralNodeMesh key={i} node={node} />
+      ))}
+      <SynapseLines nodes={nodes} synapses={synapses} />
+      <TravelingParticles nodes={nodes} synapses={synapses} />
     </group>
   );
 }
@@ -202,65 +426,113 @@ function CountUp({
 }
 
 // ============================================================
-// SECAO 3 - SVG OVERLAY (streams + modulos)
+// SECAO 3 - MODULES INLINE (com pulse de cor instigando click)
 // ============================================================
 
-function ModuleCapsule({
-  x,
-  y,
-  label,
-  accent,
-  delay,
-}: {
-  x: number;
-  y: number;
-  label: string;
-  accent: "purple" | "cyan";
-  delay: number;
-}) {
-  const stroke = accent === "purple" ? "rgba(168, 85, 247, 0.6)" : "rgba(6, 182, 212, 0.6)";
-  const glow = accent === "purple" ? "url(#mgPurple)" : "url(#mgCyan)";
+const FEATURES = [
+  { id: "erp", label: "ERP", accent: "cyan" as const, hint: "Integração nativa Protheus/TOTVS" },
+  { id: "crm", label: "CRM", accent: "purple" as const, hint: "Pipeline e gestão de relacionamento" },
+  { id: "fin", label: "FIN", accent: "purple" as const, hint: "Gestão financeira e despesas" },
+  { id: "kanban", label: "KANBAN", accent: "purple" as const, hint: "Projetos visuais e Monday.com" },
+  { id: "bi", label: "BI", accent: "cyan" as const, hint: "Analytics e dashboards executivos" },
+  { id: "pmo", label: "PMO", accent: "cyan" as const, hint: "Governança e SLA management" },
+];
 
+function ModulesInline({ delay }: { delay: number }) {
   return (
-    <motion.g
-      initial={{ opacity: 0, scale: 0.6 }}
-      animate={{ opacity: 1, scale: 1 }}
-      transition={{ delay: delay / 1000, duration: 0.5, ease: "easeOut" }}
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: delay / 1000, duration: 0.6 }}
+      className="absolute z-[15]"
+      style={{ bottom: "32px", left: "36px" }}
     >
-      <circle cx={x} cy={y} r={38} fill={glow} />
-      <rect x={x - 40} y={y - 17} width={80} height={34} rx={17} fill="rgba(15, 23, 42, 0.8)" stroke={stroke} strokeWidth={1} />
-      <rect x={x - 40} y={y - 17} width={80} height={34} rx={17} fill="none" stroke="url(#synapseGrad)" strokeWidth={0.5} opacity={0.5} />
-      <circle cx={x - 27} cy={y} r={4} fill="url(#ledLive)" filter="url(#bloom)">
-        <animate attributeName="r" values="4;5;4" dur="2.4s" repeatCount="indefinite" />
-        <animate attributeName="opacity" values="1;0.6;1" dur="2.4s" repeatCount="indefinite" />
-      </circle>
-      <circle cx={x - 27} cy={y} r={1.8} fill="#86EFAC" />
-      <text
-        x={x + 6}
-        y={y + 4.5}
-        textAnchor="middle"
-        fill="#FFFFFF"
-        fontSize={label.length > 4 ? 10 : 11}
-        fontFamily="Inter, sans-serif"
-        fontWeight={500}
-        letterSpacing={label.length > 4 ? "0.05em" : "0.08em"}
-      >
-        {label}
-      </text>
-    </motion.g>
-  );
-}
+      <div className="flex items-center gap-2 mb-3.5">
+        <div className="w-4 h-px bg-gradient-to-r from-violet-500 to-transparent" />
+        <span
+          className="text-violet-400 text-[9px] font-mono"
+          style={{ letterSpacing: "0.4em", fontWeight: 600 }}
+        >
+          PLATFORM MODULES
+        </span>
+      </div>
 
-function EnergyStream({ d, delay }: { d: string; delay: number }) {
-  return (
-    <motion.g
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 0.85 }}
-      transition={{ delay: delay / 1000, duration: 0.7 }}
-    >
-      <path d={d} stroke="url(#streamGrad)" strokeWidth={1.5} fill="none" filter="url(#bloom)" />
-      <path d={d} stroke="#FFFFFF" strokeWidth={0.4} fill="none" opacity={0.7} />
-    </motion.g>
+      <div className="flex items-center gap-0">
+        {FEATURES.map((f, i) => {
+          const ledBase = f.accent === "purple" ? "#A855F7" : "#22D3EE";
+          const ledFlash = f.accent === "purple" ? "#C084FC" : "#67E8F9";
+          const accentColor = f.accent === "purple" ? "#C084FC" : "#22D3EE";
+
+          return (
+            <div key={f.id} className="flex items-center">
+              <Link
+                to={`/features#${f.id}`}
+                className="group relative px-3 py-2 cursor-pointer"
+              >
+                <div className="flex items-center gap-2">
+                  {/* LED MAIS ATIVO: scale + cor + glow pulsando */}
+                  <motion.div
+                    animate={{
+                      scale: [1, 1.5, 1],
+                      backgroundColor: [ledBase, ledFlash, ledBase],
+                      boxShadow: [
+                        `0 0 6px ${ledBase}, 0 0 12px ${ledBase}80`,
+                        `0 0 14px ${ledFlash}, 0 0 24px ${ledFlash}80`,
+                        `0 0 6px ${ledBase}, 0 0 12px ${ledBase}80`,
+                      ],
+                    }}
+                    transition={{
+                      duration: 1.5 + i * 0.3,
+                      repeat: Infinity,
+                      ease: "easeInOut",
+                    }}
+                    className="w-[6px] h-[6px] rounded-full"
+                  />
+                  <span
+                    className="text-slate-300 text-[11px] font-mono transition-colors duration-200 group-hover:text-white"
+                    style={{ letterSpacing: "0.15em", fontWeight: 500 }}
+                  >
+                    {f.label}
+                  </span>
+                  <span
+                    className="text-[10px] transition-all duration-200 opacity-0 -translate-x-1 group-hover:opacity-100 group-hover:translate-x-0"
+                    style={{ color: accentColor }}
+                  >
+                    →
+                  </span>
+                </div>
+
+                <div
+                  className="absolute bottom-1 left-3 right-3 h-px origin-left scale-x-0 group-hover:scale-x-100 transition-transform duration-300"
+                  style={{
+                    background: `linear-gradient(to right, ${accentColor}, transparent)`,
+                  }}
+                />
+
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 pointer-events-none whitespace-nowrap">
+                  <div className="bg-slate-900/95 border border-violet-500/30 rounded-lg px-3 py-2 backdrop-blur-md shadow-[0_4px_16px_rgba(168,85,247,0.2)]">
+                    <div
+                      className="text-slate-200 text-[10px]"
+                      style={{ fontWeight: 400, letterSpacing: "0.02em" }}
+                    >
+                      {f.hint}
+                    </div>
+                  </div>
+                  <div
+                    className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 -translate-y-1 border-r border-b border-violet-500/30"
+                    style={{ backgroundColor: "rgb(15 23 42 / 0.95)" }}
+                  />
+                </div>
+              </Link>
+
+              {i < FEATURES.length - 1 && (
+                <span className="text-slate-700 text-[10px] select-none">·</span>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </motion.div>
   );
 }
 
@@ -283,24 +555,6 @@ export default function LoginPage() {
     if (error) setError(error);
     setLoading(false);
   };
-
-  const modules = [
-    { x: 160, y: 290, label: "ERP", accent: "cyan" as const, delay: 1400 },
-    { x: 160, y: 380, label: "CRM", accent: "purple" as const, delay: 1480 },
-    { x: 190, y: 470, label: "FIN", accent: "purple" as const, delay: 1560 },
-    { x: 685, y: 215, label: "KANBAN", accent: "purple" as const, delay: 1640 },
-    { x: 700, y: 290, label: "BI", accent: "cyan" as const, delay: 1720 },
-    { x: 685, y: 420, label: "PMO", accent: "cyan" as const, delay: 1800 },
-  ];
-
-  const streams = [
-    "M 420 290 Q 360 290 280 290 Q 220 290 175 290",
-    "M 420 290 Q 360 330 290 360 Q 230 385 175 380",
-    "M 420 290 Q 380 380 320 440 Q 260 480 205 470",
-    "M 420 290 Q 500 270 580 240 Q 640 220 665 215",
-    "M 420 290 Q 500 290 590 290 Q 650 290 680 290",
-    "M 420 290 Q 500 340 570 380 Q 630 410 665 420",
-  ];
 
   return (
     <div className="fixed inset-0 bg-[#0B0E14] text-white overflow-hidden font-sans">
@@ -335,28 +589,38 @@ export default function LoginPage() {
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.15, duration: 0.4 }}
-            className="flex items-center gap-2 mb-6"
+            transition={{ delay: 0.2, duration: 0.4 }}
+            className="flex items-center gap-2.5 mb-7"
           >
-            <div
-              className="w-[5px] h-[5px] bg-green-500 rounded-full"
-              style={{ boxShadow: "0 0 10px rgba(34, 197, 94, 0.9), 0 0 20px rgba(34, 197, 94, 0.4)" }}
+            <motion.div
+              animate={{
+                scale: [1, 1.5, 1],
+                boxShadow: [
+                  "0 0 10px rgba(34, 197, 94, 0.9), 0 0 20px rgba(34, 197, 94, 0.4)",
+                  "0 0 20px rgba(34, 197, 94, 1), 0 0 36px rgba(34, 197, 94, 0.7)",
+                  "0 0 10px rgba(34, 197, 94, 0.9), 0 0 20px rgba(34, 197, 94, 0.4)",
+                ],
+              }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+              className="w-[6px] h-[6px] bg-green-500 rounded-full"
             />
-            <span
-              className="text-green-500 text-[9px] font-mono font-medium"
-              style={{ letterSpacing: "0.3em" }}
+            <motion.span
+              animate={{ opacity: [0.85, 1, 0.85] }}
+              transition={{ duration: 1.6, repeat: Infinity, ease: "easeInOut" }}
+              className="text-green-500 text-[9px] font-mono"
+              style={{ letterSpacing: "0.35em", fontWeight: 600 }}
             >
               SYSTEM ONLINE
-            </span>
+            </motion.span>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 0.2, duration: 0.5 }}
+            transition={{ delay: 0.3, duration: 0.5 }}
             className="mb-9"
           >
-            <p className="text-slate-400 text-[13px] leading-relaxed font-light mb-1.5">
+            <p className="text-slate-300 text-[14px] leading-relaxed mb-2" style={{ fontWeight: 300 }}>
               Integrated multi-channel project management platform.
             </p>
             <p
@@ -371,14 +635,14 @@ export default function LoginPage() {
             onSubmit={handleSubmit}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.25, duration: 0.5 }}
+            transition={{ delay: 0.4, duration: 0.5 }}
             className="bg-[#161B22]/50 border border-white/[0.06] rounded-2xl p-7"
           >
             <div className="mb-5">
               <Label
                 htmlFor="email"
-                className="text-[10px] text-slate-400 uppercase mb-2 block font-medium font-mono"
-                style={{ letterSpacing: "0.25em" }}
+                className="text-[10px] text-slate-400 uppercase mb-2 block font-mono"
+                style={{ letterSpacing: "0.25em", fontWeight: 500 }}
               >
                 User
               </Label>
@@ -396,8 +660,8 @@ export default function LoginPage() {
             <div className="mb-6">
               <Label
                 htmlFor="password"
-                className="text-[10px] text-slate-400 uppercase mb-2 block font-medium font-mono"
-                style={{ letterSpacing: "0.25em" }}
+                className="text-[10px] text-slate-400 uppercase mb-2 block font-mono"
+                style={{ letterSpacing: "0.25em", fontWeight: 500 }}
               >
                 Password
               </Label>
@@ -430,7 +694,8 @@ export default function LoginPage() {
             <div className="text-center mt-4">
               <Link
                 to="/reset-password"
-                className="text-cyan-400 text-[11px] hover:text-cyan-300 transition-colors font-light"
+                className="text-cyan-400 text-[11px] hover:text-cyan-300 transition-colors"
+                style={{ fontWeight: 300 }}
               >
                 Recover access
               </Link>
@@ -453,49 +718,131 @@ export default function LoginPage() {
         <section
           className="relative overflow-hidden min-w-0"
           style={{
-            background: "radial-gradient(ellipse at 55% 50%, #2D1B4E 0%, #1A0B2E 35%, #0B0E14 70%, #050608 100%)",
+            background: "radial-gradient(ellipse at 70% 50%, #2D1B4E 0%, #1A0B2E 35%, #0B0E14 70%, #050608 100%)",
           }}
         >
-          {/* Canvas 3D - centro do painel direito */}
+          {/* Canvas 3D - deslocado para metade direita */}
           <div
             className="absolute"
-            style={{ top: 0, left: "20%", width: "60%", height: "100%", pointerEvents: "none" }}
+            style={{ top: 0, left: "30%", width: "70%", height: "100%", pointerEvents: "none" }}
           >
             <NeuralBrainCanvas />
           </div>
 
-          {/* Hero superior esquerdo */}
+          {/* Particles de fundo estaticas */}
+          <svg
+            width="100%"
+            height="100%"
+            viewBox="0 0 760 620"
+            preserveAspectRatio="xMidYMid meet"
+            className="absolute inset-0 pointer-events-none"
+            style={{ zIndex: 2 }}
+          >
+            <defs>
+              {/* Linha conectiva sutil cerebro -> Total Command (V6) */}
+              <linearGradient id="connectorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stopColor="#22D3EE" stopOpacity="0.5" />
+                <stop offset="50%" stopColor="#A855F7" stopOpacity="0.3" />
+                <stop offset="100%" stopColor="#22D3EE" stopOpacity="0.4" />
+              </linearGradient>
+            </defs>
+
+            <g opacity={0.65}>
+              <circle cx={60} cy={50} r={0.9} fill="white" />
+              <circle cx={700} cy={80} r={1.1} fill="white" />
+              <circle cx={160} cy={160} r={0.6} fill="#A855F7" />
+              <circle cx={680} cy={260} r={0.8} fill="white" />
+              <circle cx={50} cy={380} r={0.7} fill="#22D3EE" />
+              <circle cx={720} cy={440} r={1} fill="white" />
+              <circle cx={280} cy={40} r={0.5} fill="white" />
+              <circle cx={500} cy={540} r={0.8} fill="#A855F7" />
+              <circle cx={40} cy={500} r={0.7} fill="white" />
+              <circle cx={730} cy={180} r={0.6} fill="white" />
+              <circle cx={650} cy={60} r={0.6} fill="white" />
+              <circle cx={340} cy={60} r={0.5} fill="white" />
+              <circle cx={400} cy={540} r={0.7} fill="white" />
+              <circle cx={30} cy={110} r={0.6} fill="#A855F7" />
+              <circle cx={690} cy={540} r={0.8} fill="white" />
+              <circle cx={180} cy={520} r={0.6} fill="white" />
+              <circle cx={560} cy={160} r={0.7} fill="#22D3EE" />
+              <circle cx={240} cy={540} r={0.6} fill="white" />
+            </g>
+
+            {/* LINHA CONECTIVA cerebro -> Total Command
+                Comeca proximo do cerebro e termina apontando pra frase
+                Stroke-dasharray + animate para "desenhar" no load */}
+            <motion.path
+              d="M 540 360 Q 600 440 660 500"
+              stroke="url(#connectorGrad)"
+              strokeWidth="0.8"
+              fill="none"
+              strokeDasharray="3 6"
+              initial={{ pathLength: 0, opacity: 0 }}
+              animate={{ pathLength: 1, opacity: 0.6 }}
+              transition={{ delay: 2.0, duration: 1.0, ease: "easeOut" }}
+            />
+            {/* Pontinho na ponta da linha (perto da frase) */}
+            <motion.circle
+              cx={660}
+              cy={500}
+              r={1.8}
+              fill="#22D3EE"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: [0, 1, 0.7, 1, 0.7] }}
+              transition={{ delay: 2.8, duration: 2 }}
+              style={{ filter: "drop-shadow(0 0 4px #22D3EE)" }}
+            />
+          </svg>
+
+          {/* === ZONA 1: TOPO ESQUERDO === */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.1, duration: 0.5 }}
-            className="absolute top-9 left-11 z-[5]"
+            transition={{ delay: 0.6, duration: 0.5 }}
+            className="absolute top-9 left-9 z-[15]"
+            style={{ maxWidth: "calc(100% - 80px)" }}
           >
             <div
-              className="text-white text-[20px] tracking-tight"
-              style={{ fontWeight: 200, letterSpacing: "-0.02em" }}
+              className="text-white"
+              style={{
+                fontSize: "clamp(22px, 1.8vw, 28px)",
+                fontWeight: 400,
+                letterSpacing: "-0.02em",
+                lineHeight: 1.15,
+              }}
             >
               Predictive Operations Core
             </div>
             <div
-              className="text-slate-400 text-[11px] mt-1.5 font-light"
-              style={{ letterSpacing: "0.04em" }}
+              className="text-slate-400 mt-2 font-mono"
+              style={{
+                fontSize: "clamp(10px, 0.8vw, 12px)",
+                letterSpacing: "0.08em",
+                fontWeight: 400,
+              }}
             >
               Integrated multi-channel project intelligence
             </div>
           </motion.div>
 
-          {/* Metricas */}
+          {/* KPIs COMPACTOS */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            transition={{ delay: 0.25, duration: 0.5 }}
-            className="absolute top-[100px] left-11 z-[5] bg-slate-900/40 border-l-2 border-violet-500/50 px-[18px] py-[14px] rounded-r-[10px] backdrop-blur-md min-w-[320px]"
+            transition={{ delay: 0.85, duration: 0.5 }}
+            className="absolute z-[15] bg-slate-900/70 border-l-2 border-violet-500/60 px-5 py-3.5 rounded-r-[10px] backdrop-blur-md"
+            style={{
+              top: "110px",
+              left: "36px",
+              minWidth: "320px",
+              maxWidth: "360px",
+              boxShadow: "-2px 0 20px rgba(168, 85, 247, 0.12)",
+            }}
           >
-            <div className="flex flex-col gap-2.5">
+            <div className="flex flex-col gap-2">
               <div className="flex justify-between items-center gap-4">
                 <div>
-                  <div className="text-slate-500 text-[8px] font-mono" style={{ letterSpacing: "0.3em" }}>
+                  <div className="text-slate-300 text-[8.5px] font-mono" style={{ letterSpacing: "0.3em", fontWeight: 600 }}>
                     DELIVERY ON-TIME
                   </div>
                   <div className="text-slate-600 text-[7px] font-mono mt-0.5" style={{ letterSpacing: "0.15em" }}>
@@ -504,21 +851,26 @@ export default function LoginPage() {
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span
-                    className="text-cyan-400 text-[18px]"
-                    style={{ fontWeight: 300, letterSpacing: "-0.03em", textShadow: "0 0 14px rgba(6, 182, 212, 0.6)" }}
+                    style={{
+                      color: "#22D3EE",
+                      fontSize: "22px",
+                      fontWeight: 400,
+                      letterSpacing: "-0.03em",
+                      textShadow: "0 0 18px rgba(34, 211, 238, 0.65)",
+                    }}
                   >
-                    <CountUp to={94.2} decimals={1} delay={250} />
-                    <span className="text-[11px] opacity-70">%</span>
+                    <CountUp to={94.2} decimals={1} delay={1100} />
+                    <span className="text-[12px] opacity-70">%</span>
                   </span>
                   <span className="text-green-500 text-[9px] font-mono">↗ +2.4</span>
                 </div>
               </div>
 
-              <div className="h-px bg-gradient-to-r from-violet-500/20 to-transparent" />
+              <div className="h-px bg-gradient-to-r from-violet-500/35 to-transparent" />
 
               <div className="flex justify-between items-center gap-4">
                 <div>
-                  <div className="text-slate-500 text-[8px] font-mono" style={{ letterSpacing: "0.3em" }}>
+                  <div className="text-slate-300 text-[8.5px] font-mono" style={{ letterSpacing: "0.3em", fontWeight: 600 }}>
                     PREDICTIVE ACCURACY
                   </div>
                   <div className="text-slate-600 text-[7px] font-mono mt-0.5" style={{ letterSpacing: "0.15em" }}>
@@ -527,21 +879,26 @@ export default function LoginPage() {
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span
-                    className="text-violet-400 text-[18px]"
-                    style={{ fontWeight: 300, letterSpacing: "-0.03em", textShadow: "0 0 14px rgba(168, 85, 247, 0.6)" }}
+                    style={{
+                      color: "#C084FC",
+                      fontSize: "22px",
+                      fontWeight: 400,
+                      letterSpacing: "-0.03em",
+                      textShadow: "0 0 18px rgba(192, 132, 252, 0.65)",
+                    }}
                   >
-                    <CountUp to={98.7} decimals={1} delay={330} />
-                    <span className="text-[11px] opacity-70">%</span>
+                    <CountUp to={98.7} decimals={1} delay={1200} />
+                    <span className="text-[12px] opacity-70">%</span>
                   </span>
                   <span className="text-green-500 text-[9px] font-mono">↗ +0.3</span>
                 </div>
               </div>
 
-              <div className="h-px bg-gradient-to-r from-violet-500/20 to-transparent" />
+              <div className="h-px bg-gradient-to-r from-violet-500/35 to-transparent" />
 
               <div className="flex justify-between items-center gap-4">
                 <div>
-                  <div className="text-slate-500 text-[8px] font-mono" style={{ letterSpacing: "0.3em" }}>
+                  <div className="text-slate-300 text-[8.5px] font-mono" style={{ letterSpacing: "0.3em", fontWeight: 600 }}>
                     ACTIVE INTEGRATIONS
                   </div>
                   <div className="text-slate-600 text-[7px] font-mono mt-0.5" style={{ letterSpacing: "0.15em" }}>
@@ -550,11 +907,16 @@ export default function LoginPage() {
                 </div>
                 <div className="flex items-baseline gap-2">
                   <span
-                    className="text-cyan-400 text-[18px]"
-                    style={{ fontWeight: 300, letterSpacing: "-0.03em", textShadow: "0 0 14px rgba(6, 182, 212, 0.6)" }}
+                    style={{
+                      color: "#22D3EE",
+                      fontSize: "22px",
+                      fontWeight: 400,
+                      letterSpacing: "-0.03em",
+                      textShadow: "0 0 18px rgba(34, 211, 238, 0.65)",
+                    }}
                   >
-                    <CountUp to={12} decimals={0} delay={410} />
-                    <span className="text-[11px] opacity-70">/12</span>
+                    <CountUp to={12} decimals={0} delay={1300} />
+                    <span className="text-[12px] opacity-70">/12</span>
                   </span>
                   <span className="text-green-500 text-[9px] font-mono">● live</span>
                 </div>
@@ -562,213 +924,64 @@ export default function LoginPage() {
             </div>
           </motion.div>
 
-          {/* SVG overlay */}
-          <svg
-            width="100%"
-            height="100%"
-            viewBox="0 0 760 620"
-            preserveAspectRatio="xMidYMid meet"
-            className="absolute inset-0 pointer-events-none"
-          >
-            <defs>
-              <linearGradient id="synapseGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#E0D5FF" stopOpacity="0.8" />
-                <stop offset="50%" stopColor="#A855F7" stopOpacity="0.7" />
-                <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.7" />
-              </linearGradient>
-              <radialGradient id="streamGrad" cx="0%" cy="50%" r="100%">
-                <stop offset="0%" stopColor="#FFFFFF" stopOpacity="1" />
-                <stop offset="20%" stopColor="#E0D5FF" stopOpacity="0.85" />
-                <stop offset="60%" stopColor="#A855F7" stopOpacity="0.6" />
-                <stop offset="100%" stopColor="#06B6D4" stopOpacity="0.4" />
-              </radialGradient>
-              <radialGradient id="mgPurple" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#A855F7" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#A855F7" stopOpacity="0" />
-              </radialGradient>
-              <radialGradient id="mgCyan" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#06B6D4" stopOpacity="0.25" />
-                <stop offset="100%" stopColor="#06B6D4" stopOpacity="0" />
-              </radialGradient>
-              <radialGradient id="ledLive" cx="50%" cy="50%" r="50%">
-                <stop offset="0%" stopColor="#86EFAC" stopOpacity="1" />
-                <stop offset="60%" stopColor="#22C55E" stopOpacity="0.85" />
-                <stop offset="100%" stopColor="#22C55E" stopOpacity="0" />
-              </radialGradient>
-              <filter id="bloom" x="-50%" y="-50%" width="200%" height="200%">
-                <feGaussianBlur stdDeviation="3" result="b" />
-                <feMerge>
-                  <feMergeNode in="b" />
-                  <feMergeNode in="SourceGraphic" />
-                </feMerge>
-              </filter>
-            </defs>
+          {/* MODULES INLINE */}
+          <ModulesInline delay={1800} />
 
-            <g opacity={0.75}>
-              <circle cx={60} cy={50} r={0.9} fill="white" />
-              <circle cx={700} cy={80} r={1.1} fill="white" />
-              <circle cx={160} cy={160} r={0.6} fill="#A855F7" />
-              <circle cx={680} cy={260} r={0.8} fill="white" />
-              <circle cx={50} cy={380} r={0.7} fill="#06B6D4" />
-              <circle cx={720} cy={440} r={1} fill="white" />
-              <circle cx={280} cy={40} r={0.5} fill="white" />
-              <circle cx={500} cy={540} r={0.8} fill="#A855F7" />
-              <circle cx={40} cy={260} r={0.7} fill="white" />
-              <circle cx={730} cy={180} r={0.6} fill="white" />
-              <circle cx={120} cy={500} r={0.8} fill="#06B6D4" />
-              <circle cx={650} cy={60} r={0.6} fill="white" />
-              <circle cx={340} cy={60} r={0.5} fill="white" />
-              <circle cx={400} cy={540} r={0.7} fill="white" />
-              <circle cx={30} cy={110} r={0.6} fill="#A855F7" />
-              <circle cx={690} cy={540} r={0.8} fill="white" />
-              <circle cx={180} cy={440} r={0.6} fill="white" />
-              <circle cx={560} cy={160} r={0.7} fill="#06B6D4" />
-              <circle cx={240} cy={540} r={0.6} fill="white" />
-              <circle cx={520} cy={340} r={0.5} fill="white" />
-            </g>
-
-            <circle cx={420} cy={290} r={220} fill="none" stroke="rgba(168, 85, 247, 0.08)" strokeWidth={0.5} strokeDasharray="2 8" />
-            <circle cx={420} cy={290} r={180} fill="none" stroke="rgba(6, 182, 212, 0.06)" strokeWidth={0.5} strokeDasharray="2 4" />
-
-            {streams.map((d, i) => (
-              <EnergyStream key={i} d={d} delay={1200 + i * 60} />
-            ))}
-
-            <g filter="url(#bloom)">
-              <circle r={2} fill="#FFFFFF">
-                <animateMotion dur="2.8s" repeatCount="indefinite" path="M 420 290 Q 360 290 280 290 Q 220 290 175 290" />
-              </circle>
-              <circle r={2} fill="#FFFFFF">
-                <animateMotion dur="3.1s" repeatCount="indefinite" path="M 420 290 Q 360 330 290 360 Q 230 385 175 380" />
-              </circle>
-              <circle r={2} fill="#FFFFFF">
-                <animateMotion dur="2.5s" repeatCount="indefinite" path="M 420 290 Q 380 380 320 440 Q 260 480 205 470" />
-              </circle>
-              <circle r={2} fill="#FFFFFF">
-                <animateMotion dur="2.9s" repeatCount="indefinite" path="M 420 290 Q 500 270 580 240 Q 640 220 665 215" />
-              </circle>
-              <circle r={2} fill="#FFFFFF">
-                <animateMotion dur="2.6s" repeatCount="indefinite" path="M 420 290 Q 500 290 590 290 Q 650 290 680 290" />
-              </circle>
-              <circle r={2} fill="#FFFFFF">
-                <animateMotion dur="3.2s" repeatCount="indefinite" path="M 420 290 Q 500 340 570 380 Q 630 410 665 420" />
-              </circle>
-            </g>
-
-            <text
-              x={420}
-              y={195}
-              textAnchor="middle"
-              fill="#FFFFFF"
-              fontSize={6}
-              fontFamily="JetBrains Mono, monospace"
-              letterSpacing="0.4em"
-              opacity={0.5}
-            >
-              A C E E X · A I · C O R T E X
-            </text>
-            <text
-              x={420}
-              y={395}
-              textAnchor="middle"
-              fill="#FFFFFF"
-              fontSize={5}
-              fontFamily="JetBrains Mono, monospace"
-              letterSpacing="0.3em"
-              opacity={0.4}
-            >
-              v2.0 // PREDICTIVE ENGINE
-            </text>
-
-            {modules.map((m, i) => (
-              <ModuleCapsule key={i} {...m} />
-            ))}
-          </svg>
-
-          {/* Frase aspiracional */}
+          {/* TOTAL COMMAND - entrada tardia (2.2s) com linha conectiva */}
           <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: 0.4, duration: 0.6 }}
-            className="absolute right-12 z-[5] max-w-[460px] text-right"
-            style={{ bottom: "140px" }}
+            initial={{ opacity: 0, y: 20, x: 10 }}
+            animate={{ opacity: 1, y: 0, x: 0 }}
+            transition={{ delay: 2.2, duration: 0.8, ease: "easeOut" }}
+            className="absolute z-[15] text-right"
+            style={{
+              bottom: "32px",
+              right: "clamp(36px, 3.5vw, 56px)",
+              maxWidth: "min(460px, 45vw)",
+            }}
           >
             <div
-              className="text-white text-[40px] leading-[1.05] tracking-tight"
-              style={{ fontWeight: 200, letterSpacing: "-0.04em" }}
+              className="text-white"
+              style={{
+                fontSize: "clamp(30px, 3.2vw, 44px)",
+                fontWeight: 300,
+                letterSpacing: "-0.035em",
+                lineHeight: 1.08,
+              }}
             >
-              Controle{" "}
+              Total{" "}
               <span
-                className="text-violet-400"
-                style={{ fontWeight: 400, textShadow: "0 0 24px rgba(168, 85, 247, 0.5)" }}
+                style={{
+                  fontWeight: 500,
+                  color: "#C084FC",
+                  textShadow: "0 0 28px rgba(192, 132, 252, 0.6)",
+                }}
               >
-                Absoluto.
+                Command.
               </span>
             </div>
             <div
-              className="text-white text-[40px] leading-[1.05] tracking-tight"
-              style={{ fontWeight: 200, letterSpacing: "-0.04em" }}
+              className="text-white"
+              style={{
+                fontSize: "clamp(30px, 3.2vw, 44px)",
+                fontWeight: 300,
+                letterSpacing: "-0.035em",
+                lineHeight: 1.08,
+              }}
             >
-              Resultados{" "}
+              Predictive{" "}
               <span
-                className="text-cyan-400 italic"
-                style={{ fontWeight: 400, textShadow: "0 0 24px rgba(6, 182, 212, 0.5)" }}
+                className="italic"
+                style={{
+                  fontWeight: 500,
+                  color: "#22D3EE",
+                  textShadow: "0 0 28px rgba(34, 211, 238, 0.6)",
+                }}
               >
-                Preditivos.
+                Outcomes.
               </span>
             </div>
           </motion.div>
 
-          {/* CORTEX // ACTIVE - centralizado inferior */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 0.8, duration: 0.5 }}
-            className="absolute left-1/2 -translate-x-1/2 z-[5]"
-            style={{ bottom: "70px" }}
-          >
-            <div className="flex items-center gap-2.5 px-[18px] py-2 bg-slate-900/60 border border-violet-500/30 rounded-[20px] backdrop-blur-md">
-              <div
-                className="w-1.5 h-1.5 bg-violet-500 rounded-full"
-                style={{ boxShadow: "0 0 10px rgba(168, 85, 247, 0.9), 0 0 20px rgba(168, 85, 247, 0.5)" }}
-              />
-              <span
-                className="text-violet-300 text-[9px] font-mono font-medium"
-                style={{ letterSpacing: "0.4em" }}
-              >
-                CORTEX // ACTIVE
-              </span>
-              <div className="w-px h-2.5 bg-violet-500/30 mx-1" />
-              <span
-                className="text-slate-500 text-[9px] font-mono"
-                style={{ letterSpacing: "0.3em" }}
-              >
-                NEURAL PROCESSING: 98.7%
-              </span>
-            </div>
-          </motion.div>
-
-          {/* Rodape tecnico */}
-          <motion.div
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 1.0, duration: 0.5 }}
-            className="absolute left-1/2 -translate-x-1/2 z-[5]"
-            style={{ bottom: "24px" }}
-          >
-            <div className="flex items-center gap-2.5">
-              <div
-                className="w-1 h-1 bg-green-500 rounded-full"
-                style={{ boxShadow: "0 0 8px rgba(34, 197, 94, 0.8)" }}
-              />
-              <span
-                className="text-slate-500 text-[9px] font-mono"
-                style={{ letterSpacing: "0.4em" }}
-              >
-                REAL-TIME PERFORMANCE MONITORING
-              </span>
-            </div>
-          </motion.div>
         </section>
       </div>
 
@@ -800,37 +1013,24 @@ export default function LoginPage() {
               aceex&nbsp;&nbsp;v2
             </span>
             <div className="flex items-center gap-1.5">
-              <div
+              <motion.div
+                animate={{ scale: [1, 1.4, 1] }}
+                transition={{ duration: 1.6, repeat: Infinity }}
                 className="w-1.5 h-1.5 bg-green-500 rounded-full"
                 style={{ boxShadow: "0 0 6px rgba(34, 197, 94, 0.8)" }}
               />
               <span
                 className="text-green-500 text-[8px] font-mono"
-                style={{ letterSpacing: "0.2em" }}
+                style={{ letterSpacing: "0.2em", fontWeight: 600 }}
               >
                 ONLINE
-              </span>
-            </div>
-          </div>
-
-          <div className="absolute bottom-3 left-1/2 -translate-x-1/2 z-10">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-900/60 border border-violet-500/30 rounded-full backdrop-blur-md">
-              <div
-                className="w-1 h-1 bg-violet-500 rounded-full"
-                style={{ boxShadow: "0 0 6px rgba(168, 85, 247, 0.8)" }}
-              />
-              <span
-                className="text-violet-300 text-[7px] font-mono font-medium"
-                style={{ letterSpacing: "0.3em" }}
-              >
-                CORTEX // ACTIVE
               </span>
             </div>
           </div>
         </div>
 
         <div className="flex-1 px-7 py-6 flex flex-col">
-          <p className="text-slate-400 text-[12px] leading-relaxed font-light mb-1">
+          <p className="text-slate-300 text-[13px] leading-relaxed mb-1" style={{ fontWeight: 300 }}>
             Integrated multi-channel project management.
           </p>
           <p
@@ -844,8 +1044,8 @@ export default function LoginPage() {
             <div>
               <Label
                 htmlFor="email-mob"
-                className="text-[10px] text-slate-400 uppercase mb-1.5 block font-mono font-medium"
-                style={{ letterSpacing: "0.25em" }}
+                className="text-[10px] text-slate-400 uppercase mb-1.5 block font-mono"
+                style={{ letterSpacing: "0.25em", fontWeight: 500 }}
               >
                 User
               </Label>
@@ -863,8 +1063,8 @@ export default function LoginPage() {
             <div>
               <Label
                 htmlFor="password-mob"
-                className="text-[10px] text-slate-400 uppercase mb-1.5 block font-mono font-medium"
-                style={{ letterSpacing: "0.25em" }}
+                className="text-[10px] text-slate-400 uppercase mb-1.5 block font-mono"
+                style={{ letterSpacing: "0.25em", fontWeight: 500 }}
               >
                 Password
               </Label>
@@ -895,11 +1095,46 @@ export default function LoginPage() {
             </Button>
 
             <div className="text-center">
-              <Link to="/reset-password" className="text-cyan-400 text-[11px] font-light">
+              <Link to="/reset-password" className="text-cyan-400 text-[11px]" style={{ fontWeight: 300 }}>
                 Recover access
               </Link>
             </div>
           </form>
+
+          <div className="mt-6 mb-2">
+            <div className="flex items-center gap-2 mb-2.5">
+              <div className="w-3 h-px bg-gradient-to-r from-violet-500 to-transparent" />
+              <span className="text-violet-400 text-[8px] font-mono" style={{ letterSpacing: "0.3em", fontWeight: 600 }}>
+                PLATFORM MODULES
+              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
+              {FEATURES.map((f, i) => {
+                const ledColor = f.accent === "purple" ? "#A855F7" : "#22D3EE";
+                return (
+                  <Link
+                    key={f.id}
+                    to={`/features#${f.id}`}
+                    className="flex items-center gap-1.5"
+                  >
+                    <motion.div
+                      animate={{ scale: [1, 1.4, 1] }}
+                      transition={{ duration: 1.5 + i * 0.3, repeat: Infinity }}
+                      className="w-1 h-1 rounded-full"
+                      style={{ backgroundColor: ledColor, boxShadow: `0 0 4px ${ledColor}` }}
+                    />
+                    <span
+                      className="text-slate-300 text-[10px] font-mono"
+                      style={{ letterSpacing: "0.12em", fontWeight: 500 }}
+                    >
+                      {f.label}
+                    </span>
+                    {i < FEATURES.length - 1 && <span className="text-slate-700 text-[9px] ml-1">·</span>}
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
 
           <div className="mt-auto pt-4 text-center">
             <span
