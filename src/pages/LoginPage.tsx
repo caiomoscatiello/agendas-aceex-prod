@@ -10,13 +10,14 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 /* ============================================================
- * PROJTE - LoginPage V10
+ * PROJTE - LoginPage V11
  * ============================================================
- * V10:
- *  - Logo horizontal: chevron 40px + wordmark 38px na mesma linha
- *  - Linha separadora lime sob o wordmark (nao standalone)
- *  - Espacamentos compactos: py-8, mb-7, mb-5, mb-6
- *  - overflow-y auto no painel esquerdo — formulario sempre visivel
+ * V11:
+ *  - Chevron animado: luz percorre > > > sequencialmente (SVG animate)
+ *  - Flash branco em cada chevron com delay escalonado: 0.2s, 0.35s, 0.5s
+ *  - Ponto terminus pulsa ao final de cada ciclo (2.4s loop)
+ *  - Animacao identica no mobile (22px) e desktop (40px)
+ *  - Zero dependencia JS — CSS/SVG SMIL nativo, performance zero impacto
  * ============================================================ */
 
 // ============================================================
@@ -567,16 +568,90 @@ export default function LoginPage() {
             transition={{ duration: 0.5 }}
             className="mb-7"
           >
-            {/* Logo horizontal: chevron >>> + wordmark na mesma linha */}
+            {/* Logo horizontal: chevron animado >>> + wordmark */}
             <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              {/* SVG com animacao de luz percorrendo os 3 chevrons */}
               <svg width="40" height="40" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg"
-                style={{ filter: "drop-shadow(0 0 10px rgba(57,255,135,0.45))", flexShrink: 0 }}>
-                <path d="M14 20 L28 44 L14 68" stroke="rgba(255,255,255,0.2)" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M28 20 L42 44 L28 68" stroke="rgba(255,255,255,0.6)" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M42 20 L56 44 L42 68" stroke="#39FF87" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="56" cy="44" r="7" fill="rgba(57,255,135,0.18)"/>
-                <circle cx="56" cy="44" r="4.5" fill="#39FF87"/>
+                style={{ flexShrink: 0, filter: "drop-shadow(0 0 8px rgba(57,255,135,0.35))" }}>
+                <defs>
+                  {/* Gradiente de luz que varre da esquerda para direita */}
+                  <linearGradient id="sweepGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="rgba(57,255,135,0)" />
+                    <stop offset="40%" stopColor="rgba(57,255,135,0)" />
+                    <stop offset="50%" stopColor="#FFFFFF" />
+                    <stop offset="60%" stopColor="rgba(57,255,135,0)" />
+                    <stop offset="100%" stopColor="rgba(57,255,135,0)">
+                      <animate attributeName="offset" values="1;1" dur="2s" repeatCount="indefinite"/>
+                    </stop>
+                  </linearGradient>
+
+                  {/* Mascara de clip para conter o sweep dentro do SVG */}
+                  <clipPath id="chvClip">
+                    <rect x="0" y="0" width="88" height="88"/>
+                  </clipPath>
+                </defs>
+
+                {/* Chevron 1 — base opaca fixa */}
+                <path d="M14 20 L28 44 L14 68"
+                  stroke="rgba(255,255,255,0.18)" strokeWidth="5.5"
+                  strokeLinecap="round" strokeLinejoin="round"/>
+                {/* Chevron 2 — base opaca fixa */}
+                <path d="M28 20 L42 44 L28 68"
+                  stroke="rgba(255,255,255,0.45)" strokeWidth="5.5"
+                  strokeLinecap="round" strokeLinejoin="round"/>
+                {/* Chevron 3 — lime fixo */}
+                <path d="M42 20 L56 44 L42 68"
+                  stroke="#39FF87" strokeWidth="5.5"
+                  strokeLinecap="round" strokeLinejoin="round"/>
+
+                {/* Ponto terminus fixo */}
+                <circle cx="56" cy="44" r="6.5" fill="rgba(57,255,135,0.15)"/>
+                <circle cx="56" cy="44" r="4" fill="#39FF87">
+                  <animate attributeName="opacity" values="0.7;1;0.7" dur="1.8s" repeatCount="indefinite"/>
+                </circle>
+
+                {/* Sweep de luz — rect animado que percorre da esq pra dir */}
+                <g clipPath="url(#chvClip)">
+                  {/* Chevron 1 overlay brilhante */}
+                  <path d="M14 20 L28 44 L14 68"
+                    stroke="white" strokeWidth="5.5"
+                    strokeLinecap="round" strokeLinejoin="round"
+                    opacity="0">
+                    <animate attributeName="opacity"
+                      values="0;0;0.9;0;0;0;0"
+                      keyTimes="0;0.1;0.2;0.35;0.6;0.8;1"
+                      dur="2.4s" repeatCount="indefinite"/>
+                  </path>
+                  {/* Chevron 2 overlay brilhante — delay */}
+                  <path d="M28 20 L42 44 L28 68"
+                    stroke="white" strokeWidth="5.5"
+                    strokeLinecap="round" strokeLinejoin="round"
+                    opacity="0">
+                    <animate attributeName="opacity"
+                      values="0;0;0;0.9;0;0;0"
+                      keyTimes="0;0.1;0.2;0.35;0.5;0.8;1"
+                      dur="2.4s" repeatCount="indefinite"/>
+                  </path>
+                  {/* Chevron 3 overlay brilhante — delay maior */}
+                  <path d="M42 20 L56 44 L42 68"
+                    stroke="white" strokeWidth="5.5"
+                    strokeLinecap="round" strokeLinejoin="round"
+                    opacity="0">
+                    <animate attributeName="opacity"
+                      values="0;0;0;0;0.9;0;0"
+                      keyTimes="0;0.1;0.2;0.35;0.5;0.65;1"
+                      dur="2.4s" repeatCount="indefinite"/>
+                  </path>
+                  {/* Ponto terminus flash */}
+                  <circle cx="56" cy="44" r="7" fill="#39FF87" opacity="0">
+                    <animate attributeName="opacity"
+                      values="0;0;0;0;0;0.8;0"
+                      keyTimes="0;0.1;0.2;0.35;0.5;0.65;1"
+                      dur="2.4s" repeatCount="indefinite"/>
+                  </circle>
+                </g>
               </svg>
+
               <div>
                 <div style={{
                   fontSize: "38px",
@@ -1034,10 +1109,23 @@ export default function LoginPage() {
           <div className="absolute top-3.5 left-4 right-4 flex justify-between items-center z-10">
             <div className="flex items-center gap-2">
               <svg width="22" height="22" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M18 24 L30 44 L18 64" stroke="rgba(255,255,255,0.3)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M30 24 L42 44 L30 64" stroke="rgba(255,255,255,0.7)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
-                <path d="M42 24 L54 44 L42 64" stroke="#39FF87" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
-                <circle cx="54" cy="44" r="6" fill="#39FF87"/>
+                {/* Chevrons base */}
+                <path d="M14 20 L28 44 L14 68" stroke="rgba(255,255,255,0.18)" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M28 20 L42 44 L28 68" stroke="rgba(255,255,255,0.45)" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M42 20 L56 44 L42 68" stroke="#39FF87" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="56" cy="44" r="5" fill="#39FF87">
+                  <animate attributeName="opacity" values="0.7;1;0.7" dur="1.8s" repeatCount="indefinite"/>
+                </circle>
+                {/* Sweep overlays */}
+                <path d="M14 20 L28 44 L14 68" stroke="white" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" opacity="0">
+                  <animate attributeName="opacity" values="0;0;0.9;0;0;0;0" keyTimes="0;0.1;0.2;0.35;0.6;0.8;1" dur="2.4s" repeatCount="indefinite"/>
+                </path>
+                <path d="M28 20 L42 44 L28 68" stroke="white" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" opacity="0">
+                  <animate attributeName="opacity" values="0;0;0;0.9;0;0;0" keyTimes="0;0.1;0.2;0.35;0.5;0.8;1" dur="2.4s" repeatCount="indefinite"/>
+                </path>
+                <path d="M42 20 L56 44 L42 68" stroke="white" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round" opacity="0">
+                  <animate attributeName="opacity" values="0;0;0;0;0.9;0;0" keyTimes="0;0.1;0.2;0.35;0.5;0.65;1" dur="2.4s" repeatCount="indefinite"/>
+                </path>
               </svg>
               <span
                 style={{
