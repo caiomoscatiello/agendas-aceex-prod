@@ -10,17 +10,13 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 /* ============================================================
- * PROJTE - LoginPage V6
+ * PROJTE - LoginPage V10
  * ============================================================
- * Mudancas V6:
- *  - Cerebro VIVO: sinapses pulsantes, particulas viajando
- *  - Neuronios respiram dessincronizadamente (8 padroes)
- *  - Pulse rings raros (~15s) saindo do nucleo
- *  - Flashes brancos ocasionais em neuronios "elite"
- *  - Entrada cinematografica progressiva (~2.2s)
- *  - Linha conectiva sutil cerebro -> Total Command
- *  - Modulos com pulse de cor mais ativo (instigar click)
- *  - Performance: InstancedMesh + pausar em document.hidden
+ * V10:
+ *  - Logo horizontal: chevron 40px + wordmark 38px na mesma linha
+ *  - Linha separadora lime sob o wordmark (nao standalone)
+ *  - Espacamentos compactos: py-8, mb-7, mb-5, mb-6
+ *  - overflow-y auto no painel esquerdo — formulario sempre visivel
  * ============================================================ */
 
 // ============================================================
@@ -135,11 +131,11 @@ function NeuralCore({ pulseRingTriggerRef }: { pulseRingTriggerRef: React.Mutabl
       {/* Halo externo */}
       <mesh>
         <sphereGeometry args={[0.55, 32, 32]} />
-        <meshBasicMaterial color="#A855F7" transparent opacity={0.08} />
+        <meshBasicMaterial color="#39FF87" transparent opacity={0.05} />
       </mesh>
       <mesh>
         <sphereGeometry args={[0.38, 32, 32]} />
-        <meshBasicMaterial color="#C084FC" transparent opacity={0.2} />
+        <meshBasicMaterial color="#39FF87" transparent opacity={0.12} />
       </mesh>
       {/* Nucleo brilhante (pulsa) */}
       <mesh ref={meshRef}>
@@ -151,14 +147,14 @@ function NeuralCore({ pulseRingTriggerRef }: { pulseRingTriggerRef: React.Mutabl
         <meshBasicMaterial color="#FFFFFF" />
       </mesh>
 
-      {/* Pulse rings (anéis de energia raros, ~15s) */}
+      {/* Pulse rings (anéis de energia raros, ~15s) — depthWrite false evita artefato escuro */}
       <mesh ref={ring1Ref}>
         <ringGeometry args={[0.55, 0.6, 64]} />
-        <meshBasicMaterial color="#FFFFFF" transparent opacity={0} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#FFFFFF" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
       <mesh ref={ring2Ref}>
         <ringGeometry args={[0.45, 0.5, 64]} />
-        <meshBasicMaterial color="#22D3EE" transparent opacity={0} side={THREE.DoubleSide} />
+        <meshBasicMaterial color="#39FF87" transparent opacity={0} side={THREE.DoubleSide} depthWrite={false} />
       </mesh>
     </group>
   );
@@ -172,8 +168,8 @@ function NeuralNodeMesh({ node }: { node: NeuralNode }) {
   // Cores: alternancia roxo / ciano / branco - mais ciano
   const baseColors = {
     core: "#FFFFFF",
-    mid: node.pulseOffset > Math.PI ? "#22D3EE" : "#C084FC",
-    edge: node.pulseOffset > Math.PI * 1.3 ? "#22D3EE" : "#C084FC",
+    mid: node.pulseOffset > Math.PI ? "#39FF87" : "#7BFFB0",
+    edge: node.pulseOffset > Math.PI * 1.3 ? "#39FF87" : "#7BFFB0",
   };
   const sizes = { core: 0.055, mid: 0.04, edge: 0.045 };
 
@@ -228,7 +224,7 @@ function SynapseLines({ nodes, synapses }: { nodes: NeuralNode[]; synapses: Syna
       const a = nodes[s.from].position;
       const b = nodes[s.to].position;
       positions.push(...a, ...b);
-      colors.push(0.66, 0.33, 0.97, 0.66, 0.33, 0.97);
+      colors.push(0.22, 1.0, 0.53, 0.22, 1.0, 0.53);
     });
     const geo = new THREE.BufferGeometry();
     geo.setAttribute("position", new THREE.Float32BufferAttribute(positions, 3));
@@ -248,10 +244,10 @@ function SynapseLines({ nodes, synapses }: { nodes: NeuralNode[]; synapses: Syna
       const intensity = 0.4 + 0.6 * (0.5 + 0.5 * Math.sin(phase));
 
       // Mistura roxo (default) com ciano em sinapses especificas
-      const isCyan = i % 4 === 0;
-      const r = isCyan ? 0.13 * intensity : 0.66 * intensity;
-      const g = isCyan ? 0.83 * intensity : 0.33 * intensity;
-      const b = isCyan ? 0.93 * intensity : 0.97 * intensity;
+      const isLight = i % 3 === 0;
+      const r = isLight ? 0.48 * intensity : 0.22 * intensity;
+      const g = isLight ? 1.0 * intensity : 1.0 * intensity;
+      const b = isLight ? 0.66 * intensity : 0.53 * intensity;
 
       colors[i * 6 + 0] = r;
       colors[i * 6 + 1] = g;
@@ -431,9 +427,9 @@ function CountUp({
 
 const FEATURES = [
   { id: "erp", label: "ERP", accent: "cyan" as const, hint: "Integração nativa Protheus/TOTVS" },
-  { id: "crm", label: "CRM", accent: "purple" as const, hint: "Pipeline e gestão de relacionamento" },
-  { id: "fin", label: "FIN", accent: "purple" as const, hint: "Gestão financeira e despesas" },
-  { id: "kanban", label: "KANBAN", accent: "purple" as const, hint: "Projetos visuais e Monday.com" },
+  { id: "crm", label: "CRM", accent: "cyan" as const, hint: "Pipeline e gestão de relacionamento" },
+  { id: "fin", label: "FIN", accent: "cyan" as const, hint: "Gestão financeira e despesas" },
+  { id: "kanban", label: "KANBAN", accent: "cyan" as const, hint: "Projetos visuais e Monday.com" },
   { id: "bi", label: "BI", accent: "cyan" as const, hint: "Analytics e dashboards executivos" },
   { id: "pmo", label: "PMO", accent: "cyan" as const, hint: "Governança e SLA management" },
 ];
@@ -448,9 +444,9 @@ function ModulesInline({ delay }: { delay: number }) {
       style={{ bottom: "32px", left: "36px" }}
     >
       <div className="flex items-center gap-2 mb-3.5">
-        <div className="w-4 h-px bg-gradient-to-r from-violet-500 to-transparent" />
+        <div className="w-4 h-px bg-gradient-to-r from-[#39FF87] to-transparent" />
         <span
-          className="text-violet-400 text-[9px] font-mono"
+          className="text-[9px] font-mono" style={{ color: "#39FF87" }}
           style={{ letterSpacing: "0.4em", fontWeight: 600 }}
         >
           PLATFORM MODULES
@@ -459,9 +455,9 @@ function ModulesInline({ delay }: { delay: number }) {
 
       <div className="flex items-center gap-0">
         {FEATURES.map((f, i) => {
-          const ledBase = f.accent === "purple" ? "#A855F7" : "#22D3EE";
-          const ledFlash = f.accent === "purple" ? "#C084FC" : "#67E8F9";
-          const accentColor = f.accent === "purple" ? "#C084FC" : "#22D3EE";
+          const ledBase = "#39FF87";
+          const ledFlash = "#7BFFB0";
+          const accentColor = "#39FF87";
 
           return (
             <div key={f.id} className="flex items-center">
@@ -510,7 +506,7 @@ function ModulesInline({ delay }: { delay: number }) {
                 />
 
                 <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 opacity-0 -translate-y-1 group-hover:opacity-100 group-hover:translate-y-0 transition-all duration-200 pointer-events-none whitespace-nowrap">
-                  <div className="bg-slate-900/95 border border-violet-500/30 rounded-lg px-3 py-2 backdrop-blur-md shadow-[0_4px_16px_rgba(168,85,247,0.2)]">
+                  <div className="bg-slate-900/95 border border-[#39FF87]/25 rounded-lg px-3 py-2 backdrop-blur-md shadow-[0_4px_16px_rgba(57,255,135,0.12)]">
                     <div
                       className="text-slate-200 text-[10px]"
                       style={{ fontWeight: 400, letterSpacing: "0.02em" }}
@@ -519,7 +515,7 @@ function ModulesInline({ delay }: { delay: number }) {
                     </div>
                   </div>
                   <div
-                    className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 -translate-y-1 border-r border-b border-violet-500/30"
+                    className="absolute top-full left-1/2 -translate-x-1/2 w-2 h-2 rotate-45 -translate-y-1 border-r border-b border-[#39FF87]/25"
                     style={{ backgroundColor: "rgb(15 23 42 / 0.95)" }}
                   />
                 </div>
@@ -563,34 +559,54 @@ export default function LoginPage() {
       <div className="hidden md:grid md:grid-cols-[33%_67%] h-full">
 
         {/* PAINEL ESQUERDO */}
-        <aside className="bg-[#0B0E14] border-r border-white/5 flex flex-col px-9 py-11 relative z-10 min-w-0">
+        <aside className="bg-[#0B0E14] border-r border-white/5 flex flex-col px-9 py-8 relative z-10 min-w-0 overflow-y-auto">
 
           <motion.div
             initial={{ opacity: 0, y: -8 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ duration: 0.5 }}
-            className="mb-10"
+            className="mb-7"
           >
-            <span
-              className="text-[20px]"
-              style={{
-                background: "linear-gradient(135deg, #FFFFFF 0%, #C084FC 60%, #A855F7 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                fontWeight: 200,
-                letterSpacing: "0.18em",
-              }}
-            >
-              projte
-            </span>
+            {/* Logo horizontal: chevron >>> + wordmark na mesma linha */}
+            <div style={{ display: "flex", alignItems: "center", gap: "12px" }}>
+              <svg width="40" height="40" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg"
+                style={{ filter: "drop-shadow(0 0 10px rgba(57,255,135,0.45))", flexShrink: 0 }}>
+                <path d="M14 20 L28 44 L14 68" stroke="rgba(255,255,255,0.2)" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M28 20 L42 44 L28 68" stroke="rgba(255,255,255,0.6)" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M42 20 L56 44 L42 68" stroke="#39FF87" strokeWidth="5.5" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="56" cy="44" r="7" fill="rgba(57,255,135,0.18)"/>
+                <circle cx="56" cy="44" r="4.5" fill="#39FF87"/>
+              </svg>
+              <div>
+                <div style={{
+                  fontSize: "38px",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  letterSpacing: "-0.03em",
+                  lineHeight: 1,
+                }}>
+                  projt<span style={{
+                    color: "#39FF87",
+                    textShadow: "0 0 24px rgba(57,255,135,0.7), 0 0 48px rgba(57,255,135,0.25)",
+                  }}>e</span>
+                </div>
+                {/* Linha separadora lime sob o nome */}
+                <div style={{
+                  marginTop: "6px",
+                  width: "36px",
+                  height: "2px",
+                  background: "linear-gradient(90deg, #39FF87, transparent)",
+                  borderRadius: "2px",
+                }} />
+              </div>
+            </div>
           </motion.div>
 
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.2, duration: 0.4 }}
-            className="flex items-center gap-2.5 mb-7"
+            className="flex items-center gap-2.5 mb-5"
           >
             <motion.div
               animate={{
@@ -618,7 +634,7 @@ export default function LoginPage() {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.3, duration: 0.5 }}
-            className="mb-9"
+            className="mb-6"
           >
             <p className="text-slate-300 text-[14px] leading-relaxed mb-2" style={{ fontWeight: 300 }}>
               Integrated multi-channel project management platform.
@@ -652,7 +668,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="user@projte.io"
-                className="bg-[#0B0E14]/60 border-white/10 h-12 text-sm focus-visible:ring-violet-500 focus-visible:border-violet-500/50 font-mono"
+                className="bg-[#0B0E14]/60 border-white/10 h-12 text-sm focus-visible:ring-[#39FF87] focus-visible:border-[#39FF87]/50 font-mono"
                 autoComplete="email"
               />
             </div>
@@ -671,7 +687,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="bg-[#0B0E14]/60 border-white/10 h-12 text-sm focus-visible:ring-violet-500 focus-visible:border-violet-500/50"
+                className="bg-[#0B0E14]/60 border-white/10 h-12 text-sm focus-visible:ring-[#39FF87] focus-visible:border-[#39FF87]/50"
                 autoComplete="current-password"
               />
             </div>
@@ -682,20 +698,36 @@ export default function LoginPage() {
               </p>
             )}
 
-            <Button
+            <button
               type="submit"
               disabled={loading}
-              className="w-full h-12 bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-mono uppercase shadow-[0_0_28px_rgba(124,58,237,0.35)]"
-              style={{ letterSpacing: "0.4em", fontWeight: 500 }}
+              style={{
+                width: "100%",
+                height: "48px",
+                background: loading ? "rgba(57,255,135,0.5)" : "#39FF87",
+                color: "#0B1628",
+                fontSize: "12px",
+                fontFamily: "monospace",
+                fontWeight: 700,
+                letterSpacing: "0.4em",
+                textTransform: "uppercase",
+                border: "none",
+                borderRadius: "8px",
+                cursor: loading ? "not-allowed" : "pointer",
+                boxShadow: "0 0 28px rgba(57,255,135,0.35), 0 0 60px rgba(57,255,135,0.15)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+                transition: "all 0.2s ease",
+              }}
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Start"}
-            </Button>
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#0B1628" }} /> : "Start"}
+            </button>
 
             <div className="text-center mt-4">
               <Link
                 to="/reset-password"
-                className="text-cyan-400 text-[11px] hover:text-cyan-300 transition-colors"
-                style={{ fontWeight: 300 }}
+                style={{ color: "#39FF87", fontWeight: 300, fontSize: "11px" }}
               >
                 Recover access
               </Link>
@@ -718,7 +750,7 @@ export default function LoginPage() {
         <section
           className="relative overflow-hidden min-w-0"
           style={{
-            background: "radial-gradient(ellipse at 70% 50%, #2D1B4E 0%, #1A0B2E 35%, #0B0E14 70%, #050608 100%)",
+            background: "radial-gradient(ellipse at 60% 50%, #0f2245 0%, #0a1628 45%, #0B1628 75%, #060912 100%)",
           }}
         >
           {/* Canvas 3D - deslocado para metade direita */}
@@ -741,30 +773,30 @@ export default function LoginPage() {
             <defs>
               {/* Linha conectiva sutil cerebro -> Total Command (V6) */}
               <linearGradient id="connectorGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stopColor="#22D3EE" stopOpacity="0.5" />
-                <stop offset="50%" stopColor="#A855F7" stopOpacity="0.3" />
-                <stop offset="100%" stopColor="#22D3EE" stopOpacity="0.4" />
+                <stop offset="0%" stopColor="#39FF87" stopOpacity="0.5" />
+                <stop offset="50%" stopColor="#39FF87" stopOpacity="0.2" />
+                <stop offset="100%" stopColor="#39FF87" stopOpacity="0.4" />
               </linearGradient>
             </defs>
 
             <g opacity={0.65}>
               <circle cx={60} cy={50} r={0.9} fill="white" />
               <circle cx={700} cy={80} r={1.1} fill="white" />
-              <circle cx={160} cy={160} r={0.6} fill="#A855F7" />
+              <circle cx={160} cy={160} r={0.6} fill="#39FF87" />
               <circle cx={680} cy={260} r={0.8} fill="white" />
-              <circle cx={50} cy={380} r={0.7} fill="#22D3EE" />
+              <circle cx={50} cy={380} r={0.7} fill="#39FF87" />
               <circle cx={720} cy={440} r={1} fill="white" />
               <circle cx={280} cy={40} r={0.5} fill="white" />
-              <circle cx={500} cy={540} r={0.8} fill="#A855F7" />
+              <circle cx={500} cy={540} r={0.8} fill="#39FF87" />
               <circle cx={40} cy={500} r={0.7} fill="white" />
               <circle cx={730} cy={180} r={0.6} fill="white" />
               <circle cx={650} cy={60} r={0.6} fill="white" />
               <circle cx={340} cy={60} r={0.5} fill="white" />
               <circle cx={400} cy={540} r={0.7} fill="white" />
-              <circle cx={30} cy={110} r={0.6} fill="#A855F7" />
+              <circle cx={30} cy={110} r={0.6} fill="#39FF87" />
               <circle cx={690} cy={540} r={0.8} fill="white" />
               <circle cx={180} cy={520} r={0.6} fill="white" />
-              <circle cx={560} cy={160} r={0.7} fill="#22D3EE" />
+              <circle cx={560} cy={160} r={0.7} fill="#39FF87" />
               <circle cx={240} cy={540} r={0.6} fill="white" />
             </g>
 
@@ -786,11 +818,11 @@ export default function LoginPage() {
               cx={660}
               cy={500}
               r={1.8}
-              fill="#22D3EE"
+              fill="#39FF87"
               initial={{ opacity: 0 }}
               animate={{ opacity: [0, 1, 0.7, 1, 0.7] }}
               transition={{ delay: 2.8, duration: 2 }}
-              style={{ filter: "drop-shadow(0 0 4px #22D3EE)" }}
+              style={{ filter: "drop-shadow(0 0 4px #39FF87)" }}
             />
           </svg>
 
@@ -830,13 +862,14 @@ export default function LoginPage() {
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ delay: 0.85, duration: 0.5 }}
-            className="absolute z-[15] bg-slate-900/70 border-l-2 border-violet-500/60 px-5 py-3.5 rounded-r-[10px] backdrop-blur-md"
+            className="absolute z-[15] border-l-2 border-[#39FF87]/60 px-5 py-3.5 rounded-r-[10px] backdrop-blur-md"
             style={{
               top: "110px",
               left: "36px",
               minWidth: "320px",
               maxWidth: "360px",
-              boxShadow: "-2px 0 20px rgba(168, 85, 247, 0.12)",
+              background: "rgba(10, 18, 35, 0.92)",
+              boxShadow: "-2px 0 24px rgba(57, 255, 135, 0.18), inset 0 0 40px rgba(57,255,135,0.03)",
             }}
           >
             <div className="flex flex-col gap-2">
@@ -852,11 +885,11 @@ export default function LoginPage() {
                 <div className="flex items-baseline gap-2">
                   <span
                     style={{
-                      color: "#22D3EE",
-                      fontSize: "22px",
-                      fontWeight: 400,
+                      color: "#39FF87",
+                      fontSize: "24px",
+                      fontWeight: 500,
                       letterSpacing: "-0.03em",
-                      textShadow: "0 0 18px rgba(34, 211, 238, 0.65)",
+                      textShadow: "0 0 24px rgba(57, 255, 135, 0.8), 0 0 48px rgba(57,255,135,0.3)",
                     }}
                   >
                     <CountUp to={94.2} decimals={1} delay={1100} />
@@ -866,7 +899,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="h-px bg-gradient-to-r from-violet-500/35 to-transparent" />
+              <div className="h-px bg-gradient-to-r from-[#39FF87]/25 to-transparent" />
 
               <div className="flex justify-between items-center gap-4">
                 <div>
@@ -880,11 +913,11 @@ export default function LoginPage() {
                 <div className="flex items-baseline gap-2">
                   <span
                     style={{
-                      color: "#C084FC",
-                      fontSize: "22px",
-                      fontWeight: 400,
+                      color: "#39FF87",
+                      fontSize: "24px",
+                      fontWeight: 500,
                       letterSpacing: "-0.03em",
-                      textShadow: "0 0 18px rgba(192, 132, 252, 0.65)",
+                      textShadow: "0 0 24px rgba(57, 255, 135, 0.8), 0 0 48px rgba(57,255,135,0.3)",
                     }}
                   >
                     <CountUp to={98.7} decimals={1} delay={1200} />
@@ -894,7 +927,7 @@ export default function LoginPage() {
                 </div>
               </div>
 
-              <div className="h-px bg-gradient-to-r from-violet-500/35 to-transparent" />
+              <div className="h-px bg-gradient-to-r from-[#39FF87]/25 to-transparent" />
 
               <div className="flex justify-between items-center gap-4">
                 <div>
@@ -908,11 +941,11 @@ export default function LoginPage() {
                 <div className="flex items-baseline gap-2">
                   <span
                     style={{
-                      color: "#22D3EE",
-                      fontSize: "22px",
-                      fontWeight: 400,
+                      color: "#39FF87",
+                      fontSize: "24px",
+                      fontWeight: 500,
                       letterSpacing: "-0.03em",
-                      textShadow: "0 0 18px rgba(34, 211, 238, 0.65)",
+                      textShadow: "0 0 24px rgba(57, 255, 135, 0.8), 0 0 48px rgba(57,255,135,0.3)",
                     }}
                   >
                     <CountUp to={12} decimals={0} delay={1300} />
@@ -952,8 +985,8 @@ export default function LoginPage() {
               <span
                 style={{
                   fontWeight: 500,
-                  color: "#C084FC",
-                  textShadow: "0 0 28px rgba(192, 132, 252, 0.6)",
+                  color: "#39FF87",
+                  textShadow: "0 0 28px rgba(57, 255, 135, 0.5)",
                 }}
               >
                 Command.
@@ -973,8 +1006,8 @@ export default function LoginPage() {
                 className="italic"
                 style={{
                   fontWeight: 500,
-                  color: "#22D3EE",
-                  textShadow: "0 0 28px rgba(34, 211, 238, 0.6)",
+                  color: "#39FF87",
+                  textShadow: "0 0 28px rgba(57, 255, 135, 0.5)",
                 }}
               >
                 Outcomes.
@@ -991,7 +1024,7 @@ export default function LoginPage() {
         <div
           className="relative h-[280px] overflow-hidden flex-shrink-0"
           style={{
-            background: "radial-gradient(ellipse at center, #2D1B4E 0%, #1A0B2E 40%, #0B0E14 80%)",
+            background: "radial-gradient(ellipse at center, #0f2245 0%, #0a1628 40%, #0B1628 80%)",
           }}
         >
           <div className="absolute inset-0">
@@ -999,19 +1032,24 @@ export default function LoginPage() {
           </div>
 
           <div className="absolute top-3.5 left-4 right-4 flex justify-between items-center z-10">
-            <span
-              className="text-[14px]"
-              style={{
-                background: "linear-gradient(135deg, #FFFFFF 0%, #C084FC 60%, #A855F7 100%)",
-                WebkitBackgroundClip: "text",
-                WebkitTextFillColor: "transparent",
-                backgroundClip: "text",
-                fontWeight: 200,
-                letterSpacing: "0.15em",
-              }}
-            >
-              projte
-            </span>
+            <div className="flex items-center gap-2">
+              <svg width="22" height="22" viewBox="0 0 88 88" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M18 24 L30 44 L18 64" stroke="rgba(255,255,255,0.3)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M30 24 L42 44 L30 64" stroke="rgba(255,255,255,0.7)" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+                <path d="M42 24 L54 44 L42 64" stroke="#39FF87" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round"/>
+                <circle cx="54" cy="44" r="6" fill="#39FF87"/>
+              </svg>
+              <span
+                style={{
+                  fontSize: "18px",
+                  color: "#ffffff",
+                  fontWeight: 700,
+                  letterSpacing: "-0.02em",
+                }}
+              >
+                projt<span style={{ color: "#39FF87" }}>e</span>
+              </span>
+            </div>
             <div className="flex items-center gap-1.5">
               <motion.div
                 animate={{ scale: [1, 1.4, 1] }}
@@ -1055,7 +1093,7 @@ export default function LoginPage() {
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="user@projte.io"
-                className="bg-[#161B22]/60 border-white/10 h-11 text-sm focus-visible:ring-violet-500 font-mono"
+                className="bg-[#161B22]/60 border-white/10 h-11 text-sm focus-visible:ring-[#39FF87] font-mono"
                 autoComplete="email"
               />
             </div>
@@ -1074,7 +1112,7 @@ export default function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="bg-[#161B22]/60 border-white/10 h-11 text-sm focus-visible:ring-violet-500"
+                className="bg-[#161B22]/60 border-white/10 h-11 text-sm focus-visible:ring-[#39FF87]"
                 autoComplete="current-password"
               />
             </div>
@@ -1085,17 +1123,33 @@ export default function LoginPage() {
               </p>
             )}
 
-            <Button
+            <button
               type="submit"
               disabled={loading}
-              className="w-full h-11 bg-gradient-to-br from-violet-600 to-indigo-600 hover:from-violet-500 hover:to-indigo-500 text-white text-xs font-mono uppercase"
-              style={{ letterSpacing: "0.3em", fontWeight: 500 }}
+              style={{
+                width: "100%",
+                height: "44px",
+                background: loading ? "rgba(57,255,135,0.5)" : "#39FF87",
+                color: "#0B1628",
+                fontSize: "12px",
+                fontFamily: "monospace",
+                fontWeight: 700,
+                letterSpacing: "0.3em",
+                textTransform: "uppercase",
+                border: "none",
+                borderRadius: "8px",
+                cursor: loading ? "not-allowed" : "pointer",
+                boxShadow: "0 0 20px rgba(57,255,135,0.3)",
+                display: "flex",
+                alignItems: "center",
+                justifyContent: "center",
+              }}
             >
-              {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : "Start"}
-            </Button>
+              {loading ? <Loader2 className="h-5 w-5 animate-spin" style={{ color: "#0B1628" }} /> : "Start"}
+            </button>
 
             <div className="text-center">
-              <Link to="/reset-password" className="text-cyan-400 text-[11px]" style={{ fontWeight: 300 }}>
+              <Link to="/reset-password" className="text-[11px]" style={{ color: "#39FF87", fontWeight: 300 }}>
                 Recover access
               </Link>
             </div>
@@ -1103,14 +1157,14 @@ export default function LoginPage() {
 
           <div className="mt-6 mb-2">
             <div className="flex items-center gap-2 mb-2.5">
-              <div className="w-3 h-px bg-gradient-to-r from-violet-500 to-transparent" />
-              <span className="text-violet-400 text-[8px] font-mono" style={{ letterSpacing: "0.3em", fontWeight: 600 }}>
+              <div className="w-3 h-px bg-gradient-to-r from-[#39FF87] to-transparent" />
+              <span className="text-[8px] font-mono" style={{ color: "#39FF87", letterSpacing: "0.3em", fontWeight: 600 }}>
                 PLATFORM MODULES
               </span>
             </div>
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1.5">
               {FEATURES.map((f, i) => {
-                const ledColor = f.accent === "purple" ? "#A855F7" : "#22D3EE";
+                const ledColor = "#39FF87";
                 return (
                   <Link
                     key={f.id}
