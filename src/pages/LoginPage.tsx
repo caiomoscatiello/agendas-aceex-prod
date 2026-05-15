@@ -10,7 +10,7 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 
 /* ============================================================
- * ACEEX V2 - LoginPage V6 FINAL
+ * PROJTE - LoginPage V6
  * ============================================================
  * Mudancas V6:
  *  - Cerebro VIVO: sinapses pulsantes, particulas viajando
@@ -582,7 +582,7 @@ export default function LoginPage() {
                 letterSpacing: "0.18em",
               }}
             >
-              aceex&nbsp;&nbsp;v2
+              projte
             </span>
           </motion.div>
 
@@ -651,7 +651,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@aceex.com"
+                placeholder="user@projte.io"
                 className="bg-[#0B0E14]/60 border-white/10 h-12 text-sm focus-visible:ring-violet-500 focus-visible:border-violet-500/50 font-mono"
                 autoComplete="email"
               />
@@ -1010,7 +1010,7 @@ export default function LoginPage() {
                 letterSpacing: "0.15em",
               }}
             >
-              aceex&nbsp;&nbsp;v2
+              projte
             </span>
             <div className="flex items-center gap-1.5">
               <motion.div
@@ -1054,7 +1054,7 @@ export default function LoginPage() {
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@aceex.com"
+                placeholder="user@projte.io"
                 className="bg-[#161B22]/60 border-white/10 h-11 text-sm focus-visible:ring-violet-500 font-mono"
                 autoComplete="email"
               />
