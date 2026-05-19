@@ -5,7 +5,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-// ????????? Obter token de acesso Microsoft Graph ????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── Obter token de acesso Microsoft Graph ─────────────────────────────────────
 async function getAccessToken(tenantId: string, clientId: string, clientSecret: string): Promise<string> {
   const url = `https://login.microsoftonline.com/${tenantId}/oauth2/v2.0/token`;
   const body = new URLSearchParams({
@@ -14,44 +14,36 @@ async function getAccessToken(tenantId: string, clientId: string, clientSecret: 
     client_secret: clientSecret,
     scope:         "https://graph.microsoft.com/.default",
   });
-
-  const res = await fetch(url, {
+  const res  = await fetch(url, {
     method: "POST",
     headers: { "Content-Type": "application/x-www-form-urlencoded" },
     body: body.toString(),
   });
-
   const data = await res.json();
-  if (!data.access_token) {
-    throw new Error(`Erro ao obter token Azure: ${JSON.stringify(data)}`);
-  }
+  if (!data.access_token) throw new Error(`Erro ao obter token Azure: ${JSON.stringify(data)}`);
   return data.access_token;
 }
 
-// ????????? Obter site ID do SharePoint ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── Obter site ID do SharePoint ───────────────────────────────────────────────
 async function getSiteId(token: string, siteUrl: string): Promise<string> {
-  // Extrair host e path do site URL
-  const url = new URL(siteUrl);
-  const host = url.hostname;
+  const url      = new URL(siteUrl);
+  const host     = url.hostname;
   const sitePath = url.pathname.replace(/^\/sites\//, "").split("?")[0];
-
-  const res = await fetch(
+  const res  = await fetch(
     `https://graph.microsoft.com/v1.0/sites/${host}:/sites/${sitePath}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
   const data = await res.json();
-  if (!data.id) throw new Error(`Site n??o encontrado: ${JSON.stringify(data)}`);
+  if (!data.id) throw new Error(`Site nao encontrado: ${JSON.stringify(data)}`);
   return data.id;
 }
 
-// ????????? Obter ou criar pasta no SharePoint ??????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── Obter ou criar pasta no SharePoint ───────────────────────────────────────
 async function getOrCreateFolder(token: string, siteId: string, folderPath: string): Promise<string> {
-  // Garantir pasta raiz "Documentos"
   const rootCheck = await fetch(
     `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/Documentos`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
-
   if (rootCheck.status === 404) {
     await fetch(
       `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root/children`,
@@ -62,13 +54,10 @@ async function getOrCreateFolder(token: string, siteId: string, folderPath: stri
       },
     );
   }
-
-  // Criar pasta do cliente dentro de Documentos
   const res = await fetch(
     `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/Documentos/${folderPath}`,
     { headers: { Authorization: `Bearer ${token}` } },
   );
-
   if (res.status === 404) {
     const createRes = await fetch(
       `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/Documentos:/children`,
@@ -81,39 +70,58 @@ async function getOrCreateFolder(token: string, siteId: string, folderPath: stri
     const data = await createRes.json();
     return data.id;
   }
-
   const data = await res.json();
   return data.id;
 }
 
-// ????????? Upload do arquivo para o SharePoint ???????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── Upload do arquivo para o SharePoint ──────────────────────────────────────
 async function uploadFile(
-  token: string,
-  siteId: string,
-  folderPath: string,
-  fileName: string,
-  fileContent: ArrayBuffer,
+  token: string, siteId: string, folderPath: string, fileName: string, fileContent: ArrayBuffer,
 ): Promise<string> {
-  // Upload simples (at?? 4MB) via PUT
   const uploadUrl = `https://graph.microsoft.com/v1.0/sites/${siteId}/drive/root:/Documentos/${folderPath}/${fileName}:/content`;
-
-  const res = await fetch(uploadUrl, {
+  const res  = await fetch(uploadUrl, {
     method: "PUT",
-    headers: {
-      Authorization: `Bearer ${token}`,
-      "Content-Type": "application/octet-stream",
-    },
+    headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/octet-stream" },
     body: fileContent,
   });
-
   const data = await res.json();
   if (!data.id) throw new Error(`Erro no upload: ${JSON.stringify(data)}`);
-
-  // Retornar URL de compartilhamento
   return data.webUrl || data["@content.downloadUrl"] || "";
 }
 
-// ????????? HANDLER PRINCIPAL ????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????????
+// ── Listar arquivos de uma pasta no SharePoint ────────────────────────────────
+// Usa o drive_id salvo no banco (sharepoint_drive_id) para evitar roundtrips.
+// Retorna array de { name, webUrl, size, lastModifiedDateTime, mimeType }
+async function listFolder(
+  token: string, driveId: string, folderPath: string,
+): Promise<{ name: string; webUrl: string; size: number; lastModifiedDateTime: string; mimeType: string }[]> {
+  // folderPath ja inclui "Documentos/{codigo_cliente} - {nome_cliente}"
+  const encoded = folderPath.split("/").map(encodeURIComponent).join("/");
+  const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encoded}:/children?$select=name,webUrl,size,lastModifiedDateTime,file`;
+
+  const res  = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
+
+  // Pasta inexistente: retornar array vazio (nao erro)
+  if (res.status === 404) return [];
+
+  const data = await res.json();
+  if (data.error) {
+    console.error("listFolder error:", JSON.stringify(data.error));
+    return [];
+  }
+
+  return (data.value || [])
+    .filter((item: any) => item.file) // apenas arquivos, nao subpastas
+    .map((item: any) => ({
+      name:                 item.name,
+      webUrl:               item.webUrl,
+      size:                 item.size || 0,
+      lastModifiedDateTime: item.lastModifiedDateTime || "",
+      mimeType:             item.file?.mimeType || "application/octet-stream",
+    }));
+}
+
+// ── HANDLER PRINCIPAL ─────────────────────────────────────────────────────────
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
 
@@ -123,11 +131,14 @@ Deno.serve(async (req: Request) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
-    // Buscar configura????es SharePoint
+    // Buscar configuracoes SharePoint
     const { data: settings } = await supabase
       .from("app_settings")
       .select("key, value")
-      .in("key", ["sharepoint_ativo", "sharepoint_tenant_id", "sharepoint_client_id", "sharepoint_client_secret", "sharepoint_site_url"]);
+      .in("key", [
+        "sharepoint_ativo", "sharepoint_tenant_id", "sharepoint_client_id",
+        "sharepoint_client_secret", "sharepoint_site_url", "sharepoint_drive_id",
+      ]);
 
     const s: Record<string, string> = {};
     (settings || []).forEach((r: any) => { s[r.key] = r.value; });
@@ -143,20 +154,22 @@ Deno.serve(async (req: Request) => {
     const clientId     = s.sharepoint_client_id?.trim();
     const clientSecret = s.sharepoint_client_secret?.trim();
     const siteUrl      = s.sharepoint_site_url?.trim();
+    const driveId      = s.sharepoint_drive_id?.trim();
 
     if (!tenantId || !clientId || !clientSecret || !siteUrl) {
       return new Response(
-        JSON.stringify({ success: false, error: "Credenciais SharePoint n??o configuradas" }),
+        JSON.stringify({ success: false, error: "Credenciais SharePoint nao configuradas" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Verificar se ?? teste de conex??o
+    // ── Verificar action via JSON ─────────────────────────────────────────────
     const contentType = req.headers.get("content-type") || "";
     if (contentType.includes("application/json")) {
       const body = await req.json();
+
+      // action: test
       if (body.action === "test") {
-        // Testar apenas autentica????o Azure + acesso ao site
         const token  = await getAccessToken(tenantId, clientId, clientSecret);
         const siteId = await getSiteId(token, siteUrl);
         return new Response(
@@ -164,30 +177,80 @@ Deno.serve(async (req: Request) => {
           { headers: { ...corsHeaders, "Content-Type": "application/json" } },
         );
       }
+
+      // ── action: list ─────────────────────────────────────────────────────────
+      // Corpo esperado: { action: "list", codigo_cliente: "000449", nome_cliente: "WDM" }
+      // Retorna: { success: true, files: [...] }
+      if (body.action === "list") {
+        const { codigo_cliente, nome_cliente } = body;
+
+        if (!codigo_cliente || !nome_cliente) {
+          return new Response(
+            JSON.stringify({ success: false, error: "codigo_cliente e nome_cliente obrigatorios" }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        const token = await getAccessToken(tenantId, clientId, clientSecret);
+
+        // Usar drive_id do banco se disponivel (evita roundtrip de site_id)
+        let resolvedDriveId = driveId;
+        if (!resolvedDriveId) {
+          const siteId = await getSiteId(token, siteUrl);
+          const driveRes  = await fetch(
+            `https://graph.microsoft.com/v1.0/sites/${siteId}/drive`,
+            { headers: { Authorization: `Bearer ${token}` } },
+          );
+          const driveData = await driveRes.json();
+          resolvedDriveId = driveData.id;
+          // Salvar no banco para proximas chamadas
+          if (resolvedDriveId) {
+            await supabase.from("app_settings").upsert(
+              { key: "sharepoint_drive_id", value: resolvedDriveId },
+              { onConflict: "key" },
+            );
+          }
+        }
+
+        if (!resolvedDriveId) {
+          return new Response(
+            JSON.stringify({ success: false, error: "Nao foi possivel obter o drive_id do SharePoint" }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
+        const folderName = `${codigo_cliente} - ${nome_cliente}`.replace(/[/\\?%*:|"<>]/g, "_");
+        const folderPath = `Documentos/${folderName}`;
+
+        const files = await listFolder(token, resolvedDriveId, folderPath);
+
+        return new Response(
+          JSON.stringify({ success: true, files, folder: folderPath }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
     }
 
-    // Receber multipart/form-data: file + cronograma_item_id + codigo_cliente + nome_cliente + codigo_item + descricao_item
-    const formData = await req.formData();
-    const file             = formData.get("file") as File | null;
+    // ── Upload via multipart/form-data (comportamento original inalterado) ─────
+    const formData        = await req.formData();
+    const file            = formData.get("file") as File | null;
     const cronogramaItemId = formData.get("cronograma_item_id") as string;
-    const codigoCliente    = formData.get("codigo_cliente") as string;
-    const nomeCliente      = formData.get("nome_cliente") as string;
-    const codigoItem       = formData.get("codigo_item") as string;
-    const descricaoItem    = formData.get("descricao_item") as string;
+    const codigoCliente   = formData.get("codigo_cliente") as string;
+    const nomeCliente     = formData.get("nome_cliente") as string;
+    const codigoItem      = formData.get("codigo_item") as string;
+    const descricaoItem   = formData.get("descricao_item") as string;
 
     if (!file || !cronogramaItemId || !codigoCliente) {
       return new Response(
-        JSON.stringify({ success: false, error: "Campos obrigat??rios: file, cronograma_item_id, codigo_cliente" }),
+        JSON.stringify({ success: false, error: "Campos obrigatorios: file, cronograma_item_id, codigo_cliente" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
       );
     }
 
-    // Montar nome do arquivo e pasta
     const ext        = file.name.split(".").pop() || "bin";
-    const fileName   = `${codigoItem} - ${descricaoItem}.${ext}`.replace(/[/\?%*:|"<>]/g, "_");
-    const folderName = `${codigoCliente} - ${nomeCliente}`.replace(/[/\?%*:|"<>]/g, "_");
+    const fileName   = `${codigoItem} - ${descricaoItem}.${ext}`.replace(/[/\\?%*:|"<>]/g, "_");
+    const folderName = `${codigoCliente} - ${nomeCliente}`.replace(/[/\\?%*:|"<>]/g, "_");
 
-    // Autenticar e fazer upload
     const token      = await getAccessToken(tenantId, clientId, clientSecret);
     const siteId     = await getSiteId(token, siteUrl);
     await getOrCreateFolder(token, siteId, folderName);
@@ -228,7 +291,7 @@ Deno.serve(async (req: Request) => {
       }
     }
 
-    console.log(`Documento enviado: ${folderName}/${fileName} — ${fileUrl}`);
+    console.log(`Documento enviado: ${folderName}/${fileName} -- ${fileUrl}`);
 
     return new Response(
       JSON.stringify({ success: true, file_url: fileUrl, file_name: fileName, folder: folderName }),
