@@ -79,7 +79,7 @@ type Agenda = {
   codigo_cliente: string | null;
 };
 
-// ??? helpers locais (portados do original) ???????????????????????????????????
+// ─── helpers locais (portados do original) ───────────────────────────────────
 
 const weekDays = ["D", "S", "T", "Q", "Q", "S", "S"];
 
@@ -135,7 +135,7 @@ function getAgendaStatusDisplay(agenda: Agenda) {
   return map[agenda.status] || { label: "Confirmada", color: "bg-blue-500 text-white" };
 }
 
-// ??? Sidebar SVG icons ????????????????????????????????????????????????????????
+// ─── Sidebar SVG icons ────────────────────────────────────────────────────────
 
 const IcoDashboard = () => (
   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -192,7 +192,7 @@ const IcoLock = () => (
   </svg>
 );
 
-// ??? Chevron logo SVG ?????????????????????????????????????????????????????????
+// ─── Chevron logo SVG ─────────────────────────────────────────────────────────
 
 const LogoChevron = () => (
   <svg width="42" height="42" viewBox="0 0 88 88" fill="none" style={{ flexShrink: 0 }}>
@@ -215,7 +215,7 @@ const LogoChevron = () => (
   </svg>
 );
 
-// ??? Inline styles (tailwind-compatible tokens) ???????????????????????????????
+// ─── Inline styles (tailwind-compatible tokens) ───────────────────────────────
 
 const NAVY   = "#0B1628";
 const LIME   = "#39FF87";
@@ -225,25 +225,25 @@ const BLUE   = "#3B82F6";
 const GREEN  = "#059669";
 const BG     = "#EDF0F5";
 
-// ??? Component ????????????????????????????????????????????????????????????????
+// ─── Component ────────────────────────────────────────────────────────────────
 
 export default function ConsultorDashboardV2() {
   const { user, role, signOut } = useAuth();
   const navigate = useNavigate();
   const isMobile = useIsMobile();
 
-  // ?? State: mes / data ??????????????????????????????????????????????????????
+  // ── State: mes / data ──────────────────────────────────────────────────────
   const [currentMonth, setCurrentMonth] = useState(new Date());
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
 
-  // ?? State: agendas / dados ?????????????????????????????????????????????????
+  // ── State: agendas / dados ─────────────────────────────────────────────────
   const [agendas, setAgendas] = useState<Agenda[]>([]);
   const [apontamentos, setApontamentos] = useState<Apontamento[]>([]);
   const [requisicoesPendentes, setRequisicoesPendentes] = useState<RequisicaoPendente[]>([]);
   const [offProjetos, setOffProjetos] = useState<OffProjeto[]>([]);
   const [selectedClienteId, setSelectedClienteId] = useState<string | null>(null);
 
-  // ?? State: timesheet ???????????????????????????????????????????????????????
+  // ── State: timesheet ───────────────────────────────────────────────────────
   const [tsAgendadas, setTsAgendadas] = useState(0);
   const [tsApontadas, setTsApontadas] = useState(0);
   const [tsSemanas, setTsSemanas] = useState<{ label: string; agendadas: number; apontadas: number }[]>([]);
@@ -253,7 +253,7 @@ export default function ConsultorDashboardV2() {
   const [vgDiasLivres, setVgDiasLivres] = useState(0);
   const [vgProjetos, setVgProjetos] = useState(0);
 
-  // ?? State: apontamento ?????????????????????????????????????????????????????
+  // ── State: apontamento ─────────────────────────────────────────────────────
   const [apontamentoOpen, setApontamentoOpen] = useState(false);
   const [apontamentoLoading, setApontamentoLoading] = useState(false);
   const [projetoAtividades, setProjetoAtividades] = useState<ProjetoAtividade[]>([]);
@@ -264,7 +264,7 @@ export default function ConsultorDashboardV2() {
   const [diarioObs, setDiarioObs] = useState("");
   const [diarioCategoria, setDiarioCategoria] = useState<"geral"|"decisao"|"ocorrencia"|"marco"|"alerta">("geral");
 
-  // ?? State: despesa ?????????????????????????????????????????????????????????
+  // ── State: despesa ─────────────────────────────────────────────────────────
   const [despesaOpen, setDespesaOpen] = useState(false);
   const [despDescricao, setDespDescricao] = useState("");
   const [despValor, setDespValor] = useState("");
@@ -274,7 +274,7 @@ export default function ConsultorDashboardV2() {
   const [despValorMaximo, setDespValorMaximo] = useState<number | null>(null);
   const [despesasLancadas, setDespesasLancadas] = useState<Despesa[]>([]);
 
-  // ?? State: documento ???????????????????????????????????????????????????????
+  // ── State: documento ───────────────────────────────────────────────────────
   const [docFile, setDocFile] = useState<File | null>(null);
   const [docUploading, setDocUploading] = useState(false);
   const [cronogramaItemDoc, setCronogramaItemDoc] = useState<{
@@ -282,7 +282,7 @@ export default function ConsultorDashboardV2() {
     codigo: string; descricao: string; codigo_cliente: string; nome_cliente: string;
   } | null>(null);
 
-  // ?? State: requisitar agenda ???????????????????????????????????????????????
+  // ── State: requisitar agenda ───────────────────────────────────────────────
   const [reqOpen, setReqOpen] = useState(false);
   const [reqClienteOpen, setReqClienteOpen] = useState(false);
   const [reqData, setReqData] = useState("");
@@ -296,11 +296,11 @@ export default function ConsultorDashboardV2() {
   const [reqDescricaoAtividade, setReqDescricaoAtividade] = useState("");
   const [reqJustificativa, setReqJustificativa] = useState("");
 
-  // ?? State: cancelamento ????????????????????????????????????????????????????
+  // ── State: cancelamento ────────────────────────────────────────────────────
   const [cancelAgendaOpen, setCancelAgendaOpen] = useState(false);
   const [cancelJustificativa, setCancelJustificativa] = useState("");
 
-  // ?? State: resumo / relatorios ?????????????????????????????????????????????
+  // ── State: resumo / relatorios ─────────────────────────────────────────────
   const [resumoOpen, setResumoOpen] = useState(false);
   const [resumoLoading, setResumoLoading] = useState(false);
   const [projetoDeslocamento, setProjetoDeslocamento] = useState(0);
@@ -310,19 +310,19 @@ export default function ConsultorDashboardV2() {
   const [rfLoading, setRfLoading] = useState(false);
   const [exportDialogOpen, setExportDialogOpen] = useState(false);
 
-  // ?? State: layout V2 ???????????????????????????????????????????????????????
+  // ── State: layout V2 ───────────────────────────────────────────────────────
   const [ctxTab, setCtxTab] = useState<"diario"|"cronograma"|"docs"|"kanban">("diario");
   const [ctxVisible, setCtxVisible] = useState(false);
   const [projetoSelecionado, setProjetoSelecionado] = useState<OffProjeto | null>(null);
   const [mobileTab, setMobileTab] = useState<"agenda"|"timesheet"|"backlog"|"pendencias">("agenda");
   const [projetoVinculado, setProjetoVinculado] = useState<OffProjeto | null>(null);
 
-  // ?? Hooks ?????????????????????????????????????????????????????????????????
+  // ── Hooks ─────────────────────────────────────────────────────────────────
   const { pendencias, totalPendencias, loadingPendencias, loadPendencias } = usePendencias(user?.id);
   const { entradas: diarioEntradas, loading: diarioLoading, loadEntradas: loadDiarioEntradas, insertEntrada } = useDiario();
   const { files: spFiles, loading: spLoading, error: spError, loadFiles: loadSpFiles, clear: clearSpFiles } = useSharepointDocs();
 
-  // ?? Effects ???????????????????????????????????????????????????????????????
+  // ── Effects ───────────────────────────────────────────────────────────────
   useEffect(() => {
     if (user) {
       loadData();
@@ -369,7 +369,7 @@ export default function ConsultorDashboardV2() {
     }
   }, [apontamentoOpen, projetoAtividades]);
 
-  // ?? Carregamento de dados ?????????????????????????????????????????????????
+  // ── Carregamento de dados ─────────────────────────────────────────────────
 
   const detectarProjetoVinculado = async () => {
     if (!user || offProjetos.length === 0) return;
@@ -482,7 +482,7 @@ export default function ConsultorDashboardV2() {
     setVgDiasLivres(diasUteis.filter(d => !todasAgendas.has(format(d, "yyyy-MM-dd"))).length);
   };
 
-  // ?? Relat�rio financeiro (portado do original) ????????????????????????????
+  // ── Relatório financeiro (portado do original) ────────────────────────────
 
   const loadResumoFinanceiro = async () => {
     if (!user) return;
@@ -540,7 +540,7 @@ export default function ConsultorDashboardV2() {
     setRfLoading(false);
   };
 
-  // ?? exportarPDF (portado do original; marca atualizada para PROJTE) ??????????
+  // ── exportarPDF (portado do original; marca atualizada para PROJTE) ──────────
 
   const exportarPDF = (tipo: "horas" | "despesas") => {
     setExportDialogOpen(false);
@@ -570,23 +570,23 @@ export default function ConsultorDashboardV2() {
       return `<tr><td>${format(parseISO(ag.data),"dd/MM/yyyy")}</td><td>${ag.cliente}</td><td><span class="tag">${getRfStatusLabel(ag.status)}</span></td><td class="r">${formatHoras(hL)}</td><td class="r">${ag.deslocamento > 0 ? formatHoras(ag.deslocamento) : "-"}</td><td class="r">${formatHoras(tot)}</td></tr>`;
     }).join("");
     const subtotaisHoras = Object.entries(porClienteHoras).map(([cli, h]) =>
-      `<tr class="sub"><td colspan="5">Subtotal � ${cli}</td><td class="r">${formatHoras(h)}</td></tr>`).join("");
+      `<tr class="sub"><td colspan="5">Subtotal — ${cli}</td><td class="r">${formatHoras(h)}</td></tr>`).join("");
     const linhasDesp = rfDespesas.map(d =>
       `<tr><td>${format(parseISO(d.data),"dd/MM/yyyy")}</td><td>${d.cliente}</td><td>${d.descricao}</td><td><span class="tag">${d.status_despesa}</span></td><td class="r">${d.valor.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td></tr>`).join("");
     const subtotaisDesp = Object.entries(porClienteDesp).map(([cli, val]) =>
-      `<tr class="sub"><td colspan="4">Subtotal � ${cli}</td><td class="r">${val.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td></tr>`).join("");
+      `<tr class="sub"><td colspan="4">Subtotal — ${cli}</td><td class="r">${val.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td></tr>`).join("");
 
     const conteudoHoras = `<table><thead><tr><th>Data</th><th>Cliente</th><th>Status</th><th class="r">Horas</th><th class="r">Transl.</th><th class="r">Total</th></tr></thead><tbody>${linhasHoras}${subtotaisHoras}<tr class="tot"><td colspan="3">TOTAL GERAL</td><td class="r">${formatHoras(horasTrab+horasPrev)}</td><td class="r">${formatHoras(translados)}</td><td class="r">${formatHoras(totalGeralHoras)}</td></tr></tbody></table><div class="summary"><div class="scard"><div class="slabel">Agendas</div><div class="svalue">${rfAgendas.length}</div></div><div class="scard"><div class="slabel">Trabalhadas</div><div class="svalue">${formatHoras(horasTrab)}</div></div><div class="scard"><div class="slabel">Previstas</div><div class="svalue">${formatHoras(horasPrev)}</div></div><div class="scard"><div class="slabel">Translados</div><div class="svalue">${formatHoras(translados)}</div></div><div class="scard hi" style="grid-column:span 2"><div class="slabel">Total geral</div><div class="svalue green">${formatHoras(totalGeralHoras)}</div></div></div>`;
     const conteudoDesp = `<table><thead><tr><th>Data</th><th>Cliente</th><th>Despesa</th><th>Status</th><th class="r">Valor</th></tr></thead><tbody>${linhasDesp}${subtotaisDesp}<tr class="tot"><td colspan="4">TOTAL GERAL</td><td class="r">${totalValorDesp.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</td></tr></tbody></table><div class="summary"><div class="scard"><div class="slabel">Lancamentos</div><div class="svalue">${rfDespesas.length}</div></div><div class="scard hi" style="grid-column:span 2"><div class="slabel">Total geral</div><div class="svalue green">${totalValorDesp.toLocaleString("pt-BR",{style:"currency",currency:"BRL"})}</div></div></div>`;
 
     const titulo = tipo === "horas" ? "Relatorio de Horas" : "Relatorio de Despesas";
-    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body><div class="doc-header"><div><div class="brand">PROJTE</div><div class="brand-sub">Sistema de Gestao de Projetos</div></div><div><div class="meta-title">${titulo}</div><div class="meta-line">Competencia: ${mesAno}</div><div class="meta-line">Emissao: ${agora}</div></div></div><div class="info-grid"><div class="info-cell"><div class="info-label">Consultor</div><div class="info-value">${user?.email || ""}</div></div><div class="info-cell"><div class="info-label">Periodo</div><div class="info-value">${periodoInicio} � ${periodoFim}</div></div><div class="info-cell"><div class="info-label">Gerado em</div><div class="info-value">${agora}</div></div></div><div class="section-title">Detalhamento</div>${tipo === "horas" ? conteudoHoras : conteudoDesp}<div class="footer"><span>Gerado pelo Projte � Documento de uso interno</span><span>Exportado em ${agora}</span></div></body></html>`;
+    const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body><div class="doc-header"><div><div class="brand">PROJTE</div><div class="brand-sub">Sistema de Gestao de Projetos</div></div><div><div class="meta-title">${titulo}</div><div class="meta-line">Competencia: ${mesAno}</div><div class="meta-line">Emissao: ${agora}</div></div></div><div class="info-grid"><div class="info-cell"><div class="info-label">Consultor</div><div class="info-value">${user?.email || ""}</div></div><div class="info-cell"><div class="info-label">Periodo</div><div class="info-value">${periodoInicio} – ${periodoFim}</div></div><div class="info-cell"><div class="info-label">Gerado em</div><div class="info-value">${agora}</div></div></div><div class="section-title">Detalhamento</div>${tipo === "horas" ? conteudoHoras : conteudoDesp}<div class="footer"><span>Gerado pelo Projte — Documento de uso interno</span><span>Exportado em ${agora}</span></div></body></html>`;
 
     const printWin = window.open("", "_blank");
     if (printWin) { printWin.document.write(html); printWin.document.close(); setTimeout(() => printWin.print(), 400); }
   };
 
-  // ?? Calendar helpers ??????????????????????????????????????????????????????
+  // ── Calendar helpers ──────────────────────────────────────────────────────
 
   const days = useMemo(() => eachDayOfInterval({ start: startOfMonth(currentMonth), end: endOfMonth(currentMonth) }), [currentMonth]);
   const firstDayOffset = useMemo(() => getDay(startOfMonth(currentMonth)), [currentMonth]);
@@ -613,7 +613,7 @@ export default function ConsultorDashboardV2() {
   const isApontamentoDone = selectedAgenda ? ["em_aprovacao","apontamento_ok","apontamento_ajustado"].includes(selectedAgenda.status) : false;
   const isProjetoNaoLiberado = selectedAgenda ? (offProjetos.find(p => p.nome_cliente === selectedAgenda.cliente)?.status !== "Liberado") : false;
 
-  // ?? Apontamento helpers (portados do original) ????????????????????????????
+  // ── Apontamento helpers (portados do original) ────────────────────────────
 
   const getSaldo = (atv: ProjetoAtividade) => Math.max(0, Number(atv.horas) - (horasAprovadas[atv.codigo] || 0));
   const getPercentual = (atv: ProjetoAtividade) => Number(atv.horas) <= 0 ? 100 : Math.min(100, Math.round(((horasAprovadas[atv.codigo] || 0) / Number(atv.horas)) * 100));
@@ -732,7 +732,7 @@ export default function ConsultorDashboardV2() {
     setDocUploading(false);
   };
 
-  // ?? Handlers agenda/sele��o ???????????????????????????????????????????????
+  // ── Handlers agenda/seleção ───────────────────────────────────────────────
 
   const handleSelectAgenda = (agenda: Agenda) => {
     setSelectedClienteId(agenda.id);
@@ -742,9 +742,8 @@ export default function ConsultorDashboardV2() {
     setCtxTab("diario");
     if (proj) {
       loadDiarioEntradas(proj.id);
-      // F3 � Carregar biblioteca SharePoint com codigo_cliente da agenda
-      const codigoCli = agenda.codigo_cliente || proj.id;
       if (agenda.codigo_cliente) loadSpFiles(agenda.codigo_cliente, agenda.cliente);
+      loadProjetoDocs(agenda.cliente);
     }
   };
 
@@ -753,6 +752,7 @@ export default function ConsultorDashboardV2() {
     setProjetoSelecionado(null);
     setCtxVisible(false);
     clearSpFiles();
+    setProjetoDocs([]);
   };
 
   const navigateToDate = (data: string, agendaId?: string) => {
@@ -762,11 +762,11 @@ export default function ConsultorDashboardV2() {
     if (agendaId) setSelectedClienteId(agendaId);
   };
 
-  // ?? Cobertura % ???????????????????????????????????????????????????????????
+  // ── Cobertura % ───────────────────────────────────────────────────────────
   const coberturaPercent = tsAgendadas === 0 ? 0 : Math.round((tsApontadas / tsAgendadas) * 100);
   const coberturaColor   = coberturaPercent >= 80 ? GREEN : coberturaPercent >= 50 ? AMBER : RED;
 
-  // ?? MOBILE: renderiza layout original ?????????????????????????????????????
+  // ── MOBILE: renderiza layout original ─────────────────────────────────────
   if (isMobile) {
     return (
       <div className="min-h-screen bg-background safe-area-top safe-area-bottom flex flex-col">
@@ -826,13 +826,13 @@ export default function ConsultorDashboardV2() {
             </CardContent>
           </Card>
         </main>
-        {/* Dialogs portados abaixo � inclusos via renderDialogs() */}
+        {/* Dialogs portados abaixo — inclusos via renderDialogs() */}
         {renderDialogs()}
       </div>
     );
   }
 
-  // ?? DESKTOP: layout V7 ????????????????????????????????????????????????????
+  // ── DESKTOP: layout V7 ────────────────────────────────────────────────────
 
   const sidebarW  = 232;
   const topbarH   = 58;
@@ -840,7 +840,7 @@ export default function ConsultorDashboardV2() {
   return (
     <div style={{ minHeight: "100vh", background: BG, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
 
-      {/* ?? TOPBAR ?? */}
+      {/* ── TOPBAR ── */}
       <header style={{
         position: "fixed", top: 0, left: 0, right: 0, height: topbarH,
         background: NAVY, zIndex: 300,
@@ -932,7 +932,7 @@ export default function ConsultorDashboardV2() {
         </div>
       </header>
 
-      {/* ?? SIDEBAR ?? */}
+      {/* ── SIDEBAR ── */}
       <aside style={{
         position: "fixed", top: topbarH, bottom: 0, left: 0,
         width: sidebarW, background: NAVY,
@@ -1058,7 +1058,7 @@ export default function ConsultorDashboardV2() {
         </div>
       </aside>
 
-      {/* ?? MAIN ?? */}
+      {/* ── MAIN ── */}
       <main style={{ marginLeft: sidebarW, paddingTop: topbarH, minHeight: "100vh" }}>
         <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
 
@@ -1127,7 +1127,7 @@ export default function ConsultorDashboardV2() {
                   { val: tsApontadas, label: "Apontado",  color: GREEN },
                   { val: `${coberturaPercent}%`, label: "Cobertura", color: coberturaColor },
                 ].map((n, i) => (
-                  <div key={n.label} style={{ textAlign: "center", padding: "7px 0", borderLeft: i > 0 ? "0.5px solid rgba(0,0,0,0.07)" : "none" }}>
+                  <div key={n.label} style={{ textAlign: "center", padding: "7px 0", boxShadow: i > 0 ? "inset 1px 0 0 rgba(0,0,0,0.07)" : "none" }}>
                     <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: n.color }}>{n.val}</div>
                     <div style={{ fontSize: 8, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 2 }}>{n.label}</div>
                   </div>
@@ -1193,7 +1193,7 @@ export default function ConsultorDashboardV2() {
               </div>
 
               <div style={{ display: "grid", gridTemplateColumns: "290px 1fr" }}>
-                {/* Calend�rio */}
+                {/* Calendário */}
                 <div style={{ padding: "12px 14px", borderRight: "0.5px solid rgba(0,0,0,0.07)" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
@@ -1254,11 +1254,14 @@ export default function ConsultorDashboardV2() {
                     return (
                       <div key={ag.id} onClick={() => isSel ? handleDeselectAgenda() : handleSelectAgenda(ag)}
                         style={{
-                          border: isSel ? `1px solid rgba(57,255,135,0.4)` : "0.5px solid rgba(0,0,0,0.07)",
+                          borderWidth: "0.5px 0.5px 0.5px 3px",
+                          borderStyle: "solid",
+                          borderColor: isSel
+                            ? `rgba(57,255,135,0.4) rgba(57,255,135,0.4) rgba(57,255,135,0.4) ${BLUE}`
+                            : `rgba(0,0,0,0.07) rgba(0,0,0,0.07) rgba(0,0,0,0.07) ${BLUE}`,
                           borderRadius: 8, padding: "9px 11px", cursor: "pointer",
                           background: isSel ? "rgba(57,255,135,0.04)" : "#fff",
                           position: "relative", overflow: "hidden",
-                          borderLeft: `3px solid ${BLUE}`,
                         }}>
                         <div style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>{ag.cliente}</div>
                         <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 2, lineHeight: 1.3 }}>{ag.atividade_descricao || ag.atividade}</div>
@@ -1370,7 +1373,7 @@ export default function ConsultorDashboardV2() {
           {ctxVisible && (
             <div style={{ display: "flex", flexDirection: "column" }}>
               {/* Tabs */}
-              <div style={{ display: "flex", background: "#fff", border: "0.5px solid rgba(0,0,0,0.07)", borderRadius: "10px 10px 0 0", overflow: "hidden", borderBottom: "none" }}>
+              <div style={{ display: "flex", background: "#fff", borderWidth: "0.5px 0.5px 0 0.5px", borderStyle: "solid", borderColor: "rgba(0,0,0,0.07)", borderRadius: "10px 10px 0 0", overflow: "hidden" }}>
                 {[
                   { id: "diario"     as const, label: "Diario de Bordo",   badge: diarioEntradas.length > 0 ? String(diarioEntradas.length) : null, badgeBg: "rgba(57,255,135,0.1)", badgeColor: GREEN },
                   { id: "cronograma" as const, label: "Cronograma",         badge: "em andamento", badgeBg: "rgba(245,166,35,0.1)", badgeColor: "#D97706" },
@@ -1383,8 +1386,11 @@ export default function ConsultorDashboardV2() {
                       display: "flex", alignItems: "center", justifyContent: "center", gap: 6,
                       fontSize: 11, fontWeight: 600,
                       color: ctxTab === tab.id ? NAVY : "#9CA3AF",
-                      cursor: "pointer", border: "none",
-                      borderBottom: ctxTab === tab.id ? `2.5px solid ${LIME}` : "2.5px solid transparent",
+                      cursor: "pointer",
+                      borderWidth: 0,
+                      borderBottomWidth: "2.5px",
+                      borderBottomStyle: "solid",
+                      borderBottomColor: ctxTab === tab.id ? LIME : "transparent",
                       background: ctxTab === tab.id ? "#fff" : "rgba(0,0,0,0.012)",
                       transition: "all 0.2s",
                     }}>
@@ -1395,7 +1401,7 @@ export default function ConsultorDashboardV2() {
               </div>
 
               {/* Pane */}
-              <div style={{ background: "#fff", border: "0.5px solid rgba(0,0,0,0.07)", borderRadius: "0 0 10px 10px", borderTop: "none", minHeight: 240 }}>
+              <div style={{ background: "#fff", borderWidth: "0 0.5px 0.5px 0.5px", borderStyle: "solid", borderColor: "rgba(0,0,0,0.07)", borderRadius: "0 0 10px 10px", minHeight: 240 }}>
 
                 {/* DIARIO */}
                 {ctxTab === "diario" && (
@@ -1433,53 +1439,118 @@ export default function ConsultorDashboardV2() {
                   />
                 )}
 
-                {/* DOCUMENTOS � Meus Docs (Autentique) + Biblioteca (SharePoint) */}
+                {/* DOCUMENTOS — Meus Docs (Autentique) + Biblioteca (SharePoint) */}
                 {ctxTab === "docs" && (
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", minHeight: 240 }}>
 
-                    {/* Meus Documentos � OS e documentos do consultor (Autentique) */}
-                    <div style={{ padding: 16 }}>
-                      <div style={{ fontSize: 10, fontWeight: 700, color: "#4B5563", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
+                    {/* Meus Documentos — Pendentes + Enviados do projeto */}
+                    <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", maxHeight: 320 }}>
+                      <div style={{ fontSize: 10, fontWeight: 700, color: "#4B5563", textTransform: "uppercase", letterSpacing: "0.1em", display: "flex", alignItems: "center", gap: 6, marginBottom: 2 }}>
                         <div style={{ width: 18, height: 18, borderRadius: 4, background: NAVY, display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#39FF87" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
                         </div>
                         Meus Documentos
                       </div>
-                      {/* OS da agenda selecionada � link direto para Autentique */}
-                      {selectedAgenda ? (
-                        <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                          <div style={{ padding: "9px 11px", border: "0.5px solid rgba(0,0,0,0.07)", borderRadius: 7, display: "flex", alignItems: "center", gap: 8 }}>
-                            <div style={{ width: 7, height: 7, borderRadius: "50%", background: getAgendaStatusDisplay(selectedAgenda).color.includes("emerald") ? GREEN : getAgendaStatusDisplay(selectedAgenda).color.includes("red") ? RED : AMBER, flexShrink: 0 }} />
-                            <div style={{ flex: 1, minWidth: 0 }}>
-                              <div style={{ fontSize: 11, fontWeight: 600, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
-                                OS - Agenda {format(parseISO(selectedAgenda.data), "dd/MM/yyyy")}
-                              </div>
-                              <div style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "'DM Mono', monospace", marginTop: 1 }}>
-                                {getAgendaStatusDisplay(selectedAgenda).label}
-                              </div>
-                            </div>
-                            {selectedAgenda.doc_referencia ? (
-                              <a href={selectedAgenda.doc_referencia} target="_blank" rel="noopener noreferrer"
-                                style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: BLUE, background: "#EFF6FF", padding: "2px 7px", borderRadius: 4, border: "0.5px solid rgba(59,130,246,0.2)", textDecoration: "none", flexShrink: 0 }}>
-                                Ver
-                              </a>
-                            ) : (
-                              <span style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: "#9CA3AF", flexShrink: 0 }}>Sem doc</span>
-                            )}
-                          </div>
-                          <div style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "'DM Mono', monospace", textAlign: "center", marginTop: 4 }}>
-                            OS gerada automaticamente apos apontamento
-                          </div>
+
+                      {projetoDocs.length === 0 ? (
+                        <div style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", padding: "20px 0", fontFamily: "'DM Mono', monospace" }}>
+                          Nenhum documento para este projeto
                         </div>
                       ) : (
-                        <div style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", padding: "16px 0" }}>
-                          Selecione uma agenda para ver seus documentos
-                        </div>
+                        <>
+                          {/* Pendentes */}
+                          {projetoDocs.filter(d => d.status === "doc_pendente" || (!d.doc_referencia && d.status !== "apontamento_ok" && d.status !== "apontamento_ajustado")).length > 0 && (
+                            <div>
+                              <div style={{ fontSize: 8, fontWeight: 700, color: RED, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5, display: "flex", alignItems: "center", gap: 4 }}>
+                                <div style={{ width: 5, height: 5, borderRadius: "50%", background: RED }} />
+                                Pendentes
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                {projetoDocs
+                                  .filter(d => d.status === "doc_pendente" || (!d.doc_referencia && d.status !== "apontamento_ok" && d.status !== "apontamento_ajustado"))
+                                  .map(doc => (
+                                    <div key={doc.id} style={{ padding: "8px 10px", background: "#FEF2F2", borderRadius: 7, borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(226,75,74,0.2)", display: "flex", alignItems: "center", gap: 8 }}>
+                                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: RED, flexShrink: 0 }} />
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 600, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                          OS - {format(parseISO(doc.data), "dd/MM/yyyy")}
+                                        </div>
+                                        <div style={{ fontSize: 9, color: RED, fontFamily: "'DM Mono', monospace", marginTop: 1 }}>
+                                          Documento nao enviado
+                                        </div>
+                                      </div>
+                                      <span style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: RED, background: "rgba(226,75,74,0.08)", padding: "2px 7px", borderRadius: 4, flexShrink: 0 }}>
+                                        Pendente
+                                      </span>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Enviados */}
+                          {projetoDocs.filter(d => d.doc_referencia).length > 0 && (
+                            <div>
+                              <div style={{ fontSize: 8, fontWeight: 700, color: GREEN, textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5, display: "flex", alignItems: "center", gap: 4 }}>
+                                <div style={{ width: 5, height: 5, borderRadius: "50%", background: GREEN }} />
+                                Enviados
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                {projetoDocs
+                                  .filter(d => d.doc_referencia)
+                                  .map(doc => (
+                                    <div key={doc.id} style={{ padding: "8px 10px", background: "#F0FDF4", borderRadius: 7, borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(5,150,105,0.2)", display: "flex", alignItems: "center", gap: 8 }}>
+                                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: GREEN, flexShrink: 0 }} />
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 600, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                          OS - {format(parseISO(doc.data), "dd/MM/yyyy")}
+                                        </div>
+                                        <div style={{ fontSize: 9, color: GREEN, fontFamily: "'DM Mono', monospace", marginTop: 1 }}>
+                                          {getAgendaStatusDisplay(doc).label}
+                                        </div>
+                                      </div>
+                                      <a href={doc.doc_referencia!} target="_blank" rel="noopener noreferrer"
+                                        style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: GREEN, background: "rgba(5,150,105,0.08)", padding: "2px 7px", borderRadius: 4, borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(5,150,105,0.2)", textDecoration: "none", flexShrink: 0 }}>
+                                        Ver
+                                      </a>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Apontamentos sem doc exigido */}
+                          {projetoDocs.filter(d => !d.doc_referencia && (d.status === "apontamento_ok" || d.status === "apontamento_ajustado")).length > 0 && (
+                            <div>
+                              <div style={{ fontSize: 8, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 5, display: "flex", alignItems: "center", gap: 4 }}>
+                                <div style={{ width: 5, height: 5, borderRadius: "50%", background: "#9CA3AF" }} />
+                                Sem documento exigido
+                              </div>
+                              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+                                {projetoDocs
+                                  .filter(d => !d.doc_referencia && (d.status === "apontamento_ok" || d.status === "apontamento_ajustado"))
+                                  .map(doc => (
+                                    <div key={doc.id} style={{ padding: "8px 10px", background: "rgba(0,0,0,0.02)", borderRadius: 7, borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(0,0,0,0.06)", display: "flex", alignItems: "center", gap: 8 }}>
+                                      <div style={{ width: 6, height: 6, borderRadius: "50%", background: "#D1D5DB", flexShrink: 0 }} />
+                                      <div style={{ flex: 1, minWidth: 0 }}>
+                                        <div style={{ fontSize: 11, fontWeight: 600, color: "#6B7280", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>
+                                          OS - {format(parseISO(doc.data), "dd/MM/yyyy")}
+                                        </div>
+                                        <div style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "'DM Mono', monospace", marginTop: 1 }}>
+                                          {getAgendaStatusDisplay(doc).label}
+                                        </div>
+                                      </div>
+                                    </div>
+                                  ))}
+                              </div>
+                            </div>
+                          )}
+                        </>
                       )}
                     </div>
 
-                    {/* Biblioteca do Projeto � SharePoint */}
-                    <div style={{ padding: 16, borderLeft: "0.5px solid rgba(0,0,0,0.07)" }}>
+                    {/* Biblioteca do Projeto — SharePoint */}
+                    <div style={{ padding: 16, borderLeftWidth: "0.5px", borderLeftStyle: "solid", borderLeftColor: "rgba(0,0,0,0.07)" }}>
                       <div style={{ fontSize: 10, fontWeight: 700, color: "#4B5563", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 10, display: "flex", alignItems: "center", gap: 6 }}>
                         <div style={{ width: 18, height: 18, borderRadius: 4, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center" }}>
                           <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/></svg>
@@ -1542,7 +1613,7 @@ export default function ConsultorDashboardV2() {
         </div>
       </main>
 
-      {/* ?? DIALOGS portados do original ?? */}
+      {/* ── DIALOGS portados do original ── */}
       {renderDialogs()}
 
       <style>{`
@@ -1552,11 +1623,11 @@ export default function ConsultorDashboardV2() {
     </div>
   );
 
-  // ?? renderDialogs: todos os modais do original portados ????????????????????
+  // ── renderDialogs: todos os modais do original portados ────────────────────
   function renderDialogs() {
     return (
       <>
-        {/* Modal de Apontamento � portado integralmente do ConsultorDashboard.tsx original */}
+        {/* Modal de Apontamento — portado integralmente do ConsultorDashboard.tsx original */}
         <Dialog open={apontamentoOpen} onOpenChange={setApontamentoOpen}>
           <DialogContent className="max-w-lg max-h-[90dvh] flex flex-col">
             <DialogHeader>
