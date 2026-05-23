@@ -291,6 +291,9 @@ export default function ConsultorDashboardV2() {
   const [reqCoordenador, setReqCoordenador] = useState("");
   const [reqAtividades, setReqAtividades] = useState<ProjetoAtividade[]>([]);
   const [reqAtividade, setReqAtividade] = useState("");
+  const [reqAtividadeId, setReqAtividadeId] = useState("");
+  const [reqCronoItemId, setReqCronoItemId] = useState("");
+  const [reqCronoItens, setReqCronoItens] = useState<any[]>([]);
   const [reqAtividadesLoading, setReqAtividadesLoading] = useState(false);
   const [reqModalidade, setReqModalidade] = useState("Remoto");
   const [reqDescricaoAtividade, setReqDescricaoAtividade] = useState("");
@@ -315,7 +318,27 @@ export default function ConsultorDashboardV2() {
   const [ctxVisible, setCtxVisible] = useState(false);
   const [projetoSelecionado, setProjetoSelecionado] = useState<OffProjeto | null>(null);
   const [mobileTab, setMobileTab] = useState<"agenda"|"timesheet"|"backlog"|"pendencias">("agenda");
-  const [projetoVinculado, setProjetoVinculado] = useState<OffProjeto | null>(null);
+  const [projetoDocs, setProjetoDocs] = useState<Agenda[]>([]);
+  const [atvTabAtiva, setAtvTabAtiva] = useState(0);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [pendenciasModalOpen, setPendenciasModalOpen] = useState(false);
+  const [navAtiva, setNavAtiva] = useState<string>("Dashboard");
+  const [reqModalOpen, setReqModalOpen] = useState(false);
+  const [reqModalTab, setReqModalTab] = useState<"pendentes"|"cancelamentos"|"aprovacoes">("pendentes");
+  const [reqHistorico, setReqHistorico] = useState<any[]>([]);
+  const [reqHistLoading, setReqHistLoading] = useState(false);
+  const [searchOpen, setSearchOpen] = useState(false);
+
+  // Search bar — projetos Liberados filtrados por query
+  const projetosAtivos = useMemo(() => {
+    // Mostrar todos os projetos do consultor — sem filtro de status
+    // O filtro de Liberado é só para ações (apontamento, requisicao)
+    const base = offProjetos;
+    if (!searchQuery.trim()) return base;
+    const q = searchQuery.toLowerCase();
+    return base.filter(p => p.nome_cliente.toLowerCase().includes(q));
+  }, [offProjetos, searchQuery]);
+  const [cronogramaItensPorAtividade, setCronogramaItensPorAtividade] = useState<Record<string, any[]>>({});
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { pendencias, totalPendencias, loadingPendencias, loadPendencias } = usePendencias(user?.id);
@@ -340,10 +363,18 @@ export default function ConsultorDashboardV2() {
     calcularTimesheet();
   }, [currentMonth, user]);
 
+  // Auto-select agenda: fonte unica de verdade via handleSelectAgenda
+  // handleSelectAgenda atualiza projetoSelecionado, SP, diario, etc
+  // Auto-select: sempre que o dia muda, re-avaliar qual agenda/projeto ativar
   useEffect(() => {
-    if (selectedAgendas.length === 1) setSelectedClienteId(selectedAgendas[0].id);
-    else if (selectedAgendas.length === 0) setSelectedClienteId(null);
-  }, [selectedDate, agendas]);
+    if (selectedAgendas.length === 1) {
+      handleSelectAgenda(selectedAgendas[0]);
+    } else if (selectedAgendas.length === 0) {
+      // Sem agenda no dia: manter projeto em foco se veio da busca
+      setSelectedClienteId(null);
+    }
+    // Com múltiplas agendas no dia: usuário escolhe manualmente
+  }, [selectedDate]);
 
   useEffect(() => {
     if (!selectedDate || !user) { setDespesasLancadas([]); return; }
@@ -371,6 +402,42 @@ export default function ConsultorDashboardV2() {
 
   // ── Carregamento de dados ─────────────────────────────────────────────────
 
+  const loadProjetoDocs = async (projetoNomeCliente: string) => {
+    if (!user || !projetoNomeCliente) return;
+    const { data } = await supabase
+      .from("agendas")
+      .select("id, cliente, data, atividade, status, atividade_descricao, item_cronograma, doc_referencia, codigo_cliente")
+      .eq("user_id", user.id)
+      .eq("cliente", projetoNomeCliente)
+      .in("status", ["doc_pendente","apontamento_ok","apontamento_ajustado","em_aprovacao"])
+      .order("data", { ascending: false })
+      .limit(20);
+    setProjetoDocs(data || []);
+  };
+
+  const loadReqHistorico = async () => {
+    if (!user) return;
+    setReqHistLoading(true);
+    const trinta = new Date(); trinta.setDate(trinta.getDate() - 30);
+    const [{ data: reqs }, { data: cancels }] = await Promise.all([
+      supabase.from("requisicoes_agenda")
+        .select("id, data, cliente, atividade, total_horas, modalidade, status, justificativa, created_at")
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
+        .limit(50),
+      supabase.from("agendas")
+        .select("id, data, cliente, atividade, status, created_at")
+        .eq("user_id", user.id)
+        .eq("status", "aguardando_cancelamento")
+        .order("data", { ascending: false }),
+    ]);
+    setReqHistorico([
+      ...(reqs || []).map((r: any) => ({ ...r, _tipo: "requisicao" })),
+      ...(cancels || []).map((a: any) => ({ ...a, _tipo: "cancelamento" })),
+    ]);
+    setReqHistLoading(false);
+  };
+
   const detectarProjetoVinculado = async () => {
     if (!user || offProjetos.length === 0) return;
     const hoje = new Date();
@@ -393,7 +460,6 @@ export default function ConsultorDashboardV2() {
     const clienteMaisFreq = Object.entries(contagem).sort((a, b) => b[1] - a[1])[0]?.[0];
     if (!clienteMaisFreq) return;
     const proj = offProjetos.find(p => p.nome_cliente === clienteMaisFreq);
-    if (proj) setProjetoVinculado(proj);
   };
 
   const loadData = async () => {
@@ -418,7 +484,7 @@ export default function ConsultorDashboardV2() {
 
   const loadProjetos = async () => {
     const { data } = await supabase.from("projetos")
-      .select("id, nome_cliente, coordenador_id, deslocamento, email_contato, status, monday_board_url, sharepoint_pasta_url");
+      .select("id, nome_cliente, codigo_cliente, coordenador_id, deslocamento, email_contato, status, monday_board_url, sharepoint_pasta_url");
     setOffProjetos((data as OffProjeto[]) || []);
   };
 
@@ -605,9 +671,18 @@ export default function ConsultorDashboardV2() {
     return "planejada";
   };
 
+  // Dias com agenda do projeto em foco (para highlight no calendário)
+  const diasDoProjeto = projetoSelecionado && !selectedClienteId
+    ? new Set(agendas.filter(a => a.cliente === projetoSelecionado.nome_cliente).map(a => a.data))
+    : null;
+
   const selectedAgendas    = agendas.filter(a => a.data === selectedDate);
   const selectedRequisicoes = requisicoesPendentes.filter(r => r.data === selectedDate);
   const selectedAgenda     = selectedAgendas.find(a => a.id === selectedClienteId);
+
+  // Auto-selecionar agenda quando dia clicado tem exatamente uma
+
+
 
   const isDateFuture = selectedDate ? isAfter(parseISO(selectedDate), (() => { const t = new Date(); t.setHours(0,0,0,0); return t; })()) : false;
   const isApontamentoDone = selectedAgenda ? ["em_aprovacao","apontamento_ok","apontamento_ajustado"].includes(selectedAgenda.status) : false;
@@ -645,7 +720,7 @@ export default function ConsultorDashboardV2() {
     setApontDescricao((reqData as any)?.descricao_atividade || "");
     setDiarioObs("");
     setDiarioCategoria("geral");
-    setApontamentoOpen(true);
+    setApontamentoOpen(true); setAtvTabAtiva(0);
   };
 
   const checkAutoApprove = async (agenda: Agenda): Promise<boolean> => {
@@ -735,6 +810,10 @@ export default function ConsultorDashboardV2() {
   // ── Handlers agenda/seleção ───────────────────────────────────────────────
 
   const handleSelectAgenda = (agenda: Agenda) => {
+    // Limpar estado anterior para garantir re-render completo
+    clearSpFiles();
+    setProjetoDocs([]);
+    setCronogramaItensPorAtividade({});
     setSelectedClienteId(agenda.id);
     const proj = offProjetos.find(p => p.nome_cliente === agenda.cliente) || null;
     setProjetoSelecionado(proj);
@@ -744,6 +823,20 @@ export default function ConsultorDashboardV2() {
       loadDiarioEntradas(proj.id);
       if (agenda.codigo_cliente) loadSpFiles(agenda.codigo_cliente, agenda.cliente);
       loadProjetoDocs(agenda.cliente);
+      supabase.from("projeto_atividades").select("id, codigo").eq("projeto_id", proj.id)
+        .then(({ data: ativs }) => {
+          if (!ativs || ativs.length === 0) return;
+          supabase.from("cronograma_itens").select("id, atividade_id, codigo, descricao, doc_exigido, doc_satisfeito")
+            .in("atividade_id", ativs.map((a: any) => a.id))
+            .then(({ data: cis }) => {
+              const map: Record<string, any[]> = {};
+              (cis || []).forEach((ci: any) => {
+                if (!map[ci.atividade_id]) map[ci.atividade_id] = [];
+                map[ci.atividade_id].push(ci);
+              });
+              setCronogramaItensPorAtividade(map);
+            });
+        });
     }
   };
 
@@ -866,15 +959,98 @@ export default function ConsultorDashboardV2() {
 
         {/* Center: busca + breadcrumb */}
         <div style={{ flex: 1, display: "flex", alignItems: "center", padding: "0 20px", gap: 10 }}>
-          <div style={{
-            display: "flex", alignItems: "center", gap: 8,
-            background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.09)",
-            borderRadius: 7, padding: "6px 12px", width: 220, cursor: "pointer",
-          }}>
-            <Search size={11} style={{ color: "rgba(255,255,255,0.3)" }} />
-            <span style={{ fontSize: 11, color: "rgba(255,255,255,0.28)", fontFamily: "'DM Mono', monospace" }}>
-              buscar projeto ativo...
-            </span>
+          {/* Search bar — projeto ativo */}
+          <div style={{ position: "relative" }}>
+            <div style={{
+              display: "flex", alignItems: "center", gap: 8,
+              background: searchOpen ? "rgba(255,255,255,0.09)" : "rgba(255,255,255,0.05)",
+              border: searchOpen ? "0.5px solid rgba(57,255,135,0.25)" : "0.5px solid rgba(255,255,255,0.09)",
+              borderRadius: 7, padding: "0 12px", width: 220, height: 32, transition: "all 0.15s",
+            }}>
+              <Search size={11} style={{ color: searchOpen ? "rgba(57,255,135,0.6)" : "rgba(255,255,255,0.3)", flexShrink: 0 }} />
+              <input
+                value={searchQuery}
+                onChange={e => { setSearchQuery(e.target.value); setSearchOpen(true); }}
+                onFocus={() => setSearchOpen(true)}
+                onBlur={() => setTimeout(() => setSearchOpen(false), 150)}
+                placeholder="buscar projeto ativo..."
+                style={{
+                  background: "transparent", border: "none", outline: "none",
+                  fontSize: 11, color: "rgba(255,255,255,0.75)", fontFamily: "'DM Mono', monospace",
+                  width: "100%", letterSpacing: "0.03em",
+                }}
+              />
+              {searchQuery && (
+                <button onClick={() => { setSearchQuery(""); setSearchOpen(false); }}
+                  style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", padding: 0, lineHeight: 1, flexShrink: 0 }}>
+                  <XCircle size={12} />
+                </button>
+              )}
+            </div>
+            {/* Dropdown de resultados */}
+            {searchOpen && projetosAtivos.length > 0 && (
+              <div style={{
+                position: "absolute", top: 36, left: 0, width: 260,
+                background: "#0F1E35", border: "0.5px solid rgba(57,255,135,0.15)",
+                borderRadius: 8, overflow: "hidden", zIndex: 100,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.4)",
+              }}>
+                <div style={{ padding: "6px 12px 4px", fontSize: 8, fontFamily: "'DM Mono', monospace", color: "rgba(57,255,135,0.4)", letterSpacing: "0.12em", textTransform: "uppercase" }}>
+                  {searchQuery ? `${projetosAtivos.length} resultado${projetosAtivos.length !== 1 ? "s" : ""}` : "Projetos ativos"}
+                </div>
+                {projetosAtivos.slice(0, 6).map(proj => (
+                  <button key={proj.id}
+                    onMouseDown={() => {
+                      // Limpar estado anterior antes de setar novo projeto
+                      setSelectedClienteId(null);
+                      setSelectedDate(null);
+                      clearSpFiles();
+                      setProjetoDocs([]);
+                      setCronogramaItensPorAtividade({});
+                      setProjetoSelecionado(proj);
+                      setCtxVisible(true);
+                      setCtxTab("diario");
+                      loadDiarioEntradas(proj.id);
+                      loadProjetoDocs(proj.nome_cliente);
+                      if ((proj as any).codigo_cliente) loadSpFiles((proj as any).codigo_cliente, proj.nome_cliente);
+                      supabase.from("projeto_atividades").select("id, codigo").eq("projeto_id", proj.id)
+                        .then(({ data: ativs }) => {
+                          if (!ativs || ativs.length === 0) return;
+                          supabase.from("cronograma_itens").select("id, atividade_id, codigo, descricao, doc_exigido, doc_satisfeito")
+                            .in("atividade_id", ativs.map((a: any) => a.id))
+                            .then(({ data: cis }) => {
+                              const map: Record<string, any[]> = {};
+                              (cis || []).forEach((ci: any) => {
+                                if (!map[ci.atividade_id]) map[ci.atividade_id] = [];
+                                map[ci.atividade_id].push(ci);
+                              });
+                              setCronogramaItensPorAtividade(map);
+                            });
+                        });
+                      setSearchQuery("");
+                      setSearchOpen(false);
+                    }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 10,
+                      width: "100%", padding: "8px 14px", background: "transparent",
+                      border: "none", cursor: "pointer", textAlign: "left",
+                      borderTop: "0.5px solid rgba(255,255,255,0.04)",
+                      transition: "background 0.1s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget.style.background = "rgba(57,255,135,0.06)")}
+                    onMouseLeave={e => (e.currentTarget.style.background = "transparent")}
+                  >
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: LIME, flexShrink: 0 }} />
+                    <span style={{ fontSize: 12, color: "#fff", fontWeight: 500 }}>{proj.nome_cliente}</span>
+                  </button>
+                ))}
+                {projetosAtivos.length > 6 && (
+                  <div style={{ padding: "6px 14px 8px", fontSize: 9, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono', monospace" }}>
+                    +{projetosAtivos.length - 6} outros
+                  </div>
+                )}
+              </div>
+            )}
           </div>
           <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: "rgba(255,255,255,0.2)", letterSpacing: "0.06em" }}>
             {ctxVisible && projetoSelecionado ? `/ dashboard / ${projetoSelecionado.nome_cliente}` : "/ dashboard / consultor"}
@@ -903,7 +1079,7 @@ export default function ConsultorDashboardV2() {
 
           {/* Pendencias bell */}
           <div style={{ position: "relative" }}>
-            <button title="Pendencias" style={{ width: 32, height: 32, borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)", cursor: "pointer" }}>
+            <button title="Pendencias" onClick={() => setPendenciasModalOpen(true)} style={{ width: 32, height: 32, borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)", cursor: "pointer" }}>
               <AlertCircle size={15} />
             </button>
             {totalPendencias > 0 && (
@@ -940,64 +1116,90 @@ export default function ConsultorDashboardV2() {
         zIndex: 200, display: "flex", flexDirection: "column",
         overflow: "hidden",
       }}>
-        {/* Projeto vinculado card */}
-        {projetoSelecionado ? (
-          <div style={{ margin: "12px 12px 4px", background: "rgba(57,255,135,0.09)", border: "0.5px solid rgba(57,255,135,0.22)", borderRadius: 9, padding: 12, flexShrink: 0 }}>
-            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 4 }}>
-              <span style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.2em", color: "rgba(57,255,135,0.5)", textTransform: "uppercase" }}>Projeto ativo</span>
-              <span style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", color: "rgba(57,255,135,0.4)", background: "rgba(57,255,135,0.08)", padding: "1px 6px", borderRadius: 4 }}>PMO</span>
-            </div>
-            <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", marginBottom: 8 }}>{projetoSelecionado.nome_cliente}</div>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 7 }}>
-              <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 5, padding: "4px 7px" }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: LIME, letterSpacing: "-0.02em", lineHeight: 1 }}>{vgAgendasConfirmadas}</div>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>Agendas</div>
-              </div>
-              <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 5, padding: "4px 7px" }}>
-                <div style={{ fontSize: 14, fontWeight: 800, color: AMBER, letterSpacing: "-0.02em", lineHeight: 1 }}>{coberturaPercent}%</div>
-                <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>Cobertura</div>
-              </div>
-            </div>
-            <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, fontFamily: "'DM Mono', monospace", color: "rgba(255,255,255,0.22)", marginBottom: 3 }}>
-              <span>Cobertura Mai</span><span>{coberturaPercent}%</span>
-            </div>
-            <div style={{ height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden" }}>
-              <div style={{ height: "100%", background: LIME, borderRadius: 2, width: `${Math.min(100, coberturaPercent)}%` }} />
-            </div>
-          </div>
-        ) : (
-          <div style={{ margin: "12px 12px 4px", background: "rgba(57,255,135,0.06)", border: "0.5px solid rgba(57,255,135,0.14)", borderRadius: 9, padding: 12, flexShrink: 0 }}>
-            <div style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.2em", color: "rgba(57,255,135,0.4)", textTransform: "uppercase", marginBottom: 4 }}>Projeto vinculado</div>
-            {projetoVinculado ? (
-              <>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#fff", marginBottom: 4 }}>{projetoVinculado.nome_cliente}</div>
-                <div style={{ fontSize: 9, color: "rgba(57,255,135,0.35)", fontFamily: "'DM Mono', monospace" }}>Selecione uma agenda para ativar o contexto</div>
-              </>
-            ) : (
-              <div style={{ fontSize: 11, color: "rgba(255,255,255,0.35)", fontFamily: "'DM Mono', monospace" }}>Nenhum projeto ativo nos ultimos 60 dias</div>
+        {/* Card projeto — estado unificado */}
+        <div style={{
+          margin: "12px 12px 4px",
+          background: projetoSelecionado ? "rgba(57,255,135,0.09)" : "rgba(255,255,255,0.02)",
+          border: projetoSelecionado ? "0.5px solid rgba(57,255,135,0.22)" : "0.5px solid rgba(255,255,255,0.06)",
+          borderRadius: 9, padding: 12, flexShrink: 0,
+          transition: "all 0.2s",
+        }}>
+          {/* Header: label + X */}
+          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: projetoSelecionado ? 6 : 0 }}>
+            <span style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.2em", color: projetoSelecionado ? "rgba(57,255,135,0.5)" : "rgba(255,255,255,0.15)", textTransform: "uppercase" }}>
+              {projetoSelecionado ? "Projeto ativo" : "Nenhum projeto"}
+            </span>
+            {projetoSelecionado && (
+              <button
+                onClick={() => { setProjetoSelecionado(null); setCtxVisible(false); setSelectedClienteId(null); clearSpFiles(); setProjetoDocs([]); setCronogramaItensPorAtividade({}); }}
+                style={{ background: "none", border: "none", cursor: "pointer", color: "rgba(255,255,255,0.3)", padding: 2, lineHeight: 1, display: "flex", alignItems: "center", transition: "color 0.15s" }}
+                title="Limpar projeto"
+                onMouseEnter={e => (e.currentTarget.style.color = "rgba(255,255,255,0.7)")}
+                onMouseLeave={e => (e.currentTarget.style.color = "rgba(255,255,255,0.3)")}>
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+              </button>
             )}
           </div>
-        )}
+          {projetoSelecionado ? (
+            <>
+              <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", marginBottom: 7, letterSpacing: "-0.01em" }}>{projetoSelecionado.nome_cliente}</div>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, marginBottom: 7 }}>
+                <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 5, padding: "4px 7px" }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: LIME, letterSpacing: "-0.02em", lineHeight: 1 }}>{vgAgendasConfirmadas}</div>
+                  <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>Agendas</div>
+                </div>
+                <div style={{ background: "rgba(0,0,0,0.2)", borderRadius: 5, padding: "4px 7px" }}>
+                  <div style={{ fontSize: 14, fontWeight: 800, color: AMBER, letterSpacing: "-0.02em", lineHeight: 1 }}>{coberturaPercent}%</div>
+                  <div style={{ fontSize: 8, color: "rgba(255,255,255,0.3)", marginTop: 1 }}>Cobertura</div>
+                </div>
+              </div>
+              <div style={{ display: "flex", justifyContent: "space-between", fontSize: 8, fontFamily: "'DM Mono', monospace", color: "rgba(255,255,255,0.22)", marginBottom: 3 }}>
+                <span>Cobertura Mai</span><span>{coberturaPercent}%</span>
+              </div>
+              <div style={{ height: 3, background: "rgba(255,255,255,0.07)", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ height: "100%", background: LIME, borderRadius: 2, width: `${Math.min(100, coberturaPercent)}%` }} />
+              </div>
+              <div style={{ fontSize: 9, color: "rgba(57,255,135,0.35)", fontFamily: "'DM Mono', monospace", marginTop: 5 }}>
+                {selectedAgenda ? "agenda ativa" : "em foco - selecione uma agenda"}
+              </div>
+            </>
+          ) : (
+            /* Estado inicial neutro — sem projeto, sem historico */
+            <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 6, padding: "8px 0 4px" }}>
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.12)" strokeWidth="1.5" strokeLinecap="round">
+                <rect x="2" y="7" width="20" height="14" rx="2"/>
+                <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+                <line x1="12" y1="12" x2="12" y2="16"/>
+                <line x1="10" y1="14" x2="14" y2="14"/>
+              </svg>
+              <div style={{ fontSize: 9, color: "rgba(255,255,255,0.18)", fontFamily: "'DM Mono', monospace", textAlign: "center", lineHeight: 1.6 }}>
+                Busque um projeto<br/>ou selecione uma agenda
+              </div>
+            </div>
+          )}
+        </div>
 
         {/* Nav */}
         <nav style={{ flex: 1, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 0, overflow: "hidden" }}>
           {/* Principal */}
           <div style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.22em", color: "rgba(255,255,255,0.17)", textTransform: "uppercase", padding: "8px 10px 3px", display: "block" }}>Principal</div>
           {[
-            { icon: <IcoDashboard />, label: "Dashboard", active: true },
-            { icon: <IcoPend />, label: "Pendencias", badge: totalPendencias > 0 ? totalPendencias : null, badgeColor: RED },
-            { icon: <IcoReq />, label: "Requisicoes", badge: requisicoesPendentes.length > 0 ? requisicoesPendentes.length : null, badgeColor: AMBER },
-            { icon: <IcoBacklog />, label: "Backlog", badgeText: "em breve" },
-          ].map(item => (
-            <div key={item.label} style={{
+            { icon: <IcoDashboard />, label: "Dashboard",   fn: () => { setNavAtiva("Dashboard"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
+            { icon: <IcoPend />,      label: "Pendencias",  badge: totalPendencias > 0 ? totalPendencias : null, badgeColor: RED,   fn: () => { setNavAtiva("Pendencias"); setPendenciasModalOpen(true); } },
+            { icon: <IcoReq />,       label: "Requisicoes", badge: requisicoesPendentes.length > 0 ? requisicoesPendentes.length : null, badgeColor: AMBER, fn: () => { setNavAtiva("Requisicoes"); setReqModalOpen(true); loadReqHistorico(); } },
+            { icon: <IcoBacklog />,   label: "Backlog",     badgeText: "em breve", fn: () => setNavAtiva("Backlog") },
+          ].map(item => {
+            const isActive = navAtiva === item.label;
+            return (
+            <div key={item.label} onClick={item.fn} style={{
               display: "flex", alignItems: "center", gap: 9,
               padding: "6px 10px", borderRadius: 7, cursor: "pointer",
-              color: item.active ? LIME : "rgba(255,255,255,0.4)",
-              fontSize: 11, fontWeight: item.active ? 600 : 500,
-              background: item.active ? "rgba(57,255,135,0.09)" : "transparent",
-              position: "relative",
+              color: isActive ? LIME : "rgba(255,255,255,0.4)",
+              fontSize: 11, fontWeight: isActive ? 600 : 500,
+              background: isActive ? "rgba(57,255,135,0.09)" : "transparent",
+              position: "relative", transition: "all 0.15s",
             }}>
-              <div style={{ width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: item.active ? 1 : 0.65 }}>{item.icon}</div>
+              <div style={{ width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: isActive ? 1 : 0.65 }}>{item.icon}</div>
               {item.label}
               {item.badge != null && (
                 <span style={{ marginLeft: "auto", fontSize: 8, padding: "1px 5px", borderRadius: 6, fontFamily: "'DM Mono', monospace", fontWeight: 600, background: `${item.badgeColor}22`, color: item.badgeColor }}>{item.badge}</span>
@@ -1005,9 +1207,10 @@ export default function ConsultorDashboardV2() {
               {item.badgeText && (
                 <span style={{ marginLeft: "auto", fontSize: 8, padding: "1px 5px", borderRadius: 6, fontFamily: "'DM Mono', monospace", fontWeight: 600, background: "rgba(255,255,255,0.06)", color: "rgba(255,255,255,0.28)" }}>{item.badgeText}</span>
               )}
-              {item.active && <div style={{ position: "absolute", left: 0, top: "20%", bottom: "20%", width: 2.5, background: LIME, borderRadius: "0 2px 2px 0" }} />}
+              {isActive && <div style={{ position: "absolute", left: 0, top: "20%", bottom: "20%", width: 2.5, background: LIME, borderRadius: "0 2px 2px 0" }} />}
             </div>
-          ))}
+            );
+          })}
 
           {/* Projeto context */}
           <div style={{ margin: "6px 0 0", display: "flex", alignItems: "center", gap: 8, fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.18em", color: "rgba(57,255,135,0.35)", textTransform: "uppercase" }}>
@@ -1062,112 +1265,123 @@ export default function ConsultorDashboardV2() {
       <main style={{ marginLeft: sidebarW, paddingTop: topbarH, minHeight: "100vh" }}>
         <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
 
-          {/* Header */}
-          <div>
-            <div style={{ fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: "-0.04em", lineHeight: 1 }}>
-              {(() => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; })()}, {user?.email?.split("@")[0] || "Consultor"}.
+          {/* Header — saudacao + pendencias na mesma linha */}
+          <div style={{ display: "flex", alignItems: "center", gap: 16, minHeight: 56 }}>
+            {/* Esquerda: saudacao */}
+            <div style={{ flexShrink: 0 }}>
+              <div style={{ fontSize: 24, fontWeight: 800, color: "#111827", letterSpacing: "-0.04em", lineHeight: 1 }}>
+                {(() => { const h = new Date().getHours(); return h < 12 ? "Bom dia" : h < 18 ? "Boa tarde" : "Boa noite"; })()}, {user?.email?.split("@")[0] || "Consultor"}.
+              </div>
+              <div style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: "#9CA3AF", letterSpacing: "0.08em", marginTop: 4 }}>
+                {"// "}{format(new Date(), "EEE", { locale: ptBR }).toUpperCase()}{" - "}{format(new Date(), "dd MMM yyyy", { locale: ptBR }).toUpperCase()}{" - "}{vgAgendasConfirmadas > 0 ? <span style={{ color: GREEN, fontWeight: 700 }}>{vgAgendasConfirmadas} agenda{vgAgendasConfirmadas !== 1 ? "s" : ""} no mes</span> : "nenhuma agenda confirmada"}
+              </div>
             </div>
-            <div style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: "#9CA3AF", letterSpacing: "0.08em", marginTop: 4 }}>
-              {"// "}{format(new Date(), "EEE", { locale: ptBR }).toUpperCase()}{" - "}{format(new Date(), "dd MMM yyyy", { locale: ptBR }).toUpperCase()}{" - "}{vgAgendasConfirmadas > 0 ? <span style={{ color: GREEN, fontWeight: 700 }}>{vgAgendasConfirmadas} agenda{vgAgendasConfirmadas !== 1 ? "s" : ""} no mes</span> : "nenhuma agenda confirmada"}
-            </div>
+            {/* Divisor vertical */}
+            {totalPendencias > 0 && <div style={{ width: 0.5, alignSelf: "stretch", background: "rgba(0,0,0,0.08)", flexShrink: 0 }} />}
+            {/* Direita: pendencias inline */}
+            {totalPendencias > 0 && (
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, background: "rgba(245,166,35,0.05)", border: "0.5px solid rgba(245,166,35,0.2)", borderRadius: 9, padding: "8px 12px", minWidth: 0 }}>
+                <AlertCircle size={14} style={{ color: "#92400E", flexShrink: 0 }} />
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 11, fontWeight: 700, color: "#92400E" }}>{totalPendencias} pendencia{totalPendencias !== 1 ? "s" : ""} ativa{totalPendencias !== 1 ? "s" : ""}</div>
+                  <div style={{ display: "flex", gap: 5, flexWrap: "wrap", marginTop: 3 }}>
+                    {pendencias.slice(0, 2).map(p => (
+                      <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 4, background: "rgba(245,166,35,0.1)", border: "0.5px solid rgba(245,166,35,0.2)", borderRadius: 5, padding: "2px 7px", fontSize: 9, color: "#92400E", whiteSpace: "nowrap" }}>
+                        <div style={{ width: 4, height: 4, borderRadius: "50%", background: p.tipo === "doc_pendente" ? RED : AMBER, flexShrink: 0 }} />
+                        {p.titulo} - {p.cliente}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <button onClick={() => setPendenciasModalOpen(true)} style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: "#92400E", background: "rgba(245,166,35,0.15)", border: "0.5px solid rgba(245,166,35,0.3)", borderRadius: 5, padding: "4px 10px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
+                  Ver todas +
+                </button>
+              </div>
+            )}
           </div>
 
-          {/* Banner pendencias globais */}
-          {totalPendencias > 0 && (
-            <div style={{ background: "rgba(245,166,35,0.06)", border: "0.5px solid rgba(245,166,35,0.25)", borderRadius: 9, padding: "10px 16px", display: "flex", alignItems: "center", gap: 12 }}>
-              <AlertCircle size={16} style={{ color: "#92400E", flexShrink: 0 }} />
-              <div style={{ flex: 1 }}>
-                <div style={{ fontSize: 12, fontWeight: 700, color: "#92400E" }}>{totalPendencias} pendencia{totalPendencias !== 1 ? "s" : ""} ativa{totalPendencias !== 1 ? "s" : ""} - todos os projetos</div>
-                <div style={{ display: "flex", gap: 8, flexWrap: "wrap", marginTop: 5 }}>
-                  {pendencias.slice(0, 2).map(p => (
-                    <div key={p.id} style={{ display: "flex", alignItems: "center", gap: 5, background: "rgba(245,166,35,0.1)", border: "0.5px solid rgba(245,166,35,0.2)", borderRadius: 6, padding: "3px 9px", fontSize: 10, color: "#92400E" }}>
-                      <div style={{ width: 5, height: 5, borderRadius: "50%", background: p.tipo === "doc_pendente" ? RED : AMBER, flexShrink: 0 }} />
-                      {p.titulo} - {p.cliente}
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <button style={{ fontSize: 10, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: "#92400E", background: "rgba(245,166,35,0.15)", border: "0.5px solid rgba(245,166,35,0.3)", borderRadius: 6, padding: "5px 12px", cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0 }}>
-                Ver todas +
-              </button>
-            </div>
-          )}
+          {/* FAIXA KPI — 3 blocos numa linha */}
+          <div style={{ background: "#fff", border: "0.5px solid rgba(0,0,0,0.07)", borderRadius: 10, overflow: "hidden", display: "grid", gridTemplateColumns: "22% 42% 36%" }}>
 
-          {/* TOP ZONE: KPIs 2x2 + Horas + Futuro */}
-          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 14, alignItems: "stretch" }}>
-            {/* KPIs 2x2 */}
-            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gridTemplateRows: "1fr 1fr", gap: 10, height: "100%" }}>
+            {/* BLOCO 1: 3 KPIs empilhados */}
+            <div style={{ display: "flex", flexDirection: "column", borderRight: "0.5px solid rgba(0,0,0,0.07)" }}>
               {[
-                { label: "Agendas",       value: vgAgendasConfirmadas, sub: "confirmadas este mes",   accent: BLUE },
-                { label: "Disponibilidade", value: vgDiasLivres,       sub: "dias livres em maio",    accent: GREEN },
-                { label: "Projetos",      value: vgProjetos,           sub: "ativos",                 accent: AMBER },
-                { label: "Cobertura Maio",value: `${coberturaPercent}%`, sub: `S${tsSemanas.filter(s=>s.apontadas>0).length} com apontamento`, accent: RED },
-              ].map(kpi => (
-                <div key={kpi.label} style={{ background: "#fff", border: "0.5px solid rgba(0,0,0,0.07)", borderRadius: 10, padding: "14px 16px", position: "relative", overflow: "hidden" }}>
-                  <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: kpi.accent, borderRadius: "10px 0 0 10px" }} />
-                  <div style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.12em", marginBottom: 7 }}>{kpi.label}</div>
-                  <div style={{ fontSize: 28, fontWeight: 800, color: kpi.accent, letterSpacing: "-0.04em", lineHeight: 1 }}>{kpi.value}</div>
-                  <div style={{ fontSize: 10, color: "#9CA3AF", marginTop: 5 }}>{kpi.sub}</div>
+                { label: "Agendas",        value: vgAgendasConfirmadas, sub: "confirmadas mai",  accent: BLUE  },
+                { label: "Disponibilidade", value: vgDiasLivres,        sub: "dias livres",       accent: GREEN },
+                { label: "Projetos",        value: vgProjetos,           sub: "ativos",            accent: AMBER },
+              ].map((kpi, i) => (
+                <div key={kpi.label} style={{ flex: 1, display: "flex", alignItems: "center", gap: 10, padding: "0 14px", borderBottom: i < 2 ? "0.5px solid rgba(0,0,0,0.06)" : "none" }}>
+                  <div style={{ width: 2.5, height: 22, borderRadius: 2, background: kpi.accent, flexShrink: 0 }} />
+                  <div style={{ fontSize: 22, fontWeight: 800, color: kpi.accent, lineHeight: 1, letterSpacing: "-0.03em", minWidth: 32 }}>{kpi.value}</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 1 }}>
+                    <div style={{ fontSize: 9, fontWeight: 600, color: "#6B7280", textTransform: "uppercase", letterSpacing: "0.08em" }}>{kpi.label}</div>
+                    <div style={{ fontSize: 8, color: "#9CA3AF", fontFamily: "'DM Mono', monospace" }}>{kpi.sub}</div>
+                  </div>
                 </div>
               ))}
             </div>
 
-            {/* Controle de Horas */}
-            <div style={{ background: "#fff", border: "0.5px solid rgba(0,0,0,0.07)", borderRadius: 10, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 11, position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: LIME, borderRadius: "10px 0 0 10px" }} />
+            {/* BLOCO 2: Controle de horas + semanas */}
+            <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 6, borderRight: "0.5px solid rgba(0,0,0,0.07)" }}>
+              {/* Header: titulo + numeros + cobertura */}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.12em" }}>Controle de Horas</span>
-                <span style={{ fontSize: 8, padding: "2px 7px", borderRadius: 100, background: "rgba(57,255,135,0.1)", color: GREEN, fontFamily: "'DM Mono', monospace", fontWeight: 600, border: "0.5px solid rgba(57,255,135,0.2)" }}>
-                  {format(currentMonth, "MMM", { locale: ptBR })} - ativo
-                </span>
-              </div>
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)" }}>
-                {[
-                  { val: tsAgendadas, label: "Agendado", color: "#111827" },
-                  { val: tsApontadas, label: "Apontado",  color: GREEN },
-                  { val: `${coberturaPercent}%`, label: "Cobertura", color: coberturaColor },
-                ].map((n, i) => (
-                  <div key={n.label} style={{ textAlign: "center", padding: "7px 0", boxShadow: i > 0 ? "inset 1px 0 0 rgba(0,0,0,0.07)" : "none" }}>
-                    <div style={{ fontSize: 20, fontWeight: 800, letterSpacing: "-0.03em", lineHeight: 1, color: n.color }}>{n.val}</div>
-                    <div style={{ fontSize: 8, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.08em", marginTop: 2 }}>{n.label}</div>
+                <span style={{ fontSize: 8, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.1em" }}>Controle de Horas — {format(currentMonth, "MMMM", { locale: ptBR })}</span>
+                <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1, color: "#111827" }}>{tsAgendadas}</div>
+                      <div style={{ fontSize: 7, fontFamily: "'DM Mono', monospace", color: "#9CA3AF", textTransform: "uppercase", marginTop: 1 }}>agend.</div>
+                    </div>
+                    <div style={{ width: 0.5, height: 24, background: "rgba(0,0,0,0.07)" }} />
+                    <div style={{ textAlign: "center" }}>
+                      <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1, color: GREEN }}>{tsApontadas}</div>
+                      <div style={{ fontSize: 7, fontFamily: "'DM Mono', monospace", color: "#9CA3AF", textTransform: "uppercase", marginTop: 1 }}>apoint.</div>
+                    </div>
                   </div>
-                ))}
+                  {/* Cobertura destacada */}
+                  <div style={{ display: "flex", alignItems: "center", gap: 5, background: coberturaPercent >= 80 ? "rgba(5,150,105,0.08)" : coberturaPercent >= 50 ? "rgba(245,166,35,0.08)" : "rgba(226,75,74,0.08)", border: `0.5px solid ${coberturaPercent >= 80 ? "rgba(5,150,105,0.2)" : coberturaPercent >= 50 ? "rgba(245,166,35,0.2)" : "rgba(226,75,74,0.2)"}`, borderRadius: 6, padding: "3px 9px" }}>
+                    <div style={{ fontSize: 16, fontWeight: 800, lineHeight: 1, color: coberturaColor }}>{coberturaPercent}%</div>
+                    <div style={{ fontSize: 7, fontFamily: "'DM Mono', monospace", color: coberturaColor, opacity: 0.8, textTransform: "uppercase", letterSpacing: "0.06em" }}>cobertura</div>
+                  </div>
+                </div>
               </div>
-              <div style={{ height: 0.5, background: "rgba(0,0,0,0.07)" }} />
-              <div style={{ display: "flex", flexDirection: "column", gap: 5 }}>
+              {/* Barras semanais como colunas verticais */}
+              <div style={{ flex: 1, display: "grid", gridTemplateColumns: `repeat(${tsSemanas.length}, 1fr)`, gap: 5, alignItems: "end" }}>
                 {tsSemanas.map(s => {
                   const pct = s.agendadas === 0 ? 0 : Math.round((s.apontadas / s.agendadas) * 100);
-                  const barColor = pct >= 80 ? LIME : pct >= 50 ? AMBER : RED;
+                  const maxSemana = Math.max(...tsSemanas.map(x => x.agendadas), 1);
+                  const barH = s.agendadas === 0 ? 0 : Math.max(10, Math.round((s.agendadas / maxSemana) * 100));
+                  const barColor = pct >= 80 ? GREEN : pct >= 50 ? AMBER : s.agendadas === 0 ? "#E5E7EB" : RED;
+                  const fillH   = s.agendadas === 0 ? 0 : Math.round((s.apontadas / s.agendadas) * barH);
                   return (
-                    <div key={s.label} style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                      <span style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", color: "#9CA3AF", width: 16, textAlign: "right", flexShrink: 0 }}>{s.label}</span>
-                      <div style={{ flex: 1, height: 4, background: "#F3F4F6", borderRadius: 2, overflow: "hidden" }}>
-                        <div style={{ height: "100%", borderRadius: 2, background: barColor, width: `${Math.min(100, s.agendadas === 0 ? 0 : pct)}%` }} />
+                    <div key={s.label} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2 }}>
+                      <div style={{ fontSize: 7, fontFamily: "'DM Mono', monospace", color: pct > 0 ? barColor : "#9CA3AF", fontWeight: pct > 0 ? 600 : 400 }}>{s.apontadas}/{s.agendadas}</div>
+                      <div style={{ width: "100%", height: 28, background: "#F3F4F6", borderRadius: 3, overflow: "hidden", display: "flex", alignItems: "flex-end" }}>
+                        <div style={{ width: "100%", height: `${fillH}%`, background: barColor, borderRadius: 3, minHeight: fillH > 0 ? 3 : 0 }} />
                       </div>
-                      <span style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", color: pct >= 80 ? GREEN : pct >= 50 ? "#D97706" : RED, width: 26, textAlign: "right", flexShrink: 0, fontWeight: pct > 0 ? 600 : 400 }}>
-                        {s.apontadas}/{s.agendadas}
-                      </span>
+                      <div style={{ fontSize: 7, fontFamily: "'DM Mono', monospace", color: "#9CA3AF", letterSpacing: "0.04em" }}>{s.label}</div>
                     </div>
                   );
                 })}
               </div>
             </div>
 
-            {/* Futuro Indicador */}
-            <div style={{ background: "#fff", border: "0.5px solid rgba(0,0,0,0.07)", borderRadius: 10, padding: "14px 16px", display: "flex", flexDirection: "column", gap: 9, position: "relative", overflow: "hidden" }}>
-              <div style={{ position: "absolute", left: 0, top: 0, bottom: 0, width: 3, background: "rgba(124,58,237,0.5)", borderRadius: "10px 0 0 10px" }} />
-              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                <span style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.12em" }}>Futuro Indicador</span>
-                <span style={{ fontSize: 8, padding: "2px 7px", borderRadius: 100, background: "rgba(124,58,237,0.08)", color: "#7C3AED", fontFamily: "'DM Mono', monospace", fontWeight: 600, border: "0.5px solid rgba(124,58,237,0.15)" }}>em definicao</span>
+            {/* BLOCO 3: Proximos KPIs */}
+            <div style={{ padding: "10px 16px", display: "flex", flexDirection: "column", gap: 0 }}>
+              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 8 }}>
+                <span style={{ fontSize: 8, fontWeight: 600, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.1em" }}>Proximos KPIs</span>
+                <span style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", color: "#9CA3AF", background: "#F3F4F6", border: "0.5px solid rgba(0,0,0,0.07)", borderRadius: 4, padding: "1px 6px" }}>em definicao</span>
               </div>
-              <div style={{ flex: 1, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, padding: 10, border: "0.5px dashed rgba(124,58,237,0.2)", borderRadius: 8, background: "rgba(124,58,237,0.02)", textAlign: "center" }}>
-                <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="rgba(124,58,237,0.4)" strokeWidth="1.5" strokeLinecap="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/></svg>
-                <span style={{ fontSize: 10, fontWeight: 600, color: "#9CA3AF" }}>Proximo KPI</span>
-              </div>
-              {["Health Score", "SLA de Atendimento", "Desvio de Prazo", "Satisfacao do Cliente"].map(opt => (
-                <div key={opt} style={{ padding: "6px 10px", borderRadius: 6, border: "0.5px solid rgba(0,0,0,0.07)", fontSize: 10, color: "#4B5563", display: "flex", alignItems: "center", gap: 7 }}>
-                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: "rgba(124,58,237,0.4)", flexShrink: 0 }} />
-                  {opt}
+              {[
+                { label: "Health Score",        dot: BLUE  },
+                { label: "SLA de Atendimento",  dot: GREEN },
+                { label: "Desvio de Prazo",     dot: AMBER },
+                { label: "Satisfacao do Cliente", dot: RED },
+              ].map((item, i) => (
+                <div key={item.label} style={{ display: "flex", alignItems: "center", gap: 8, padding: "6px 0", borderBottom: i < 3 ? "0.5px solid rgba(0,0,0,0.06)" : "none" }}>
+                  <div style={{ width: 5, height: 5, borderRadius: "50%", background: item.dot, flexShrink: 0, opacity: 0.5 }} />
+                  <span style={{ fontSize: 10, color: "#6B7280", flex: 1 }}>{item.label}</span>
+                  <span style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", color: "#9CA3AF", background: "#F9FAFB", borderRadius: 3, padding: "1px 5px", opacity: 0.7 }}>breve</span>
                 </div>
               ))}
             </div>
@@ -1186,7 +1400,9 @@ export default function ConsultorDashboardV2() {
                 <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
                   {selectedAgenda
                     ? <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 100, background: "rgba(57,255,135,0.1)", color: GREEN, border: "0.5px solid rgba(57,255,135,0.2)", fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>1 selecionada</span>
-                    : <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 100, background: "#F3F4F6", color: "#6B7280", fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>Selecione uma agenda</span>
+                    : projetoSelecionado && !selectedClienteId
+                      ? <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 100, background: "rgba(59,130,246,0.1)", color: BLUE, borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(59,130,246,0.25)", fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{projetoSelecionado.nome_cliente}</span>
+                      : <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 100, background: "#F3F4F6", color: "#6B7280", fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>Selecione uma agenda</span>
                   }
                   <span style={{ fontSize: 9, padding: "2px 8px", borderRadius: 100, background: "#EFF6FF", color: BLUE, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{format(currentMonth, "MMM yyyy", { locale: ptBR })}</span>
                 </div>
@@ -1213,12 +1429,15 @@ export default function ConsultorDashboardV2() {
                       return (
                         <button key={dateStr} onClick={() => setSelectedDate(isSel ? null : dateStr)}
                           style={{
-                            fontSize: 11, color: isSel && !todayDay ? GREEN : todayDay ? LIME : "#4B5563",
-                            borderRadius: 5, cursor: "pointer", border: todayDay ? `2px solid ${LIME}` : "none",
+                            fontSize: 11,
+                            color: isSel && !todayDay ? GREEN : todayDay ? LIME : "#4B5563",
+                            borderRadius: 5, cursor: "pointer",
+                            border: todayDay ? `2px solid ${LIME}` : diasDoProjeto?.has(dateStr) ? "0.5px solid rgba(59,130,246,0.35)" : "none",
                             display: "flex", flexDirection: "column", alignItems: "center",
                             padding: "4px 1px 3px", gap: 2,
-                            background: isSel && !todayDay ? "rgba(57,255,135,0.1)" : "transparent",
-                            fontWeight: todayDay || isSel ? 800 : 400,
+                            background: isSel && !todayDay ? "rgba(57,255,135,0.1)" : diasDoProjeto?.has(dateStr) ? "rgba(59,130,246,0.07)" : "transparent",
+                            fontWeight: todayDay || isSel || diasDoProjeto?.has(dateStr) ? 700 : 400,
+                            opacity: diasDoProjeto && !diasDoProjeto.has(dateStr) && !!status ? 0.4 : 1,
                           }}>
                           <span>{day.getDate()}</span>
                           <div style={{ display: "flex", gap: 2, justifyContent: "center", minHeight: 6 }}>
@@ -1298,15 +1517,80 @@ export default function ConsultorDashboardV2() {
 
               <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
                 {!selectedAgenda ? (
-                  <div style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", padding: "24px 14px", fontFamily: "'DM Mono', monospace", letterSpacing: "0.05em", lineHeight: 1.8 }}>
-                    Selecione uma agenda no calendario
+                  <div style={{ padding: "12px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
+                    {/* Card projeto em foco via busca — visual neutro/azul, diferente do verde de agenda ativa */}
+                    {projetoSelecionado ? (
+                      <div style={{ background: "rgba(59,130,246,0.04)", borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(59,130,246,0.15)", borderRadius: 8, padding: "10px 12px" }}>
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 6 }}>
+                          <div style={{ flex: 1, minWidth: 0 }}>
+                            <div style={{ fontSize: 12, fontWeight: 700, color: "#1D4ED8", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{projetoSelecionado.nome_cliente}</div>
+                            <div style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "'DM Mono', monospace", marginTop: 2 }}>projeto em foco</div>
+                          </div>
+                          <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                            {(projetoSelecionado as any)?.monday_board_url ? (
+                              <a href={(projetoSelecionado as any).monday_board_url} target="_blank" rel="noopener noreferrer" title="Abrir board no Monday"
+                                style={{ width: 24, height: 24, borderRadius: 5, background: "#fff", borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(254,100,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, textDecoration: "none" }}>
+                                <svg width="13" height="13" viewBox="0 0 32 32" fill="none"><circle cx="7" cy="22" r="5" fill="#FF3D57"/><circle cx="16" cy="22" r="5" fill="#FFCB00"/><circle cx="25" cy="22" r="5" fill="#00CA72"/><path d="M7 17c0-5 3-13 5-13s5 8 5 13" stroke="#FF3D57" strokeWidth="3" strokeLinecap="round" fill="none"/><path d="M16 17c0-5 3-13 5-13s5 8 5 13" stroke="#FFCB00" strokeWidth="3" strokeLinecap="round" fill="none"/></svg>
+                              </a>
+                            ) : (
+                              <div style={{ width: 24, height: 24, borderRadius: 5, background: "rgba(0,0,0,0.02)", borderWidth: "0.5px", borderStyle: "dashed", borderColor: "rgba(0,0,0,0.08)", flexShrink: 0, opacity: 0.4 }} />
+                            )}
+                            <div style={{ width: 24, height: 24, borderRadius: 5, background: "rgba(0,0,0,0.02)", borderWidth: "0.5px", borderStyle: "dashed", borderColor: "rgba(0,0,0,0.08)", flexShrink: 0 }} />
+                          </div>
+                        </div>
+                        {/* Hint calendário */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 5, padding: "6px 8px", background: "rgba(59,130,246,0.06)", borderRadius: 6, borderWidth: "0.5px", borderStyle: "dashed", borderColor: "rgba(59,130,246,0.2)" }}>
+                          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2" strokeLinecap="round"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                          <span style={{ fontSize: 9, color: "#3B82F6", fontFamily: "'DM Mono', monospace" }}>Selecione uma data no calendario para registrar</span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: "#9CA3AF", textAlign: "center", padding: "10px 0", fontFamily: "'DM Mono', monospace", letterSpacing: "0.05em" }}>
+                        Selecione uma agenda no calendario
+                      </div>
+                    )}
+                    <button onClick={() => { if (selectedDate) setReqData(selectedDate); if (projetoSelecionado) setReqCliente(projetoSelecionado.nome_cliente); setReqOpen(true); }}
+                      style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, cursor: "pointer", borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(59,130,246,0.2)", background: "rgba(59,130,246,0.03)", textAlign: "left", width: "100%" }}>
+                      <div style={{ width: 28, height: 28, borderRadius: 7, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+                      </div>
+                      <div style={{ flex: 1 }}>
+                        <div style={{ fontSize: 12, fontWeight: 700, color: "#1D4ED8" }}>Requisitar Agenda</div>
+                        <div style={{ fontSize: 9, color: "#9CA3AF", marginTop: 1 }}>Solicitar nova data ou atividade</div>
+                      </div>
+                    </button>
                   </div>
                 ) : (
                   <>
                     <div style={{ margin: "10px 12px 0", background: "rgba(57,255,135,0.04)", border: "0.5px solid rgba(57,255,135,0.15)", borderRadius: 8, padding: "9px 11px" }}>
-                      <div style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>{selectedAgenda.cliente}</div>
-                      <div style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "'DM Mono', monospace", marginTop: 2, letterSpacing: "0.04em" }}>
-                        {format(parseISO(selectedAgenda.data), "dd/MM/yyyy")} - {selectedAgenda.atividade} - {getAgendaStatusDisplay(selectedAgenda).label}
+                      {/* Linha superior: info do projeto */}
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                        <div style={{ flex: 1, minWidth: 0 }}>
+                          <div style={{ fontSize: 12, fontWeight: 700, color: "#111827", whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{selectedAgenda.cliente}</div>
+                          <div style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "'DM Mono', monospace", marginTop: 2, letterSpacing: "0.04em" }}>
+                            {format(parseISO(selectedAgenda.data), "dd/MM/yyyy")} - {selectedAgenda.atividade} - {getAgendaStatusDisplay(selectedAgenda).label}
+                          </div>
+                        </div>
+                        {/* Barra de integrações: Monday + 2 slots futuros */}
+                        <div style={{ display: "flex", alignItems: "center", gap: 4, flexShrink: 0 }}>
+                          {/* Monday — aparece só se tiver board_url */}
+                          {(projetoSelecionado as any)?.monday_board_url ? (
+                            <a href={(projetoSelecionado as any).monday_board_url} target="_blank" rel="noopener noreferrer"
+                              title="Abrir board no Monday"
+                              style={{ width: 28, height: 28, borderRadius: 6, background: "#fff", borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(254,100,0,0.3)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, textDecoration: "none" }}>
+                              <svg width="15" height="15" viewBox="0 0 32 32" fill="none"><circle cx="7" cy="22" r="5" fill="#FF3D57"/><circle cx="16" cy="22" r="5" fill="#FFCB00"/><circle cx="25" cy="22" r="5" fill="#00CA72"/><path d="M7 17c0-5 3-13 5-13s5 8 5 13" stroke="#FF3D57" strokeWidth="3" strokeLinecap="round" fill="none"/><path d="M16 17c0-5 3-13 5-13s5 8 5 13" stroke="#FFCB00" strokeWidth="3" strokeLinecap="round" fill="none"/></svg>
+                            </a>
+                          ) : (
+                            <div title="Monday nao configurado"
+                              style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(0,0,0,0.02)", borderWidth: "0.5px", borderStyle: "dashed", borderColor: "rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: 0.4 }}>
+                              <svg width="15" height="15" viewBox="0 0 32 32" fill="none"><circle cx="7" cy="22" r="5" fill="#ccc"/><circle cx="16" cy="22" r="5" fill="#ccc"/><circle cx="25" cy="22" r="5" fill="#ccc"/><path d="M7 17c0-5 3-13 5-13s5 8 5 13" stroke="#ccc" strokeWidth="3" strokeLinecap="round" fill="none"/><path d="M16 17c0-5 3-13 5-13s5 8 5 13" stroke="#ccc" strokeWidth="3" strokeLinecap="round" fill="none"/></svg>
+                            </div>
+                          )}
+                          {/* Slot 2 — futuro */}
+                          <div style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(0,0,0,0.02)", borderWidth: "0.5px", borderStyle: "dashed", borderColor: "rgba(0,0,0,0.08)", flexShrink: 0 }} />
+                          {/* Slot 3 — futuro */}
+                          <div style={{ width: 28, height: 28, borderRadius: 6, background: "rgba(0,0,0,0.02)", borderWidth: "0.5px", borderStyle: "dashed", borderColor: "rgba(0,0,0,0.08)", flexShrink: 0 }} />
+                        </div>
                       </div>
                     </div>
                     <div style={{ padding: "8px 12px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
@@ -1331,9 +1615,9 @@ export default function ConsultorDashboardV2() {
                       </button>
 
                       {/* Requisitar */}
-                      <button onClick={() => setReqOpen(true)}
-                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, cursor: "pointer", border: "0.5px solid rgba(0,0,0,0.07)", background: "#fff", textAlign: "left", width: "100%" }}>
-                        <div style={{ width: 28, height: 28, borderRadius: 7, background: "#EFF6FF", color: BLUE, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 13, flexShrink: 0 }}>+</div>
+                      <button onClick={() => { if (selectedDate) setReqData(selectedDate); if (selectedAgenda) setReqCliente(selectedAgenda.cliente); setReqOpen(true); }}
+                        style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, cursor: "pointer", borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(59,130,246,0.2)", background: "rgba(59,130,246,0.03)", textAlign: "left", width: "100%" }}>
+                        <div style={{ width: 28, height: 28, borderRadius: 7, background: "#EFF6FF", color: BLUE, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>+</div>
                         <div style={{ flex: 1 }}>
                           <div style={{ fontSize: 12, fontWeight: 700, color: "#111827" }}>Requisitar Agenda</div>
                           <div style={{ fontSize: 9, color: "#9CA3AF", marginTop: 1 }}>Nova data ou atividade</div>
@@ -1350,6 +1634,27 @@ export default function ConsultorDashboardV2() {
                         </div>
                       </button>
                     </div>
+                      {/* Doc Upload — exibir quando agenda tem doc exigido nao satisfeito */}
+                      {cronogramaItemDoc?.doc_exigido && !cronogramaItemDoc.doc_satisfeito && (
+                        <div style={{ borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(245,166,35,0.3)", background: "rgba(245,166,35,0.05)", borderRadius: 8, padding: "10px 12px", display: "flex", flexDirection: "column", gap: 7 }}>
+                          <div style={{ fontSize: 11, fontWeight: 600, color: "#D97706", display: "flex", alignItems: "center", gap: 5 }}>
+                            <FileStack className="h-3.5 w-3.5" />
+                            Doc. exigido: {cronogramaItemDoc.codigo}
+                          </div>
+                          <div style={{ fontSize: 10, color: "#9CA3AF" }}>{cronogramaItemDoc.descricao}</div>
+                          <Input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className="text-xs h-7"
+                            onChange={e => setDocFile(e.target.files?.[0] || null)} />
+                          {docFile && (
+                            <button onClick={handleUploadDoc} disabled={docUploading}
+                              style={{ height: 30, borderRadius: 7, border: "none", background: "#D97706", color: "#fff", fontSize: 11, fontWeight: 600, cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 5 }}>
+                              {docUploading
+                                ? <Loader2 className="h-3 w-3 animate-spin" />
+                                : <><FileStack className="h-3 w-3" /> Enviar documento</>}
+                            </button>
+                          )}
+                        </div>
+                      )}
+
                     <div style={{ margin: "0 12px 12px", padding: "7px 10px", background: "rgba(0,0,0,0.02)", borderRadius: 5, fontSize: 9, color: "#9CA3AF", textAlign: "center", fontFamily: "'DM Mono', monospace", border: "0.5px solid rgba(0,0,0,0.07)" }}>
                       OS enviada automaticamente apos apontamento
                     </div>
@@ -1619,6 +1924,59 @@ export default function ConsultorDashboardV2() {
       <style>{`
         @keyframes blink { 0%,100%{opacity:.5} 50%{opacity:1} }
         @keyframes spin  { from{transform:rotate(0deg)} to{transform:rotate(360deg)} }
+        .modal-navy-header { background:#0B1628; padding:16px 20px; display:flex; align-items:center; justify-content:space-between; border-radius:8px 8px 0 0; }
+        .modal-navy-title { font-size:15px; font-weight:600; color:#fff; letter-spacing:-0.01em; }
+        .modal-navy-meta { font-size:10px; color:rgba(57,255,135,0.65); font-family:'DM Mono',monospace; margin-top:3px; letter-spacing:0.04em; }
+        .modal-navy-close { width:28px; height:28px; border-radius:6px; background:rgba(255,255,255,0.08); border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; color:rgba(255,255,255,0.5); flex-shrink:0; transition:background 0.15s; }
+        .modal-navy-close:hover { background:rgba(255,255,255,0.15); color:#fff; }
+        .modal-body-padded { padding:18px 20px; display:flex; flex-direction:column; gap:14px; overflow-y:auto; flex:1; }
+        .modal-field-label { font-size:9px; font-weight:700; color:#6B7280; text-transform:uppercase; letter-spacing:0.12em; margin-bottom:5px; }
+        .modal-footer-navy { padding:14px 20px; border-top:0.5px solid rgba(0,0,0,0.07); display:flex; align-items:center; justify-content:space-between; background:rgba(0,0,0,0.015); border-radius:0 0 8px 8px; }
+        .modal-footer-hint { font-size:9px; font-family:'DM Mono',monospace; color:#9CA3AF; display:flex; align-items:center; gap:4px; }
+        .modal-btn-primary { height:34px; padding:0 18px; border-radius:8px; border:none; background:#0B1628; color:#39FF87; font-size:12px; font-weight:600; cursor:pointer; display:flex; align-items:center; gap:6px; transition:opacity 0.15s; white-space:nowrap; }
+        .modal-btn-primary:disabled { opacity:0.5; cursor:not-allowed; }
+        .modal-btn-primary:hover:not(:disabled) { opacity:0.85; }
+        .modal-btn-secondary { height:34px; padding:0 16px; border-radius:8px; border:0.5px solid rgba(0,0,0,0.12); background:#fff; color:#4B5563; font-size:12px; cursor:pointer; transition:background 0.15s; }
+        .modal-btn-secondary:hover { background:#F9FAFB; }
+        .mod-tab-group { display:flex; background:#E2E4E8; border-radius:8px; padding:3px; gap:3px; }
+        .mod-tab-btn { flex:1; height:30px; border-radius:6px; border:none; background:transparent; font-size:12px; font-family:'DM Mono',monospace; color:#1E3A5F; font-weight:500; cursor:pointer; transition:all 0.15s; display:flex; align-items:center; justify-content:center; gap:5px; }
+        .mod-tab-btn.active { background:#0B1628; color:#39FF87; font-weight:600; box-shadow:0 1px 3px rgba(0,0,0,0.15); }
+        .mod-tab-btn svg { flex-shrink:0; }
+        .crono-field-wrap { display:flex; flex-direction:column; gap:3px; }
+        .crono-field-lbl { font-size:9px; font-weight:500; color:#3B82F6; text-transform:uppercase; letter-spacing:0.1em; display:flex; align-items:center; gap:4px; }
+        .crono-field-lbl span { color:#9CA3AF; font-weight:400; }
+        .crono-sel { height:28px; border-radius:6px; font-size:11px; font-family:'DM Mono',monospace; display:flex; align-items:center; justify-content:space-between; padding:0 10px; cursor:pointer; }
+        .crono-sel.empty { border:0.5px dashed rgba(59,130,246,0.3); background:rgba(59,130,246,0.03); color:#9CA3AF; }
+        .crono-sel.filled { border:0.5px solid rgba(59,130,246,0.3); background:rgba(59,130,246,0.06); color:#1D4ED8; }
+        .atv-tab-group { display:flex; align-items:center; border-bottom:0.5px solid rgba(0,0,0,0.08); margin-bottom:8px; }
+        .atv-tab-btn { height:26px; padding:0 10px; font-size:10px; font-family:'DM Mono',monospace; background:transparent; border:none; color:#9CA3AF; cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-0.5px; display:flex; align-items:center; gap:4px; transition:all 0.12s; }
+        .atv-tab-btn.active { color:#0B1628; border-bottom-color:#39FF87; font-weight:500; }
+        .atv-tab-btn.add { color:#059669; margin-left:auto; border-bottom:none; }
+        .atv-card-navy { border:0.5px solid rgba(0,0,0,0.07); border-radius:8px; padding:12px; background:#F9FAFB; display:flex; flex-direction:column; gap:8px; }
+        .atv-card-navy:focus-within { border-color:rgba(57,255,135,0.35); background:rgba(57,255,135,0.02); }
+        .atv-progress { height:3px; background:#E5E7EB; border-radius:2px; overflow:hidden; margin-top:2px; }
+        .atv-progress-fill { height:100%; background:#39FF87; border-radius:2px; transition:width 0.3s; }
+        .atv-info-badge { display:inline-flex; align-items:center; gap:4px; font-size:9px; font-family:'DM Mono',monospace; color:#059669; background:rgba(5,150,105,0.08); border:0.5px solid rgba(5,150,105,0.2); border-radius:4px; padding:1px 6px; }
+        .add-atv-btn { width:100%; height:32px; border:0.5px dashed rgba(57,255,135,0.35); border-radius:8px; background:rgba(57,255,135,0.02); color:#059669; font-size:11px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; transition:all 0.15s; }
+        .add-atv-btn:hover { background:rgba(57,255,135,0.05); border-color:rgba(57,255,135,0.5); }
+        .diario-section-navy { border:0.5px dashed rgba(0,0,0,0.1); border-radius:8px; padding:10px 12px; background:#FAFAFA; }
+        .modal-divider { height:0.5px; background:rgba(0,0,0,0.06); margin:0 -1px; }
+        .resumo-info-card { background:#F8FAFC; border:0.5px solid rgba(0,0,0,0.07); border-radius:8px; padding:12px 14px; display:flex; flex-direction:column; gap:4px; }
+        .resumo-atv-row { border:0.5px solid rgba(0,0,0,0.07); border-radius:8px; padding:10px 12px; }
+        [data-radix-dialog-content] { padding:0 !important; overflow:hidden; }
+        [data-radix-dialog-content] > div[role="dialog"] { padding:0 !important; }
+        .modal-body-padded::-webkit-scrollbar { width:4px; }
+        .modal-body-padded::-webkit-scrollbar-track { background:transparent; }
+        .modal-body-padded::-webkit-scrollbar-thumb { background:rgba(0,0,0,0.12); border-radius:2px; }
+        .modal-body-padded::-webkit-scrollbar-thumb:hover { background:rgba(0,0,0,0.22); }
+        .scrollbar-hide::-webkit-scrollbar { display:none !important; }
+        .scrollbar-hide { -ms-overflow-style:none; scrollbar-width:none; }
+        [role="dialog"] > button[aria-label="Close"] { display:none !important; }
+        [role="dialog"] > button:has(svg.lucide-x) { display:none !important; }
+        .desc-os-section { border:0.5px solid rgba(0,0,0,0.08); border-radius:8px; overflow:hidden; }
+        .desc-os-header { background:#F9FAFB; padding:8px 12px; font-size:9px; font-weight:600; color:#6B7280; text-transform:uppercase; letter-spacing:0.1em; border-bottom:0.5px solid rgba(0,0,0,0.06); display:flex; align-items:center; gap:5px; }
+        .desc-os-body { padding:8px 12px; }
+
       `}</style>
     </div>
   );
@@ -1627,298 +1985,675 @@ export default function ConsultorDashboardV2() {
   function renderDialogs() {
     return (
       <>
-        {/* Modal de Apontamento — portado integralmente do ConsultorDashboard.tsx original */}
-        <Dialog open={apontamentoOpen} onOpenChange={setApontamentoOpen}>
-          <DialogContent className="max-w-lg max-h-[90dvh] flex flex-col">
-            <DialogHeader>
-              <DialogTitle className="text-sm">Registrar Apontamento</DialogTitle>
-              {selectedAgenda && <p className="text-xs text-muted-foreground">{selectedAgenda.cliente} - {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}</p>}
-            </DialogHeader>
-            <div className="flex-1 overflow-y-auto space-y-4 px-1">
+        {/* Modal Requisições — historico e acompanhamento */}
+        <Dialog open={reqModalOpen} onOpenChange={v => { setReqModalOpen(v); if (!v) setNavAtiva("Dashboard"); }}>
+          <DialogContent className="max-w-lg max-h-[85dvh] flex flex-col !p-0 !gap-0 overflow-hidden [&>button[aria-label=Close]]:!hidden">
+            <DialogTitle className="sr-only">Minhas Requisicoes</DialogTitle>
+            <div className="modal-navy-header">
               <div>
-                <Label className="text-xs mb-1 block">Modalidade</Label>
-                <Select value={apontModalidade} onValueChange={setApontModalidade}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Remoto">Remoto</SelectItem>
-                    <SelectItem value="Presencial">Presencial</SelectItem>
-                    <SelectItem value="Hibrido">Hibrido</SelectItem>
-                  </SelectContent>
-                </Select>
+                <div className="modal-navy-title">Minhas Requisicoes</div>
+                <div className="modal-navy-meta">Acompanhamento de solicitacoes e cancelamentos</div>
               </div>
-              <div className="space-y-2">
-                <Label className="text-xs">Atividades</Label>
-                {atividadesApontadas.map((aa, idx) => {
-                  const atv = projetoAtividades.find(a => a.codigo === aa.atividade_codigo);
-                  const saldo = atv ? getSaldo(atv) : null;
-                  const pct   = atv ? getPercentual(atv) : 0;
-                  return (
-                    <div key={idx} className="rounded-lg border p-3 space-y-2 bg-muted/30">
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-semibold text-muted-foreground">Atividade {idx + 1}</span>
-                        {atividadesApontadas.length > 1 && (
-                          <button onClick={() => setAtividadesApontadas(prev => prev.filter((_, i) => i !== idx))} className="text-muted-foreground hover:text-red-500">
-                            <Trash2 className="h-3 w-3" />
-                          </button>
-                        )}
+              <button className="modal-navy-close" onClick={() => { setReqModalOpen(false); setNavAtiva("Dashboard"); }} aria-label="Fechar"><XCircle className="h-4 w-4" /></button>
+            </div>
+            {/* Abas */}
+            <div style={{ display: "flex", borderBottom: "0.5px solid rgba(0,0,0,0.07)", background: "rgba(0,0,0,0.01)" }}>
+              {([
+                { id: "pendentes",      label: "Novas Agendas",  count: reqHistorico.filter(r => r._tipo === "requisicao" && r.status === "pendente").length },
+                { id: "cancelamentos",  label: "Cancelamentos",  count: reqHistorico.filter(r => r._tipo === "cancelamento").length },
+                { id: "aprovacoes",     label: "Aprovacoes",     count: reqHistorico.filter(r => r._tipo === "requisicao" && ["aprovada","recusada"].includes(r.status)).length },
+              ] as const).map(tab => (
+                <button key={tab.id} onClick={() => setReqModalTab(tab.id)}
+                  style={{ flex: 1, height: 36, background: "transparent", borderWidth: "0 0 2px 0", borderStyle: "solid", borderColor: reqModalTab === tab.id ? "#0B1628" : "transparent", fontSize: 11, fontWeight: reqModalTab === tab.id ? 600 : 400, color: reqModalTab === tab.id ? "#111827" : "#6B7280", cursor: "pointer", display: "flex", alignItems: "center", justifyContent: "center", gap: 6, transition: "all 0.15s" }}>
+                  {tab.label}
+                  {tab.count > 0 && <span style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", background: reqModalTab === tab.id ? "#0B1628" : "#F3F4F6", color: reqModalTab === tab.id ? "#39FF87" : "#6B7280", borderRadius: 10, padding: "1px 6px", fontWeight: 600 }}>{tab.count}</span>}
+                </button>
+              ))}
+            </div>
+            {/* Conteúdo */}
+            <div style={{ flex: 1, overflowY: "auto", padding: "12px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {reqHistLoading ? (
+                <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 32, gap: 8 }}>
+                  <Loader2 className="h-4 w-4 animate-spin" style={{ color: "#9CA3AF" }} />
+                  <span style={{ fontSize: 11, color: "#9CA3AF", fontFamily: "'DM Mono', monospace" }}>Carregando...</span>
+                </div>
+              ) : (
+                <>
+                  {/* ABA: Novas Agendas (pendentes) */}
+                  {reqModalTab === "pendentes" && (() => {
+                    const items = reqHistorico.filter(r => r._tipo === "requisicao" && r.status === "pendente");
+                    return items.length === 0
+                      ? <div style={{ textAlign: "center", padding: 32, fontSize: 12, color: "#9CA3AF" }}>Nenhuma requisicao pendente</div>
+                      : items.map(r => (
+                        <div key={r.id} style={{ padding: "10px 12px", borderRadius: 8, borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(245,166,35,0.25)", background: "rgba(245,166,35,0.04)", display: "flex", flexDirection: "column", gap: 5 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{r.cliente}</div>
+                            <span style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: "#D97706", background: "rgba(245,166,35,0.1)", border: "0.5px solid rgba(245,166,35,0.3)", borderRadius: 4, padding: "2px 7px" }}>Aguardando aprovacao</span>
+                          </div>
+                          <div style={{ fontSize: 10, color: "#6B7280", display: "flex", gap: 12, fontFamily: "'DM Mono', monospace" }}>
+                            <span>{r.data ? format(parseISO(r.data), "dd/MM/yyyy") : "-"}</span>
+                            <span>{r.atividade || "-"}</span>
+                            <span>{r.total_horas ? `${r.total_horas}h` : ""}</span>
+                            <span>{r.modalidade}</span>
+                          </div>
+                          {r.justificativa && <div style={{ fontSize: 10, color: "#9CA3AF", fontStyle: "italic" }}>{r.justificativa}</div>}
+                        </div>
+                      ));
+                  })()}
+                  {/* ABA: Cancelamentos aguardando */}
+                  {reqModalTab === "cancelamentos" && (() => {
+                    const items = reqHistorico.filter(r => r._tipo === "cancelamento");
+                    return items.length === 0
+                      ? <div style={{ textAlign: "center", padding: 32, fontSize: 12, color: "#9CA3AF" }}>Nenhum cancelamento pendente</div>
+                      : items.map(r => (
+                        <div key={r.id} style={{ padding: "10px 12px", borderRadius: 8, borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(226,75,74,0.2)", background: "rgba(226,75,74,0.04)", display: "flex", flexDirection: "column", gap: 5 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{r.cliente}</div>
+                            <span style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: "#E24B4A", background: "rgba(226,75,74,0.08)", border: "0.5px solid rgba(226,75,74,0.2)", borderRadius: 4, padding: "2px 7px" }}>Aguardando cancelamento</span>
+                          </div>
+                          <div style={{ fontSize: 10, color: "#6B7280", fontFamily: "'DM Mono', monospace" }}>
+                            {r.data ? format(parseISO(r.data), "dd/MM/yyyy") : "-"} - {r.atividade || "-"}
+                          </div>
+                        </div>
+                      ));
+                  })()}
+                  {/* ABA: Aprovacoes (aprovadas/recusadas) */}
+                  {reqModalTab === "aprovacoes" && (() => {
+                    const items = reqHistorico.filter(r => r._tipo === "requisicao" && ["aprovada","recusada"].includes(r.status));
+                    return items.length === 0
+                      ? <div style={{ textAlign: "center", padding: 32, fontSize: 12, color: "#9CA3AF" }}>Nenhuma aprovacao nos ultimos 30 dias</div>
+                      : items.map(r => (
+                        <div key={r.id} style={{ padding: "10px 12px", borderRadius: 8, borderWidth: "0.5px", borderStyle: "solid", borderColor: r.status === "aprovada" ? "rgba(5,150,105,0.2)" : "rgba(226,75,74,0.2)", background: r.status === "aprovada" ? "rgba(5,150,105,0.04)" : "rgba(226,75,74,0.04)", display: "flex", flexDirection: "column", gap: 5 }}>
+                          <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                            <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{r.cliente}</div>
+                            <span style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: r.status === "aprovada" ? GREEN : RED, background: r.status === "aprovada" ? "rgba(5,150,105,0.08)" : "rgba(226,75,74,0.08)", border: `0.5px solid ${r.status === "aprovada" ? "rgba(5,150,105,0.2)" : "rgba(226,75,74,0.2)"}`, borderRadius: 4, padding: "2px 7px", textTransform: "capitalize" }}>{r.status}</span>
+                          </div>
+                          <div style={{ fontSize: 10, color: "#6B7280", fontFamily: "'DM Mono', monospace" }}>
+                            {r.data ? format(parseISO(r.data), "dd/MM/yyyy") : "-"} - {r.atividade || "-"}
+                          </div>
+                        </div>
+                      ));
+                  })()}
+                </>
+              )}
+            </div>
+            <div className="modal-footer-navy">
+              <span className="modal-footer-hint"><CalendarDays className="h-3 w-3" /> Ultimos 30 dias + pendentes</span>
+              <button className="modal-btn-secondary" onClick={() => { setReqModalOpen(false); setNavAtiva("Dashboard"); }}>Fechar</button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal Pendências — todas as pendências */}
+        <Dialog open={pendenciasModalOpen} onOpenChange={setPendenciasModalOpen}>
+          <DialogContent className="max-w-lg max-h-[80dvh] flex flex-col !p-0 !gap-0 overflow-hidden [&>button[aria-label=Close]]:!hidden">
+            <DialogTitle className="sr-only">Todas as Pendencias</DialogTitle>
+            <div className="modal-navy-header">
+              <div>
+                <div className="modal-navy-title">Pendencias Ativas</div>
+                <div className="modal-navy-meta">{totalPendencias} pendencia{totalPendencias !== 1 ? "s" : ""} - todos os projetos</div>
+              </div>
+              <button className="modal-navy-close" onClick={() => { setPendenciasModalOpen(false); setNavAtiva("Dashboard"); }} aria-label="Fechar"><XCircle className="h-4 w-4" /></button>
+            </div>
+            <div style={{ flex: 1, overflowY: "auto", padding: "14px 20px", display: "flex", flexDirection: "column", gap: 8 }}>
+              {pendencias.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 32, fontSize: 12, color: "#9CA3AF" }}>Nenhuma pendencia ativa</div>
+              ) : (
+                pendencias.map(p => (
+                  <div key={p.id} style={{ display: "flex", alignItems: "flex-start", gap: 10, padding: "10px 12px", borderRadius: 8, borderWidth: "0.5px", borderStyle: "solid", borderColor: p.tipo === "doc_pendente" ? "rgba(226,75,74,0.2)" : "rgba(245,166,35,0.2)", background: p.tipo === "doc_pendente" ? "rgba(226,75,74,0.04)" : "rgba(245,166,35,0.04)" }}>
+                    <div style={{ width: 7, height: 7, borderRadius: "50%", background: p.tipo === "doc_pendente" ? RED : AMBER, flexShrink: 0, marginTop: 3 }} />
+                    <div style={{ flex: 1 }}>
+                      <div style={{ fontSize: 12, fontWeight: 600, color: "#111827" }}>{p.titulo}</div>
+                      <div style={{ fontSize: 10, color: "#6B7280", marginTop: 2, fontFamily: "'DM Mono', monospace" }}>
+                        {p.cliente}{p.data ? " - " + format(parseISO(p.data), "dd/MM/yyyy") : ""}
                       </div>
+                    </div>
+                    <div style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: p.tipo === "doc_pendente" ? RED : "#D97706", background: p.tipo === "doc_pendente" ? "rgba(226,75,74,0.08)" : "rgba(245,166,35,0.1)", borderRadius: 4, padding: "2px 7px", flexShrink: 0 }}>
+                      {p.tipo === "doc_pendente" ? "Doc pendente" : p.tipo === "apontamento_atrasado" ? "Apontamento" : p.tipo === "requisicao_pendente" ? "Requisicao" : "Backlog"}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
+            <div className="modal-footer-navy">
+              <span className="modal-footer-hint"><AlertCircle className="h-3 w-3" /> Pendencias de todos os projetos</span>
+              <button className="modal-btn-secondary" onClick={() => { setPendenciasModalOpen(false); setNavAtiva("Dashboard"); }}>Fechar</button>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* Modal de Apontamento — Conceito A navy */}
+        <Dialog open={apontamentoOpen} onOpenChange={setApontamentoOpen}>
+          <DialogContent className="max-w-xl max-h-[80dvh] flex flex-col !p-0 !gap-0 overflow-hidden [&>button[aria-label=Close]]:!hidden">
+            {/* Header navy */}
+            <DialogTitle className="sr-only">Registrar Apontamento</DialogTitle>
+            <div className="modal-navy-header">
+              <div>
+                <div className="modal-navy-title">Registrar Apontamento</div>
+                {selectedAgenda && (
+                  <div className="modal-navy-meta">
+                    {selectedAgenda.cliente} &nbsp;|&nbsp; {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")} &nbsp;|&nbsp; {selectedAgenda.status === "confirmada" ? "Confirmada" : selectedAgenda.status}
+                  </div>
+                )}
+              </div>
+              <button className="modal-navy-close" onClick={() => setApontamentoOpen(false)} aria-label="Fechar">
+                <XCircle className="h-4 w-4" />
+              </button>
+            </div>
+
+            {/* Body — 2 colunas: esq atividades+abas | dir modalidade+obs */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", flex: 1, overflow: "hidden", minHeight: 0 }}>
+
+              {/* COLUNA ESQUERDA — Abas de atividade */}
+              <div style={{ padding: "14px 14px 14px 20px", display: "flex", flexDirection: "column", gap: 10, overflowY: "auto", borderRight: "0.5px solid rgba(0,0,0,0.07)" }}>
+
+                <div className="modal-field-label" style={{ marginBottom: 0 }}>Atividades <span style={{ color: "#9CA3AF", fontWeight: 400, textTransform: "none", letterSpacing: 0 }}>(max. 3)</span></div>
+
+                {/* Abas de atividade */}
+                <div className="atv-tab-group">
+                  {atividadesApontadas.map((_, idx) => (
+                    <button key={idx} className={"atv-tab-btn" + (atvTabAtiva === idx ? " active" : "")}
+                      onClick={() => setAtvTabAtiva(idx)}>
+                      Atv. {idx + 1}
+                      {atividadesApontadas.length > 1 && atvTabAtiva === idx && (
+                        <span onClick={e => { e.stopPropagation(); setAtividadesApontadas(prev => { const next = prev.filter((_, i) => i !== idx); setAtvTabAtiva(Math.max(0, idx - 1)); return next; }); }}
+                          style={{ marginLeft: 3, color: "#E24B4A", lineHeight: 1, fontSize: 11 }}>x</span>
+                      )}
+                    </button>
+                  ))}
+                  {atividadesApontadas.length < 3 && (
+                    <button className="atv-tab-btn add" onClick={() => { setAtividadesApontadas(prev => [...prev, { atividade_codigo: "", atividade_descricao: "", horas: 0, percentual_feeling: null }]); setAtvTabAtiva(atividadesApontadas.length); }}>
+                      <Plus className="h-3 w-3" />
+                    </button>
+                  )}
+                </div>
+
+                {/* Card da atividade ativa */}
+                {atividadesApontadas[atvTabAtiva] !== undefined && (() => {
+                  const aa  = atividadesApontadas[atvTabAtiva];
+                  const idx = atvTabAtiva;
+                  const atv = projetoAtividades.find(a => a.codigo === aa.atividade_codigo);
+                  const pct = atv ? getPercentual(atv) : 0;
+                  const cronoItens = atv ? (cronogramaItensPorAtividade[atv.id] || []) : [];
+                  return (
+                    <div style={{ border: "0.5px solid rgba(0,0,0,0.08)", borderRadius: 8, padding: "10px 12px", background: "#FAFAFA", display: "flex", flexDirection: "column", gap: 8 }}>
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <span style={{ fontSize: 10, fontWeight: 600, color: "#6B7280", fontFamily: "'DM Mono', monospace" }}>Atividade {idx + 1}</span>
+                        {atv && <span style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: "#059669", background: "rgba(5,150,105,0.07)", border: "0.5px solid rgba(5,150,105,0.18)", borderRadius: 4, padding: "1px 6px" }}>{getSaldo(atv)}h saldo</span>}
+                      </div>
+                      {/* Select atividade */}
                       <Select value={aa.atividade_codigo} onValueChange={val => {
                         const a = projetoAtividades.find(x => x.codigo === val);
                         if (!a) return;
-                        setAtividadesApontadas(prev => prev.map((item, i) => i === idx ? { ...item, atividade_codigo: a.codigo, atividade_descricao: a.descricao, horas: 0, percentual_feeling: null } : item));
+                        setAtividadesApontadas(prev => prev.map((item, i) => i === idx ? { ...item, atividade_codigo: a.codigo, atividade_descricao: a.descricao, horas: 0, percentual_feeling: null, cronograma_item_id: undefined } : item));
                       }}>
-                        <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Selecione a atividade" /></SelectTrigger>
+                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione a atividade" /></SelectTrigger>
                         <SelectContent>
                           {projetoAtividades.map(a => (
                             <SelectItem key={a.codigo} value={a.codigo} disabled={getSaldo(a) <= 0 && a.codigo !== aa.atividade_codigo}>
-                              <span className="text-xs">{a.codigo} - {a.descricao} <span className="text-muted-foreground">(saldo: {getSaldo(a)}h)</span></span>
+                              <span className="text-xs">{a.codigo} - {a.descricao} <span className="text-muted-foreground">({getSaldo(a)}h)</span></span>
                             </SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
+                      {/* Barra progresso */}
+                      {atv && <div style={{ height: 2, background: "#E5E7EB", borderRadius: 1, overflow: "hidden" }}><div style={{ height: "100%", background: "#39FF87", borderRadius: 1, width: `${Math.min(100, pct)}%` }} /></div>}
+                      {/* Item cronograma — só aparece quando atividade selecionada */}
                       {atv && (
-                        <div className="text-[9px] text-muted-foreground">
-                          <Progress value={pct} className="h-1 mt-1" />
-                          <span>{pct}% consumido - saldo {getSaldo(atv)}h de {Number(atv.horas)}h</span>
+                        <div className="crono-field-wrap">
+                          <div className="crono-field-lbl">
+                            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                            Item cronograma
+                            <span>{cronoItens.length === 0 ? "— sem itens nesta atividade" : "— opcional"}</span>
+                          </div>
+                          {cronoItens.length > 0 && (
+                            <Select value={(aa as any).cronograma_item_id || ""} onValueChange={val => setAtividadesApontadas(prev => prev.map((item, i) => i === idx ? { ...item, cronograma_item_id: val === "__none__" ? undefined : val } : item))}>
+                              <SelectTrigger className={"h-7 text-xs " + ((aa as any).cronograma_item_id ? "border-blue-200 bg-blue-50 text-blue-700" : "border-dashed")}><SelectValue placeholder="Selecionar item..." /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__none__" className="text-xs text-muted-foreground">Nenhum</SelectItem>
+                                {cronoItens.map((ci: any) => (
+                                  <SelectItem key={ci.id} value={ci.id} className="text-xs">{ci.codigo} - {ci.descricao}{ci.doc_exigido ? " 📎" : ""}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
                         </div>
                       )}
-                      <div className="grid grid-cols-2 gap-2">
+                      {/* Horas + % */}
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                         <div>
-                          <Label className="text-[10px]">Horas</Label>
-                          <Input type="number" min={0} step={0.5} value={aa.horas || ""} onChange={e => setAtividadesApontadas(prev => prev.map((item, i) => i === idx ? { ...item, horas: Number(e.target.value) } : item))} className="h-8 text-xs" />
+                          <div style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>Horas</div>
+                          <Input type="number" min={0} step={0.5} value={aa.horas || ""}
+                            onChange={e => setAtividadesApontadas(prev => prev.map((item, i) => i === idx ? { ...item, horas: Number(e.target.value) } : item))}
+                            className="h-7 text-xs" />
                         </div>
                         <div>
-                          <Label className="text-[10px]">% Conclusao</Label>
-                          <Input type="number" min={0} max={100} value={aa.percentual_feeling ?? ""} onChange={e => setAtividadesApontadas(prev => prev.map((item, i) => i === idx ? { ...item, percentual_feeling: Number(e.target.value) } : item))} className="h-8 text-xs" placeholder="0-100" />
+                          <div style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>% Conclusao</div>
+                          <Input type="number" min={0} max={100} value={aa.percentual_feeling ?? ""}
+                            onChange={e => setAtividadesApontadas(prev => prev.map((item, i) => i === idx ? { ...item, percentual_feeling: Number(e.target.value) } : item))}
+                            className="h-7 text-xs" placeholder="0-100" />
                         </div>
                       </div>
                     </div>
                   );
-                })}
-                <Button variant="outline" size="sm" onClick={() => setAtividadesApontadas(prev => [...prev, { atividade_codigo: "", atividade_descricao: "", horas: 0, percentual_feeling: null }])} className="w-full text-xs gap-1">
-                  <Plus className="h-3 w-3" />Adicionar atividade
-                </Button>
+                })()}
               </div>
-              <div>
-                <Label className="text-xs mb-1 block">Descricao (opcional)</Label>
-                <Textarea value={apontDescricao} onChange={e => setApontDescricao(e.target.value)} className="text-xs min-h-[60px]" placeholder="Descreva o que foi realizado..." />
-              </div>
-              {/* BL-009 Diario */}
-              <div className="rounded-lg border border-dashed p-3 space-y-2">
-                <Label className="text-[10px] text-muted-foreground flex items-center gap-1">Observacao para o Diario de Bordo (opcional)</Label>
-                <Select value={diarioCategoria} onValueChange={val => setDiarioCategoria(val as any)}>
-                  <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    {(["geral","decisao","ocorrencia","marco","alerta"] as const).map(c => (
-                      <SelectItem key={c} value={c} className="text-xs capitalize">{c}</SelectItem>
+
+              {/* COLUNA DIREITA — Modalidade + Observacoes */}
+              <div style={{ padding: "14px 20px 14px 14px", display: "flex", flexDirection: "column", gap: 12, overflowY: "auto" }}>
+                {/* Modalidade — Opção A: fundo cinza, inativo navy, ativo navy+lime */}
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 6 }}>Modalidade</div>
+                  <div className="mod-tab-group">
+                    {[
+                      { id: "Remoto",     icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M10.83 16.1a6 6 0 0 1 2.41-.63 6 6 0 0 1 2.41.63"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> },
+                      { id: "Presencial", icon: <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+                    ].map(m => (
+                      <button key={m.id} className={"mod-tab-btn" + (apontModalidade === m.id ? " active" : "")}
+                        onClick={() => setApontModalidade(m.id)}>
+                        {m.icon}{m.id}
+                      </button>
                     ))}
-                  </SelectContent>
-                </Select>
-                <Textarea value={diarioObs} onChange={e => setDiarioObs(e.target.value)} className="text-xs min-h-[50px]" placeholder="Registro para o diario de bordo do projeto..." />
+                  </div>
+                </div>
+                <div style={{ height: "0.5px", background: "rgba(0,0,0,0.06)" }} />
+                {/* Descricao OS */}
+                <div>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 5, display: "flex", alignItems: "center", gap: 4 }}>
+                    <FileText className="h-3 w-3" /> Descricao para a OS
+                  </div>
+                  <Textarea value={apontDescricao} onChange={e => setApontDescricao(e.target.value)}
+                    style={{ fontSize: 12, minHeight: 72, resize: "none", width: "100%", borderRadius: 7, border: "0.5px solid rgba(0,0,0,0.1)", padding: "8px 10px", fontFamily: "inherit", outline: "none", boxSizing: "border-box", color: "#374151" }}
+                    placeholder="Descreva o que foi realizado..." />
+                </div>
+                {/* Diario de Bordo */}
+                <div style={{ flex: 1, display: "flex", flexDirection: "column" }}>
+                  <div style={{ fontSize: 9, fontWeight: 700, color: "#059669", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 5, display: "flex", alignItems: "center", gap: 5 }}>
+                    <ClipboardEdit className="h-3 w-3" /> Diario de Bordo
+                    <div style={{ marginLeft: "auto" }}>
+                      <Select value={diarioCategoria} onValueChange={val => setDiarioCategoria(val as any)}>
+                        <SelectTrigger style={{ height: 22, fontSize: 10, width: 90, border: "0.5px solid rgba(5,150,105,0.2)", background: "rgba(5,150,105,0.04)", borderRadius: 5 }}><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          {(["geral","decisao","ocorrencia","marco","alerta"] as const).map(cat => (
+                            <SelectItem key={cat} value={cat} className="text-xs capitalize">{cat}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <Textarea value={diarioObs} onChange={e => setDiarioObs(e.target.value)}
+                    style={{ flex: 1, fontSize: 12, minHeight: 80, resize: "none", width: "100%", borderRadius: 7, border: "0.5px solid rgba(57,255,135,0.25)", padding: "8px 10px", fontFamily: "inherit", outline: "none", boxSizing: "border-box", color: "#374151", background: "rgba(57,255,135,0.015)" }}
+                    placeholder="Registro para o diario do projeto..." />
+                </div>
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setApontamentoOpen(false)}>Cancelar</Button>
-              <Button size="sm" onClick={handleGravarApontamento} disabled={apontamentoLoading}>
-                {apontamentoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Continuar"}
-              </Button>
-            </DialogFooter>
+
+            {/* Footer navy-style */}
+            <div className="modal-footer-navy">
+              <span className="modal-footer-hint">
+                <Check className="h-3 w-3" /> OS gerada automaticamente
+              </span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="modal-btn-secondary" onClick={() => setApontamentoOpen(false)}>Cancelar</button>
+                <button className="modal-btn-primary" onClick={handleGravarApontamento} disabled={apontamentoLoading}>
+                  {apontamentoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <><span>Continuar</span><ArrowRight className="h-3 w-3" /></>}
+                </button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
-        {/* Resumo do Apontamento */}
+        {/* Resumo do Apontamento — navy */}
         <Dialog open={resumoOpen} onOpenChange={setResumoOpen}>
-          <DialogContent className="max-w-sm max-h-[90dvh] flex flex-col">
-            <DialogHeader><DialogTitle className="text-sm">Confirmar Apontamento</DialogTitle></DialogHeader>
-            <div className="flex-1 overflow-y-auto space-y-3 text-xs">
-              <div className="rounded-lg bg-muted/30 p-3 space-y-1">
-                <p><strong>Cliente:</strong> {selectedAgenda?.cliente}</p>
-                <p><strong>Data:</strong> {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}</p>
-                <p><strong>Modalidade:</strong> {apontModalidade}</p>
-                {projetoDeslocamento > 0 && <p><strong>Deslocamento:</strong> {projetoDeslocamento}h</p>}
+          <DialogContent className="max-w-sm max-h-[90dvh] flex flex-col !p-0 !gap-0 overflow-hidden [&>button[aria-label=Close]]:!hidden">
+            <DialogTitle className="sr-only">Confirmar Apontamento</DialogTitle>
+            <div className="modal-navy-header">
+              <div>
+                <div className="modal-navy-title">Confirmar Apontamento</div>
+                <div className="modal-navy-meta">{selectedAgenda?.cliente} &nbsp;|&nbsp; {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}</div>
               </div>
+              <button className="modal-navy-close" onClick={() => setResumoOpen(false)} aria-label="Fechar">
+                <XCircle className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="modal-body-padded">
+              {/* Info card */}
+              <div className="resumo-info-card">
+                <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                  <span style={{ color: "#6B7280" }}>Modalidade</span>
+                  <span style={{ fontWeight: 600, color: "#111827" }}>{apontModalidade}</span>
+                </div>
+                {projetoDeslocamento > 0 && (
+                  <div style={{ display: "flex", justifyContent: "space-between", fontSize: 11 }}>
+                    <span style={{ color: "#6B7280" }}>Deslocamento</span>
+                    <span style={{ fontWeight: 600, color: "#111827" }}>{projetoDeslocamento}h</span>
+                  </div>
+                )}
+              </div>
+              {/* Atividades */}
               {atividadesApontadas.map((aa, i) => (
-                <div key={i} className="rounded-lg border p-2.5 space-y-0.5">
-                  <p className="font-semibold">{aa.atividade_codigo} - {aa.atividade_descricao}</p>
-                  <p className="text-muted-foreground">{aa.horas}h - {aa.percentual_feeling ?? 0}% conclusao</p>
+                <div key={i} className="resumo-atv-row">
+                  <div style={{ fontSize: 12, fontWeight: 600, color: "#111827", marginBottom: 3 }}>{aa.atividade_codigo} - {aa.atividade_descricao}</div>
+                  <div style={{ display: "flex", gap: 12, fontSize: 11, color: "#6B7280" }}>
+                    <span>{aa.horas}h trabalhadas</span>
+                    <span>{aa.percentual_feeling ?? 0}% conclusao</span>
+                  </div>
                 </div>
               ))}
-              {apontDescricao && <div className="rounded-lg bg-muted/20 p-2.5 text-muted-foreground">{apontDescricao}</div>}
+              {apontDescricao && (
+                <div style={{ fontSize: 11, color: "#6B7280", background: "#F9FAFB", border: "0.5px solid rgba(0,0,0,0.06)", borderRadius: 7, padding: "8px 12px" }}>
+                  {apontDescricao}
+                </div>
+              )}
+              {/* Documento exigido */}
               {cronogramaItemDoc?.doc_exigido && !cronogramaItemDoc.doc_satisfeito && (
-                <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 space-y-2">
-                  <p className="text-amber-700 font-semibold text-[11px]">Documento exigido: {cronogramaItemDoc.codigo}</p>
+                <div style={{ border: "0.5px solid rgba(245,166,35,0.3)", background: "rgba(245,166,35,0.06)", borderRadius: 8, padding: "12px 14px", display: "flex", flexDirection: "column", gap: 8 }}>
+                  <div style={{ fontSize: 11, fontWeight: 600, color: "#D97706", display: "flex", alignItems: "center", gap: 5 }}>
+                    <FileStack className="h-3.5 w-3.5" /> Documento exigido: {cronogramaItemDoc.codigo}
+                  </div>
                   <Input type="file" accept=".pdf,.doc,.docx,.jpg,.jpeg,.png" className="text-xs h-8" onChange={e => setDocFile(e.target.files?.[0] || null)} />
                   {docFile && (
-                    <Button size="sm" variant="outline" onClick={handleUploadDoc} disabled={docUploading} className="w-full text-xs gap-1">
-                      {docUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <><FileStack className="h-3 w-3" />Enviar documento</>}
-                    </Button>
+                    <button className="modal-btn-primary" style={{ background: "#D97706", width: "100%", justifyContent: "center" }}
+                      onClick={handleUploadDoc} disabled={docUploading}>
+                      {docUploading ? <Loader2 className="h-3 w-3 animate-spin" /> : <><FileStack className="h-3 w-3" /><span>Enviar documento</span></>}
+                    </button>
                   )}
                 </div>
               )}
             </div>
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => { setResumoOpen(false); setApontamentoOpen(true); }}>Voltar</Button>
-              <Button size="sm" onClick={handleConfirmarApontamento} disabled={resumoLoading}>
-                {resumoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Confirmar"}
-              </Button>
-            </DialogFooter>
+            <div className="modal-footer-navy">
+              <span className="modal-footer-hint" />
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="modal-btn-secondary" onClick={() => { setResumoOpen(false); setApontamentoOpen(true); }}>
+                  Voltar
+                </button>
+                <button className="modal-btn-primary" onClick={handleConfirmarApontamento} disabled={resumoLoading}>
+                  {resumoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Check className="h-3 w-3" /><span>Confirmar</span></>}
+                </button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
-        {/* Despesa */}
+        {/* Despesa — navy */}
         <Dialog open={despesaOpen} onOpenChange={setDespesaOpen}>
-          <DialogContent className="max-w-sm max-h-[90dvh] flex flex-col">
-            <DialogHeader><DialogTitle className="text-sm">Lancar Despesa</DialogTitle></DialogHeader>
-            <div className="flex-1 overflow-y-auto space-y-3 text-xs">
+          <DialogContent className="max-w-sm max-h-[90dvh] flex flex-col !p-0 !gap-0 overflow-hidden [&>button[aria-label=Close]]:!hidden">
+            <DialogTitle className="sr-only">Lancar Despesa</DialogTitle>
+            <div className="modal-navy-header">
               <div>
-                <Label className="text-xs mb-1 block">Descricao</Label>
-                <Input value={despDescricao} onChange={e => setDespDescricao(e.target.value)} className="h-9 text-xs" placeholder="Ex: Uber, Alimentacao..." />
+                <div className="modal-navy-title">Lancar Despesa</div>
+                {selectedAgenda && <div className="modal-navy-meta">{selectedAgenda.cliente} &nbsp;|&nbsp; {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}</div>}
+              </div>
+              <button className="modal-navy-close" onClick={() => setDespesaOpen(false)} aria-label="Fechar"><XCircle className="h-4 w-4" /></button>
+            </div>
+            <div className="modal-body-padded">
+              <div>
+                <div className="modal-field-label">Descricao</div>
+                <Input value={despDescricao} onChange={e => setDespDescricao(e.target.value)} className="h-9 text-xs" placeholder="Ex: Uber, Alimentacao, Hotel..." />
               </div>
               <div>
-                <Label className="text-xs mb-1 block">Valor (R$)</Label>
-                <Input type="number" min={0} step={0.01} value={despValor} onChange={e => setDespValor(e.target.value)} className="h-9 text-xs" />
+                <div className="modal-field-label">Valor (R$)</div>
+                <Input type="number" min={0} step={0.01} value={despValor} onChange={e => setDespValor(e.target.value)} className="h-9 text-xs" placeholder="0,00" />
               </div>
               <div>
-                <Label className="text-xs mb-1 block">Comprovante (opcional)</Label>
+                <div className="modal-field-label">Comprovante (opcional)</div>
                 <Input type="file" accept="image/*,.pdf" className="h-8 text-xs" onChange={e => setDespFoto(e.target.files?.[0] || null)} />
               </div>
               {despesasLancadas.length > 0 && (
-                <div className="space-y-1">
-                  <p className="text-[10px] font-semibold text-muted-foreground">Despesas ja lancadas hoje:</p>
-                  {despesasLancadas.map(d => (
-                    <div key={d.id} className="flex justify-between rounded border p-2 text-[10px]">
-                      <span>{d.descricao}</span>
-                      <span className="font-medium">{d.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
-                    </div>
-                  ))}
+                <div>
+                  <div className="modal-field-label">Lancadas hoje</div>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                    {despesasLancadas.map(d => (
+                      <div key={d.id} style={{ display: "flex", justifyContent: "space-between", alignItems: "center", fontSize: 11, background: "#F9FAFB", border: "0.5px solid rgba(0,0,0,0.06)", borderRadius: 6, padding: "6px 10px" }}>
+                        <span style={{ color: "#4B5563" }}>{d.descricao}</span>
+                        <span style={{ fontWeight: 600, color: "#111827" }}>{d.valor.toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}</span>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setDespesaOpen(false)}>Cancelar</Button>
-              <Button size="sm" disabled={despLoading || !despDescricao || !despValor} onClick={async () => {
-                if (!selectedDate || !user || !despDescricao || !despValor) return;
-                setDespLoading(true);
-                const { error } = await supabase.from("despesas").insert({ user_id: user.id, data_despesa: selectedDate, cliente: selectedAgenda?.cliente || "", descricao: despDescricao, valor: parseFloat(despValor) });
-                if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); }
-                else { toast({ title: "Despesa lancada!" }); setDespesaOpen(false); setDespDescricao(""); setDespValor(""); setDespFoto(null); }
-                setDespLoading(false);
-              }}>
-                {despLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : "Lancar"}
-              </Button>
-            </DialogFooter>
+            <div className="modal-footer-navy">
+              <span className="modal-footer-hint">
+                <Receipt className="h-3 w-3" /> Reembolso via financeiro
+              </span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="modal-btn-secondary" onClick={() => setDespesaOpen(false)}>Cancelar</button>
+                <button className="modal-btn-primary" disabled={despLoading || !despDescricao || !despValor}
+                  onClick={async () => {
+                    if (!selectedDate || !user || !despDescricao || !despValor) return;
+                    setDespLoading(true);
+                    const { error } = await supabase.from("despesas").insert({ user_id: user.id, data_despesa: selectedDate, cliente: selectedAgenda?.cliente || "", descricao: despDescricao, valor: parseFloat(despValor) });
+                    if (error) { toast({ title: "Erro", description: error.message, variant: "destructive" }); }
+                    else { toast({ title: "Despesa lancada!" }); setDespesaOpen(false); setDespDescricao(""); setDespValor(""); setDespFoto(null); }
+                    setDespLoading(false);
+                  }}>
+                  {despLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <><CircleDollarSign className="h-3 w-3" /><span>Lancar</span></>}
+                </button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
-        {/* Requisitar Agenda */}
+        {/* Requisitar Agenda — navy redesenhado */}
         <Dialog open={reqOpen} onOpenChange={setReqOpen}>
-          <DialogContent className="max-w-sm max-h-[90dvh] flex flex-col">
-            <DialogHeader><DialogTitle className="text-sm">Requisitar Agenda</DialogTitle></DialogHeader>
-            <div className="flex-1 overflow-y-auto space-y-3 text-xs">
+          <DialogContent className="max-w-md max-h-[90dvh] flex flex-col !p-0 !gap-0 overflow-hidden [&>button[aria-label=Close]]:!hidden">
+            <DialogTitle className="sr-only">Requisitar Agenda</DialogTitle>
+            <div className="modal-navy-header">
               <div>
-                <Label className="text-xs mb-1 block">Data</Label>
-                <Input type="date" value={reqData} onChange={e => setReqData(e.target.value)} className="h-9 text-xs" />
+                <div className="modal-navy-title">Requisitar Agenda</div>
+                {reqCliente
+                  ? <div className="modal-navy-meta">{reqCliente}{reqData ? " | " + format(parseISO(reqData), "dd/MM/yyyy") : ""}</div>
+                  : <div className="modal-navy-meta">Solicitar nova data ou atividade ao coordenador</div>
+                }
               </div>
-              <div>
-                <Label className="text-xs mb-1 block">Cliente</Label>
-                <Select value={reqCliente} onValueChange={async (val) => {
-                  setReqCliente(val);
-                  setReqAtividadesLoading(true);
-                  const proj = offProjetos.find(p => p.nome_cliente === val);
-                  if (proj) {
-                    setReqCoordenador(proj.coordenador_id || "");
-                    const { data } = await supabase.from("projeto_atividades").select("id, codigo, descricao, horas, projeto_id").eq("projeto_id", proj.id);
-                    setReqAtividades(data || []);
-                  }
-                  setReqAtividadesLoading(false);
-                }}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Selecione o projeto" /></SelectTrigger>
-                  <SelectContent>
-                    {offProjetos.filter(p => p.status === "Liberado").map(p => <SelectItem key={p.id} value={p.nome_cliente}>{p.nome_cliente}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div>
-                <Label className="text-xs mb-1 block">Atividade</Label>
-                <Select value={reqAtividade} onValueChange={setReqAtividade} disabled={reqAtividadesLoading || !reqCliente}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    {reqAtividades.map(a => <SelectItem key={a.codigo} value={`${a.codigo} - ${a.descricao}`}>{a.codigo} - {a.descricao}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="grid grid-cols-2 gap-2">
+              <button className="modal-navy-close" onClick={() => setReqOpen(false)} aria-label="Fechar"><XCircle className="h-4 w-4" /></button>
+            </div>
+            <div className="modal-body-padded">
+
+              {/* Data + Projeto lado a lado */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
-                  <Label className="text-xs mb-1 block">Horas</Label>
-                  <Input type="number" min={0} step={0.5} value={reqHoras} onChange={e => setReqHoras(e.target.value)} className="h-9 text-xs" />
+                  <div className="modal-field-label">Data solicitada</div>
+                  <Input type="date" value={reqData} onChange={e => setReqData(e.target.value)} className="h-9 text-xs" />
                 </div>
                 <div>
-                  <Label className="text-xs mb-1 block">Modalidade</Label>
-                  <Select value={reqModalidade} onValueChange={setReqModalidade}>
-                    <SelectTrigger className="h-9 text-xs"><SelectValue /></SelectTrigger>
+                  <div className="modal-field-label">Projeto</div>
+                  <Select value={reqCliente} onValueChange={async (val) => {
+                    setReqCliente(val);
+                    setReqAtividade(""); setReqAtividadeId(""); setReqCronoItemId(""); setReqCronoItens([]);
+                    setReqAtividadesLoading(true);
+                    const proj = offProjetos.find(p => p.nome_cliente === val);
+                    if (proj) {
+                      setReqCoordenador(proj.coordenador_id || "");
+                      const { data } = await supabase.from("projeto_atividades").select("id, codigo, descricao, horas, projeto_id").eq("projeto_id", proj.id);
+                      setReqAtividades(data || []);
+                    }
+                    setReqAtividadesLoading(false);
+                  }}>
+                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Remoto">Remoto</SelectItem>
-                      <SelectItem value="Presencial">Presencial</SelectItem>
-                      <SelectItem value="Hibrido">Hibrido</SelectItem>
+                      {offProjetos.filter(p => p.status === "Liberado").map(p => <SelectItem key={p.id} value={p.nome_cliente}>{p.nome_cliente}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
               </div>
+
+              {/* Atividade */}
               <div>
-                <Label className="text-xs mb-1 block">Justificativa (opcional)</Label>
-                <Textarea value={reqJustificativa} onChange={e => setReqJustificativa(e.target.value)} className="text-xs min-h-[60px]" />
+                <div className="modal-field-label">Atividade</div>
+                <Select value={reqAtividade} onValueChange={async val => {
+                  const atv = reqAtividades.find((a: any) => `${a.codigo} - ${a.descricao}` === val);
+                  setReqAtividade(val);
+                  setReqAtividadeId(atv?.id || "");
+                  setReqCronoItemId("");
+                  if (atv?.id) {
+                    const { data: cis } = await supabase.from("cronograma_itens")
+                      .select("id, codigo, descricao, doc_exigido")
+                      .eq("atividade_id", atv.id);
+                    setReqCronoItens(cis || []);
+                  } else {
+                    setReqCronoItens([]);
+                  }
+                }} disabled={reqAtividadesLoading || !reqCliente}>
+                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={reqAtividadesLoading ? "Carregando..." : "Selecione a atividade"} /></SelectTrigger>
+                  <SelectContent>
+                    {reqAtividades.map((a: any) => <SelectItem key={a.codigo} value={`${a.codigo} - ${a.descricao}`}>{a.codigo} - {a.descricao}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {/* Item cronograma — aparece ao selecionar atividade */}
+              {reqCronoItens.length > 0 && (
+                <div>
+                  <div className="crono-field-lbl" style={{ marginBottom: 5 }}>
+                    <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+                    Item do cronograma <span style={{ color: "#9CA3AF", fontWeight: 400 }}>— opcional</span>
+                  </div>
+                  <Select value={reqCronoItemId} onValueChange={setReqCronoItemId}>
+                    <SelectTrigger className={"h-8 text-xs " + (reqCronoItemId ? "border-blue-200 bg-blue-50 text-blue-700" : "border-dashed")}>
+                      <SelectValue placeholder="Selecionar item..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {reqCronoItens.map((ci: any) => (
+                        <SelectItem key={ci.id} value={ci.id} className="text-xs">
+                          {ci.codigo} - {ci.descricao}{ci.doc_exigido ? " 📎" : ""}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              )}
+
+              {/* Horas + Modalidade */}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
+                <div>
+                  <div className="modal-field-label">Horas</div>
+                  <Input type="number" min={0} step={0.5} value={reqHoras} onChange={e => setReqHoras(e.target.value)} className="h-9 text-xs" placeholder="Ex: 8" />
+                </div>
+                <div>
+                  <div className="modal-field-label">Modalidade</div>
+                  <div className="mod-tab-group" style={{ padding: 3 }}>
+                    {[
+                      { id: "Remoto",     icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M1.42 9a16 16 0 0 1 21.16 0"/><path d="M5 12.55a11 11 0 0 1 14.08 0"/><path d="M10.83 16.1a6 6 0 0 1 2.41-.63 6 6 0 0 1 2.41.63"/><line x1="12" y1="20" x2="12.01" y2="20"/></svg> },
+                      { id: "Presencial", icon: <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> },
+                    ].map(m => (
+                      <button key={m.id} className={"mod-tab-btn" + (reqModalidade === m.id ? " active" : "")}
+                        onClick={() => setReqModalidade(m.id)}>
+                        {m.icon}{m.id}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {/* Justificativa */}
+              <div>
+                <div className="modal-field-label">Justificativa (opcional)</div>
+                <Textarea value={reqJustificativa} onChange={e => setReqJustificativa(e.target.value)} className="text-xs min-h-[56px] resize-none" placeholder="Motivo da solicitacao..." />
               </div>
             </div>
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setReqOpen(false)}>Cancelar</Button>
-              <Button size="sm" disabled={!reqData || !reqCliente || !reqHoras} onClick={async () => {
-                if (!user || !reqData || !reqCliente || !reqHoras) return;
-                const { error } = await supabase.from("requisicoes_agenda").insert({ user_id: user.id, data: reqData, cliente: reqCliente, coordenador_id: reqCoordenador || null, atividade: reqAtividade || null, total_horas: parseFloat(reqHoras), modalidade: reqModalidade, justificativa: reqJustificativa || null, status: "pendente" });
-                if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
-                else { toast({ title: "Requisicao enviada!" }); setReqOpen(false); setReqData(""); setReqCliente(""); setReqHoras(""); setReqAtividade(""); setReqJustificativa(""); await loadData(); }
-              }}>Enviar</Button>
-            </DialogFooter>
+
+            <div className="modal-footer-navy">
+              <span className="modal-footer-hint">
+                <CalendarDays className="h-3 w-3" /> Pendente de aprovacao do coordenador
+              </span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="modal-btn-secondary" onClick={() => { setReqOpen(false); setNavAtiva("Dashboard"); setReqData(""); setReqCliente(""); setReqHoras(""); setReqAtividade(""); setReqAtividadeId(""); setReqCronoItemId(""); setReqCronoItens([]); setReqJustificativa(""); }}>Cancelar</button>
+                <button className="modal-btn-primary" disabled={!reqData || !reqCliente || !reqHoras}
+                  onClick={async () => {
+                    if (!user || !reqData || !reqCliente || !reqHoras) return;
+                    const { error } = await supabase.from("requisicoes_agenda").insert({
+                      user_id: user.id, data: reqData, cliente: reqCliente,
+                      coordenador_id: reqCoordenador || null, atividade: reqAtividade || null,
+                      total_horas: parseFloat(reqHoras), modalidade: reqModalidade,
+                      justificativa: reqJustificativa || null, status: "pendente"
+                    });
+                    if (error) toast({ title: "Erro", description: error.message, variant: "destructive" });
+                    else {
+                      toast({ title: "Requisicao enviada!" });
+                      setReqOpen(false); setReqData(""); setReqCliente(""); setReqHoras("");
+                      setReqAtividade(""); setReqAtividadeId(""); setReqCronoItemId(""); setReqCronoItens([]);
+                      setReqJustificativa(""); await loadData();
+                    }
+                  }}>
+                  <ArrowRight className="h-3 w-3" /><span>Enviar</span>
+                </button>
+              </div>
+            </div>
           </DialogContent>
         </Dialog>
 
-        {/* Cancelamento */}
-        <AlertDialog open={cancelAgendaOpen} onOpenChange={setCancelAgendaOpen}>
-          <AlertDialogContent>
-            <AlertDialogHeader>
-              <AlertDialogTitle className="text-sm">Solicitar Cancelamento</AlertDialogTitle>
-              <AlertDialogDescription className="text-xs">
-                Justifique o motivo do cancelamento da agenda de {selectedAgenda?.cliente} em {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}.
-              </AlertDialogDescription>
-            </AlertDialogHeader>
-            <Textarea value={cancelJustificativa} onChange={e => setCancelJustificativa(e.target.value)} className="text-xs min-h-[80px]" placeholder="Motivo do cancelamento..." />
-            <AlertDialogFooter>
-              <AlertDialogCancel className="text-xs">Cancelar</AlertDialogCancel>
-              <Button size="sm" variant="destructive" disabled={!cancelJustificativa.trim()} onClick={async () => {
-                if (!selectedAgenda || !cancelJustificativa.trim()) return;
-                await supabase.from("agendas").update({ status: "aguardando_cancelamento" }).eq("id", selectedAgenda.id);
-                toast({ title: "Solicitacao enviada", description: "O coordenador sera notificado." });
-                setCancelAgendaOpen(false);
-                setCancelJustificativa("");
-                await loadData();
-              }}>
-                Confirmar
-              </Button>
-            </AlertDialogFooter>
-          </AlertDialogContent>
-        </AlertDialog>
+        {/* Cancelamento — navy */}
+        <Dialog open={cancelAgendaOpen} onOpenChange={setCancelAgendaOpen}>
+          <DialogContent className="max-w-sm max-h-[90dvh] flex flex-col !p-0 !gap-0 overflow-hidden [&>button[aria-label=Close]]:!hidden">
+            <DialogTitle className="sr-only">Solicitar Cancelamento</DialogTitle>
+            <div className="modal-navy-header" style={{ background: "#7F1D1D" }}>
+              <div>
+                <div className="modal-navy-title">Solicitar Cancelamento</div>
+                {selectedAgenda && (
+                  <div className="modal-navy-meta" style={{ color: "rgba(252,165,165,0.8)" }}>
+                    {selectedAgenda.cliente} &nbsp;|&nbsp; {selectedDate && format(parseISO(selectedDate), "dd/MM/yyyy")}
+                  </div>
+                )}
+              </div>
+              <button className="modal-navy-close" onClick={() => setCancelAgendaOpen(false)} aria-label="Fechar"><XCircle className="h-4 w-4" /></button>
+            </div>
+            <div className="modal-body-padded">
+              <div style={{ fontSize: 12, color: "#4B5563", background: "#FEF2F2", border: "0.5px solid rgba(226,75,74,0.2)", borderRadius: 8, padding: "10px 14px" }}>
+                Justifique o motivo do cancelamento. O coordenador sera notificado para aprovacao.
+              </div>
+              <div>
+                <div className="modal-field-label">Motivo do cancelamento</div>
+                <Textarea value={cancelJustificativa} onChange={e => setCancelJustificativa(e.target.value)}
+                  className="text-xs min-h-[100px] resize-none" placeholder="Descreva o motivo do cancelamento..." />
+              </div>
+            </div>
+            <div className="modal-footer-navy">
+              <span className="modal-footer-hint">
+                <AlertCircle className="h-3 w-3" style={{ color: "#E24B4A" }} /> Acao irreversivel
+              </span>
+              <div style={{ display: "flex", gap: 8 }}>
+                <button className="modal-btn-secondary" onClick={() => { setCancelAgendaOpen(false); setCancelJustificativa(""); }}>Cancelar</button>
+                <button className="modal-btn-primary" style={{ background: "#991B1B" }}
+                  disabled={!cancelJustificativa.trim()}
+                  onClick={async () => {
+                    if (!selectedAgenda || !cancelJustificativa.trim()) return;
+                    await supabase.from("agendas").update({ status: "aguardando_cancelamento" }).eq("id", selectedAgenda.id);
+                    toast({ title: "Solicitacao enviada", description: "O coordenador sera notificado." });
+                    setCancelAgendaOpen(false);
+                    setCancelJustificativa("");
+                    await loadData();
+                  }}>
+                  <Ban className="h-3 w-3" style={{ color: "#fff" }} /><span style={{ color: "#fff" }}>Confirmar cancelamento</span>
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
 
         {/* Relatorio Financeiro */}
         <Dialog open={resumoFinanceiroOpen} onOpenChange={setResumoFinanceiroOpen}>
-          <DialogContent className="max-w-2xl max-h-[90dvh] flex flex-col">
-            <DialogHeader>
-              <div className="flex items-center justify-between">
-                <DialogTitle className="text-sm">Relatorio Financeiro - {format(currentMonth, "MMMM yyyy", { locale: ptBR })}</DialogTitle>
-                <div className="flex items-center gap-2">
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))}><ChevronLeft className="h-3 w-3" /></Button>
-                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))}><ChevronRight className="h-3 w-3" /></Button>
-                </div>
+          <DialogContent className="max-w-2xl max-h-[90dvh] flex flex-col !p-0 !gap-0 overflow-hidden [&>button[aria-label=Close]]:!hidden">
+            <DialogTitle className="sr-only">Relatorio Financeiro</DialogTitle>
+            <div className="modal-navy-header">
+              <div>
+                <div className="modal-navy-title">Relatorio Financeiro</div>
+                <div className="modal-navy-meta">{format(currentMonth, "MMMM yyyy", { locale: ptBR })}</div>
               </div>
-            </DialogHeader>
+              <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+                <button className="modal-navy-close" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} aria-label="Mes anterior">
+                  <ChevronLeft className="h-3.5 w-3.5" />
+                </button>
+                <button className="modal-navy-close" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} aria-label="Proximo mes">
+                  <ChevronRight className="h-3.5 w-3.5" />
+                </button>
+                <button className="modal-navy-close" onClick={() => setResumoFinanceiroOpen(false)} aria-label="Fechar">
+                  <XCircle className="h-4 w-4" />
+                </button>
+              </div>
+            </div>
+            <div style={{ flex: 1, overflow: "hidden", display: "flex", flexDirection: "column" }}>
             {rfLoading ? (
               <div className="flex-1 flex items-center justify-center"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
             ) : (
@@ -1951,9 +2686,13 @@ export default function ConsultorDashboardV2() {
                 </TabsContent>
               </Tabs>
             )}
-            <DialogFooter>
-              <Button variant="outline" size="sm" onClick={() => setExportDialogOpen(true)} className="gap-1 text-xs"><Printer className="h-3 w-3" />Exportar PDF</Button>
-            </DialogFooter>
+            </div>
+            <div className="modal-footer-navy">
+              <span className="modal-footer-hint"><Printer className="h-3 w-3" /> Relatorio de uso interno</span>
+              <button className="modal-btn-primary" onClick={() => setExportDialogOpen(true)}>
+                <Printer className="h-3 w-3" /><span>Exportar PDF</span>
+              </button>
+            </div>
           </DialogContent>
         </Dialog>
 

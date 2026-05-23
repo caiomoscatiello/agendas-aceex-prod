@@ -6,7 +6,6 @@ import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider, useAuth } from "@/contexts/AuthContext";
 import LoginPage from "./pages/LoginPage";
 import AdminDashboard from "./pages/AdminDashboard";
-import ConsultorDashboard from "./pages/ConsultorDashboard";
 import ConsultorDashboardV2 from "./pages/ConsultorDashboardV2";
 import ResetPasswordPage from "./pages/ResetPasswordPage";
 import EmailSettingsPage from "./pages/EmailSettingsPage";
@@ -26,7 +25,6 @@ function AppRoutes() {
     );
   }
 
-  // If password recovery mode, always show the reset password page
   if (isPasswordRecovery) {
     return (
       <Routes>
@@ -44,9 +42,6 @@ function AppRoutes() {
     );
   }
 
-  // admin: only admin panel
-  // coordenador: consultor dashboard + admin panel
-  // consultor: only consultor dashboard
   if (role === "admin") {
     return (
       <Routes>
@@ -60,8 +55,7 @@ function AppRoutes() {
   if (role === "coordenador") {
     return (
       <Routes>
-        <Route path="/" element={<ConsultorDashboard />} />
-        <Route path="/dashboard-v2" element={<ConsultorDashboardV2 />} />
+        <Route path="/" element={<ConsultorDashboardV2 />} />
         <Route path="/admin" element={<AdminDashboard />} />
         <Route path="/settings/email" element={<EmailSettingsPage />} />
         <Route path="*" element={<Navigate to="/" replace />} />
@@ -72,8 +66,7 @@ function AppRoutes() {
   // consultor (default)
   return (
     <Routes>
-      <Route path="/" element={<ConsultorDashboard />} />
-      <Route path="/dashboard-v2" element={<ConsultorDashboardV2 />} />
+      <Route path="/" element={<ConsultorDashboardV2 />} />
       <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
