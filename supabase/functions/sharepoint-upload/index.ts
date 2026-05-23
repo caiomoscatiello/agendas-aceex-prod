@@ -96,7 +96,9 @@ async function listFolder(
   token: string, driveId: string, folderPath: string,
 ): Promise<{ name: string; webUrl: string; size: number; lastModifiedDateTime: string; mimeType: string }[]> {
   // folderPath ja inclui "Documentos/{codigo_cliente} - {nome_cliente}"
+  // Encode cada segmento do path mas nao o drive_id (ja vem encoded do banco)
   const encoded = folderPath.split("/").map(encodeURIComponent).join("/");
+  // drive_id com formato b!xxx e usado diretamente na URL
   const url = `https://graph.microsoft.com/v1.0/drives/${driveId}/root:/${encoded}:/children?$select=name,webUrl,size,lastModifiedDateTime,file`;
 
   const res  = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
@@ -163,10 +165,23 @@ Deno.serve(async (req: Request) => {
       );
     }
 
-    // ── Verificar action via JSON ─────────────────────────────────────────────
+    // ── Roteamento: JSON (actions) vs multipart (upload) ────────────────────────
+    // O body do Request so pode ser consumido UMA vez.
+    // Verificar content-type ANTES de ler qualquer byte.
     const contentType = req.headers.get("content-type") || "";
-    if (contentType.includes("application/json")) {
-      const body = await req.json();
+    const isMultipart = contentType.includes("multipart/form-data");
+
+    if (!isMultipart) {
+      // JSON path: actions (test, list, ...)
+      let body: any;
+      try { body = await req.json(); } catch {
+        return new Response(
+          JSON.stringify({ success: false, error: "Body JSON invalido" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } },
+        );
+      }
+
+    if (body?.action) {
 
       // action: test
       if (body.action === "test") {
@@ -230,8 +245,10 @@ Deno.serve(async (req: Request) => {
         );
       }
     }
+    } // fim if(!isMultipart)
 
-    // ── Upload via multipart/form-data (comportamento original inalterado) ─────
+    // ── Multipart path: upload de arquivo (comportamento original) ──────────────
+    if (isMultipart) {
     const formData        = await req.formData();
     const file            = formData.get("file") as File | null;
     const cronogramaItemId = formData.get("cronograma_item_id") as string;
@@ -297,6 +314,7 @@ Deno.serve(async (req: Request) => {
       JSON.stringify({ success: true, file_url: fileUrl, file_name: fileName, folder: folderName }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
+    } // fim if(isMultipart)
 
   } catch (err: any) {
     console.error("sharepoint-upload error:", err);
