@@ -6,7 +6,7 @@
 import { useState, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 
-// ?? Tipos ??????????????????????????????????????????????????????????????????
+// -- Tipos ------------------------------------------------------------------
 
 export type BacklogScoreFaixa = "critico" | "atencao" | "ok";
 
@@ -20,7 +20,6 @@ export type BacklogAgenda = {
   atividade: string;
   itemCronograma: string | null;
   data: string;
-  modalidade: string | null;
   score: number;
   faixa: BacklogScoreFaixa;
   alertaSeveridade: "critico" | "alto" | "normal";
@@ -61,7 +60,22 @@ export type BacklogTravado = {
 export type PeriodoBacklog = "mes" | "30" | "60" | "90";
 export type OrdenacaoBacklog = "urgencia" | "data" | "projeto";
 
-// ?? Helpers ????????????????????????????????????????????????????????????????
+export type BacklogMencao = {
+  id: string;
+  mencaoId: string;
+  tipo: "mencao";
+  projeto: string;
+  projetoId: string;
+  entradaId: string;
+  textoEntrada: string;
+  autorNome: string | null;
+  dataEntrada: string;
+  status: "pendente" | "ciente" | "resolvido";
+  score: number;
+  faixa: BacklogScoreFaixa;
+};
+
+// -- Helpers ----------------------------------------------------------------
 
 function faixaScore(score: number): BacklogScoreFaixa {
   if (score >= 60) return "critico";
@@ -91,17 +105,15 @@ function dataLimite(periodo: PeriodoBacklog): string {
   return d.toISOString().split("T")[0];
 }
 
-// Score de agenda futura
 function scoreAgenda(diasAteData: number, alertaSev: string): number {
   let s = 0;
-  if (diasAteData <= 2)  s += 50;
-  else if (diasAteData <= 7) s += 30;
+  if (diasAteData <= 2)       s += 50;
+  else if (diasAteData <= 7)  s += 30;
   if (alertaSev === "critico") s += 25;
   else if (alertaSev === "alto") s += 10;
   return s;
 }
 
-// Score de documento
 function scoreDocumento(
   tipo: "doc_passado" | "doc_planejado",
   diasEmAberto: number | null,
@@ -114,43 +126,42 @@ function scoreDocumento(
     if ((diasEmAberto || 0) > 15) s += 20;
     else if ((diasEmAberto || 0) > 7) s += 10;
   } else {
-    if ((diasAteData || 99) <= 7) s += 30;
-    else if ((diasAteData || 99) <= 2) s += 50;
+    if ((diasAteData || 99) <= 2)      s += 50;
+    else if ((diasAteData || 99) <= 7) s += 30;
   }
   if (alertaSev === "critico") s += 25;
   else if (alertaSev === "alto") s += 10;
   return s;
 }
 
-// Score de item travado
 function scoreTravado(paradoHaDias: number, alertaSev: string): number {
   let s = 0;
-  if (paradoHaDias > 15) s += 35;
-  else if (paradoHaDias > 7) s += 20;
+  if (paradoHaDias > 15)      s += 35;
+  else if (paradoHaDias > 7)  s += 20;
   if (alertaSev === "critico") s += 25;
   else if (alertaSev === "alto") s += 10;
   return s;
 }
 
-// Ordenacao
 function ordenar<T extends { score: number; data?: string; projeto?: string }>(
   lista: T[],
   ord: OrdenacaoBacklog
 ): T[] {
   return [...lista].sort((a, b) => {
     if (ord === "urgencia") return b.score - a.score;
-    if (ord === "data") return (a.data || "").localeCompare(b.data || "");
-    if (ord === "projeto") return (a.projeto || "").localeCompare(b.projeto || "");
+    if (ord === "data")     return (a.data || "").localeCompare(b.data || "");
+    if (ord === "projeto")  return (a.projeto || "").localeCompare(b.projeto || "");
     return 0;
   });
 }
 
-// ?? Hook ???????????????????????????????????????????????????????????????????
+// -- Hook -------------------------------------------------------------------
 
 export function useBacklogConsultor(userId: string | undefined) {
   const [agendas, setAgendas]       = useState<BacklogAgenda[]>([]);
   const [documentos, setDocumentos] = useState<BacklogDocumento[]>([]);
   const [travados, setTravados]     = useState<BacklogTravado[]>([]);
+  const [mencoes, setMencoes]       = useState<BacklogMencao[]>([]);
   const [loading, setLoading]       = useState(false);
 
   const loadBacklog = useCallback(async (
@@ -163,13 +174,22 @@ export function useBacklogConsultor(userId: string | undefined) {
     const hj     = hoje();
     const limite = dataLimite(periodo);
 
-    // ?? 1. Projetos do consultor com alertas ativos ?????????????????????
+    // 1. Projetos que o consultor tem agendas vinculadas (via agendas)
+    // FIX: nao buscar todos os projetos -- derivar dos clientes das agendas
     const { data: projetosRaw } = await supabase
       .from("projetos")
       .select("id, nome_cliente, codigo_cliente");
 
+    const projetoMap: Record<string, { nome: string; codigo: string }> = {};
+    const projetoPorNome: Record<string, { id: string; codigo: string }> = {};
+    for (const p of projetosRaw || []) {
+      projetoMap[p.id] = { nome: p.nome_cliente, codigo: p.codigo_cliente || "" };
+      projetoPorNome[p.nome_cliente] = { id: p.id, codigo: p.codigo_cliente || "" };
+    }
+
     const projetoIds = (projetosRaw || []).map((p: any) => p.id);
 
+    // 2. Alertas ativos por projeto
     let alertaMap: Record<string, "critico" | "alto" | "normal"> = {};
     if (projetoIds.length > 0) {
       const { data: alertasRaw } = await supabase
@@ -186,33 +206,23 @@ export function useBacklogConsultor(userId: string | undefined) {
       }
     }
 
-    const projetoMap: Record<string, { nome: string; codigo: string }> = {};
-    for (const p of projetosRaw || []) {
-      projetoMap[p.id] = { nome: p.nome_cliente, codigo: p.codigo_cliente || "" };
-    }
-
-    // ?? 2. Fonte 1: Agendas futuras confirmadas ????????????????????????
+    // 3. Fonte 1: Agendas futuras confirmadas
+    // FIX: removido campo "modalidade" que nao existe em agendas
     const { data: agendasRaw } = await supabase
       .from("agendas")
-      .select("id, cliente, data, atividade, atividade_descricao, item_cronograma, modalidade, codigo_cliente")
+      .select("id, cliente, data, atividade, atividade_descricao, item_cronograma, codigo_cliente")
       .eq("user_id", userId)
       .eq("status", "confirmada")
       .gte("data", hj)
       .lte("data", limite)
       .order("data", { ascending: true });
 
-    // Buscar projeto_id por nome_cliente
-    const projetoPorNome: Record<string, { id: string; codigo: string }> = {};
-    for (const p of projetosRaw || []) {
-      projetoPorNome[p.nome_cliente] = { id: p.id, codigo: p.codigo_cliente || "" };
-    }
-
     const agendasBuilt: BacklogAgenda[] = (agendasRaw || []).map((ag: any) => {
-      const proj    = projetoPorNome[ag.cliente];
-      const projId  = proj?.id || "";
+      const proj      = projetoPorNome[ag.cliente];
+      const projId    = proj?.id || "";
       const alertaSev = alertaMap[projId] || "normal";
-      const dias    = diasEntreDatas(hj, ag.data);
-      const score   = scoreAgenda(dias, alertaSev);
+      const dias      = diasEntreDatas(hj, ag.data);
+      const score     = scoreAgenda(dias, alertaSev);
       return {
         id:               `agenda-${ag.id}`,
         agendaId:         ag.id,
@@ -223,14 +233,13 @@ export function useBacklogConsultor(userId: string | undefined) {
         atividade:        ag.atividade_descricao || ag.atividade || "",
         itemCronograma:   ag.item_cronograma || null,
         data:             ag.data,
-        modalidade:       ag.modalidade || null,
         score,
         faixa:            faixaScore(score),
         alertaSeveridade: alertaSev,
       };
     });
 
-    // ?? 3. Fonte 2a: Documentos pendentes passados ?????????????????????
+    // 4. Fonte 2a: Documentos pendentes passados
     const { data: agendasDocRaw } = await supabase
       .from("agendas")
       .select("id, cliente, data, atividade, atividade_descricao, item_cronograma, codigo_cliente")
@@ -252,11 +261,8 @@ export function useBacklogConsultor(userId: string | undefined) {
           .select("doc_exigido, doc_satisfeito, tipo_documento_id")
           .ilike("codigo", codigo)
           .maybeSingle();
-        if (ci && ci.doc_exigido && !ci.doc_satisfeito) {
-          tipoDoc = ci.tipo_documento_id || null;
-        } else if (ci && ci.doc_satisfeito) {
-          continue; // doc ja satisfeito, nao entra no backlog
-        }
+        if (ci?.doc_satisfeito) continue; // ja satisfeito
+        if (ci?.doc_exigido) tipoDoc = ci.tipo_documento_id || null;
       }
 
       const score = scoreDocumento("doc_passado", diasAb, null, alertaSev);
@@ -277,17 +283,9 @@ export function useBacklogConsultor(userId: string | undefined) {
       });
     }
 
-    // ?? 4. Fonte 2b: Documentos planejados futuros ?????????????????????
-    const { data: agendasFutDocRaw } = await supabase
-      .from("agendas")
-      .select("id, cliente, data, atividade, atividade_descricao, item_cronograma, codigo_cliente")
-      .eq("user_id", userId)
-      .eq("status", "confirmada")
-      .gte("data", hj)
-      .lte("data", limite);
-
+    // 5. Fonte 2b: Documentos planejados futuros
     const docsPlanejados: BacklogDocumento[] = [];
-    for (const ag of agendasFutDocRaw || []) {
+    for (const ag of agendasRaw || []) {
       if (!ag.item_cronograma) continue;
       const codigo = ag.item_cronograma.split(" - ")[0].trim();
       const { data: ci } = await supabase
@@ -320,88 +318,176 @@ export function useBacklogConsultor(userId: string | undefined) {
       });
     }
 
-    // ?? 5. Fonte 3: Itens travados ????????????????????????????????????
-    // Buscar todas as atividades dos projetos do consultor
-    const { data: ativsRaw } = await supabase
-      .from("projeto_atividades")
-      .select("id, projeto_id, codigo, descricao")
-      .in("projeto_id", projetoIds);
-
-    const ativIds = (ativsRaw || []).map((a: any) => a.id);
-    const ativPorId: Record<string, { projetoId: string; codigo: string; descricao: string }> = {};
-    for (const a of ativsRaw || []) {
-      ativPorId[a.id] = { projetoId: a.projeto_id, codigo: a.codigo, descricao: a.descricao };
-    }
-
-    // Itens do consultor com feeling < 100
+    // 6. Fonte 3: Itens travados
+    // FIX: cronograma_itens nao tem user_id -- filtrar por atividades dos projetos
+    // e cruzar com apontamento_atividades para identificar o consultor
     const travadosBuilt: BacklogTravado[] = [];
-    if (ativIds.length > 0) {
-      const { data: cisRaw } = await supabase
-        .from("cronograma_itens")
-        .select("id, atividade_id, codigo, descricao, percentual_feeling")
-        .eq("user_id", userId)
-        .in("atividade_id", ativIds)
-        .lt("percentual_feeling", 100);
 
-      for (const ci of cisRaw || []) {
-        // Verificar se ha agendas futuras vinculadas a este item
-        const { data: agendasFut } = await supabase
+    if (projetoIds.length > 0) {
+      // Buscar atividades de todos os projetos
+      const { data: ativsRaw } = await supabase
+        .from("projeto_atividades")
+        .select("id, projeto_id, codigo, descricao")
+        .in("projeto_id", projetoIds);
+
+      const ativIds = (ativsRaw || []).map((a: any) => a.id);
+      const ativPorId: Record<string, { projetoId: string; codigo: string; descricao: string }> = {};
+      for (const a of ativsRaw || []) {
+        ativPorId[a.id] = { projetoId: a.projeto_id, codigo: a.codigo, descricao: a.descricao };
+      }
+
+      if (ativIds.length > 0) {
+        // FIX: remover .eq("user_id", userId) -- cronograma_itens nao tem esse campo
+        // Identificar itens do consultor via agendas que ele realizou
+        const { data: agendasRealizadas } = await supabase
           .from("agendas")
-          .select("id")
+          .select("item_cronograma")
           .eq("user_id", userId)
-          .eq("status", "confirmada")
-          .ilike("item_cronograma", `${ci.codigo}%`)
-          .gte("data", hj)
-          .limit(1);
+          .not("item_cronograma", "is", null)
+          .in("status", ["apontamento_ok", "apontamento_ajustado", "em_aprovacao", "doc_pendente", "confirmada"]);
 
-        if (agendasFut && agendasFut.length > 0) continue; // tem agenda futura, nao esta travado
+        // Extrair codigos de itens que o consultor ja trabalhou ou tem agenda
+        const codigosConsultor = new Set(
+          (agendasRealizadas || [])
+            .map((a: any) => a.item_cronograma?.split(" - ")[0].trim())
+            .filter(Boolean)
+        );
 
-        // Calcular parado ha quantos dias
-        const { data: ultimaAgenda } = await supabase
-          .from("agendas")
-          .select("data")
-          .eq("user_id", userId)
-          .ilike("item_cronograma", `${ci.codigo}%`)
-          .lt("data", hj)
-          .order("data", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+        if (codigosConsultor.size > 0) {
+          // Buscar esses itens com feeling < 100
+          const { data: cisRaw } = await supabase
+            .from("cronograma_itens")
+            .select("id, atividade_id, codigo, descricao, percentual_feeling")
+            .in("atividade_id", ativIds)
+            .lt("percentual_feeling", 100);
 
-        const paradoHaDias = ultimaAgenda
-          ? diasEntreDatas(ultimaAgenda.data, hj)
-          : 999;
+          for (const ci of cisRaw || []) {
+            // Verificar se este item pertence ao consultor
+            if (!codigosConsultor.has(ci.codigo)) continue;
 
-        const atv       = ativPorId[ci.atividade_id];
-        const projId    = atv?.projetoId || "";
-        const alertaSev = alertaMap[projId] || "normal";
-        const score     = scoreTravado(paradoHaDias, alertaSev);
+            // Verificar se ha agendas futuras confirmadas
+            const { data: agendasFut } = await supabase
+              .from("agendas")
+              .select("id")
+              .eq("user_id", userId)
+              .eq("status", "confirmada")
+              .ilike("item_cronograma", `${ci.codigo}%`)
+              .gte("data", hj)
+              .limit(1);
 
-        travadosBuilt.push({
-          id:               `travado-${ci.id}`,
-          cronogramaItemId: ci.id,
-          tipo:             "travado",
-          projeto:          projetoMap[projId]?.nome || "",
-          projetoId:        projId,
-          atividadeId:      ci.atividade_id,
-          codigoItem:       ci.codigo,
-          descricaoItem:    ci.descricao,
-          feelingAtual:     ci.percentual_feeling || 0,
-          paradoHaDias:     paradoHaDias === 999 ? 0 : paradoHaDias,
-          score,
-          faixa:            faixaScore(score),
-          alertaSeveridade: alertaSev,
-        });
+            if (agendasFut && agendasFut.length > 0) continue;
+
+            // Calcular parado ha quantos dias
+            const { data: ultimaAgenda } = await supabase
+              .from("agendas")
+              .select("data")
+              .eq("user_id", userId)
+              .ilike("item_cronograma", `${ci.codigo}%`)
+              .lt("data", hj)
+              .order("data", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            const paradoHaDias = ultimaAgenda
+              ? diasEntreDatas(ultimaAgenda.data, hj)
+              : 999;
+
+            const atv       = ativPorId[ci.atividade_id];
+            const projId    = atv?.projetoId || "";
+            const alertaSev = alertaMap[projId] || "normal";
+            const score     = scoreTravado(paradoHaDias === 999 ? 0 : paradoHaDias, alertaSev);
+
+            travadosBuilt.push({
+              id:               `travado-${ci.id}`,
+              cronogramaItemId: ci.id,
+              tipo:             "travado",
+              projeto:          projetoMap[projId]?.nome || "",
+              projetoId:        projId,
+              atividadeId:      ci.atividade_id,
+              codigoItem:       ci.codigo,
+              descricaoItem:    ci.descricao,
+              feelingAtual:     ci.percentual_feeling || 0,
+              paradoHaDias:     paradoHaDias === 999 ? 0 : paradoHaDias,
+              score,
+              faixa:            faixaScore(score),
+              alertaSeveridade: alertaSev,
+            });
+          }
+        }
       }
     }
 
-    // ?? 6. Aplicar ordenacao e setar estado ???????????????????????????
+    // 7. Mencoes pendentes do consultor
+    const { data: mencoesRaw } = await supabase
+      .from("projeto_diario_mencoes")
+      .select("id, entrada_id, projeto_id, status, created_at")
+      .eq("mencionado_id", userId)
+      .in("status", ["pendente", "ciente"]);
+
+    const mencoesBuilt: BacklogMencao[] = [];
+    for (const m of mencoesRaw || []) {
+      const { data: entrada } = await supabase
+        .from("projeto_diario")
+        .select("id, texto, user_id, data, projeto_id")
+        .eq("id", m.entrada_id)
+        .maybeSingle();
+      if (!entrada) continue;
+
+      const { data: autorProfile } = await supabase
+        .from("profiles")
+        .select("name")
+        .eq("user_id", entrada.user_id)
+        .maybeSingle();
+
+      const proj = projetoMap[entrada.projeto_id] || { nome: "", codigo: "" };
+      const alertaSev = alertaMap[entrada.projeto_id] || "normal";
+      const score = alertaSev === "critico" ? 85 : alertaSev === "alto" ? 60 : 40;
+
+      mencoesBuilt.push({
+        id:           `mencao-${m.id}`,
+        mencaoId:     m.id,
+        tipo:         "mencao",
+        projeto:      proj.nome || entrada.projeto_id?.slice(0,8) || "WDM",
+        projetoId:    entrada.projeto_id,
+        entradaId:    m.entrada_id,
+        textoEntrada: entrada.texto,
+        autorNome:    autorProfile?.name || null,
+        dataEntrada:  entrada.data,
+        status:       m.status as "pendente" | "ciente" | "resolvido",
+        score,
+        faixa:        faixaScore(score),
+      });
+    }
+
+    // 8. Aplicar ordenacao e setar estado
     setAgendas(ordenar(agendasBuilt, ordenacao));
     setDocumentos(ordenar([...docsPassados, ...docsPlanejados], ordenacao));
     setTravados(ordenar(travadosBuilt, ordenacao));
+    setMencoes(mencoesBuilt);
     setLoading(false);
   }, [userId]);
 
-  // ?? Acao: concluir item travado ????????????????????????????????????
+  // Acao: marcar mencao como ciente
+  const marcarCienteMencao = useCallback(async (mencaoId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from("projeto_diario_mencoes")
+      .update({ status: "ciente", ciente_em: new Date().toISOString() })
+      .eq("id", mencaoId);
+    if (!error) setMencoes(prev => prev.map(m => m.mencaoId === mencaoId ? { ...m, status: "ciente" as const } : m));
+    return !error;
+  }, []);
+
+  // Acao: marcar mencao como resolvida
+  const marcarResolvidaMencao = useCallback(async (mencaoId: string): Promise<boolean> => {
+    const { error } = await supabase
+      .from("projeto_diario_mencoes")
+      .update({ status: "resolvido", resolvido_em: new Date().toISOString() })
+      .eq("id", mencaoId);
+    if (!error) setMencoes(prev => prev.filter(m => m.mencaoId !== mencaoId));
+    return !error;
+  }, []);
+
+  // Acao: concluir item travado (feeling = 100)
   const concluirItemTravado = useCallback(async (
     cronogramaItemId: string
   ): Promise<boolean> => {
@@ -416,19 +502,18 @@ export function useBacklogConsultor(userId: string | undefined) {
     return !error;
   }, []);
 
-  // ?? Totais e media de score ????????????????????????????????????????
+  // Totais e media de score -- base para futuro KPI BL-CONS-002
   const totalAgendas    = agendas.length;
   const totalDocumentos = documentos.length;
   const totalTravados   = travados.length;
-  const totalItens      = totalAgendas + totalDocumentos + totalTravados;
+  const totalMencoes    = mencoes.length;
+  const totalItens      = totalAgendas + totalDocumentos + totalTravados + totalMencoes;
 
-  // Media de score do mes — base para futuro KPI BL-CONS-002
   const mediaScore = totalItens === 0 ? 0 : Math.round(
     [...agendas, ...documentos, ...travados]
       .reduce((acc, item) => acc + item.score, 0) / totalItens
   );
 
-  // Docs separados por tipo para renderizacao
   const docsPassados   = documentos.filter(d => d.tipo === "doc_passado");
   const docsPlanejados = documentos.filter(d => d.tipo === "doc_planejado");
 
@@ -438,13 +523,17 @@ export function useBacklogConsultor(userId: string | undefined) {
     docsPassados,
     docsPlanejados,
     travados,
+    mencoes,
     loading,
     totalAgendas,
     totalDocumentos,
     totalTravados,
+    totalMencoes,
     totalItens,
     mediaScore,
     loadBacklog,
     concluirItemTravado,
+    marcarCienteMencao,
+    marcarResolvidaMencao,
   };
 }
