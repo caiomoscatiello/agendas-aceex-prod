@@ -23,7 +23,8 @@ import AdminCronogramaItens, { CronogramaItem, TipoDocumento } from "./AdminCron
 import { BacklogBoard } from "@/components/consultor/ui/BacklogBoard";
 import { AtividadesCsvWizard } from "@/components/admin/AtividadesCsvWizard";
 import { BacklogCsvWizard } from "@/components/admin/BacklogCsvWizard";
-import { useDiario, type CategoriaDiario } from "@/components/consultor/hooks/useDiario";
+import { useDiario, type CategoriaDiario, type MencaoDetalhe, type StatusMencao } from "@/components/consultor/hooks/useDiario";
+import { MencaoAutocomplete } from "@/components/consultor/ui/MencaoAutocomplete";
 import { useSLA, type DominioSLA } from "@/components/consultor/hooks/useSLA";
 import { Settings2 } from "lucide-react";
 
@@ -287,6 +288,13 @@ export default function AdminProjetos() {
   const { configs: slaConfigs, loading: slaLoading, loadConfigs: loadSLA,
           saveConfigProjeto: saveSLA, deleteConfigProjeto: deleteSLA } = useSLA();
   const [diarioTexto, setDiarioTexto] = useState("");
+  const [diarioMencionados, setDiarioMencionados] = useState<string[]>([]);
+  const [diarioTags, setDiarioTags] = useState<string[]>([]);
+  const [diarioCriticidade, setDiarioCriticidade] = useState<string | null>(null);
+  const [replyEntradaId, setReplyEntradaId] = useState<string | null>(null);
+  const [replyTexto, setReplyTexto] = useState("");
+  const [replyMencionados, setReplyMencionados] = useState<string[]>([]);
+  const [replyTags, setReplyTags] = useState<string[]>([]);
   const [diarioCategoria, setDiarioCategoria] = useState<CategoriaDiario>("geral");
   const {
     entradas: diarioEntradas,
@@ -294,6 +302,11 @@ export default function AdminProjetos() {
     saving: diarioSaving,
     loadEntradas: loadDiario,
     insertEntrada: insertDiario,
+    insertReply: insertDiarioReply,
+    marcarCiente: diarioMarcarCiente,
+    marcarResolvido: diarioMarcarResolvido,
+    loadUsuariosMencionaveis: loadDiarioUsuarios,
+    getStatusMencaoCores,
     getCategoriaLabel,
     getCategoriaCores,
   } = useDiario();
@@ -308,11 +321,17 @@ export default function AdminProjetos() {
       projeto_id: detailProjeto.id,
       texto: diarioTexto.trim(),
       categoria: diarioCategoria,
+      mencionados: diarioMencionados,
+      tags: diarioTags,
+      criticidade: diarioCriticidade,
       origem: "coordenador",
     });
     if (ok) {
       setDiarioTexto("");
       setDiarioCategoria("geral");
+      setDiarioMencionados([]);
+      setDiarioTags([]);
+      setDiarioCriticidade(null);
       toast({ title: "Entrada registrada no diario!" });
     }
   };
@@ -2297,7 +2316,7 @@ export default function AdminProjetos() {
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 className="gap-2 text-sm"
-                onClick={() => { if (detailProjeto) { loadDiario(detailProjeto.id); setDiarioOpen(true); } }}
+                onClick={() => { if (detailProjeto) { loadDiario(detailProjeto.id); loadDiarioUsuarios(detailProjeto.id); setDiarioOpen(true); } }}
               >
                 <BookOpen className="h-3.5 w-3.5" /> Diario de bordo
               </DropdownMenuItem>
@@ -2348,6 +2367,29 @@ export default function AdminProjetos() {
       </div>
     );
   };
+
+  // Renderizar texto do diario com chips visuais
+  const renderTextoComChips = (txt: string): React.ReactNode[] => {
+    const partes: React.ReactNode[] = [];
+    const regex = /(@\[([^\]]+)\]\([a-f0-9-]{36}\)|#\[([^\]]+)\]|!\[(alta|media|baixa)\])/g;
+    let ultimo = 0; let match; let idx = 0;
+    while ((match = regex.exec(txt)) !== null) {
+      if (match.index > ultimo) partes.push(<span key={`t${idx++}`}>{txt.slice(ultimo, match.index)}</span>);
+      const token = match[0];
+      if (token.startsWith("@[")) {
+        partes.push(<span key={`m${idx++}`} style={{ display:"inline-flex", alignItems:"center", background:"rgba(37,99,235,0.10)", color:"#1d4ed8", border:"1px solid rgba(37,99,235,0.25)", borderRadius:999, padding:"0 7px", fontSize:10, fontWeight:500, margin:"0 2px", lineHeight:1.7 }}>@{match[2]}</span>);
+      } else if (token.startsWith("#[")) {
+        partes.push(<span key={`tg${idx++}`} style={{ display:"inline-flex", alignItems:"center", background:"rgba(124,58,237,0.10)", color:"#6d28d9", border:"1px solid rgba(124,58,237,0.25)", borderRadius:999, padding:"0 7px", fontSize:10, fontWeight:500, margin:"0 2px", lineHeight:1.7 }}>#{match[3]}</span>);
+      } else if (token.startsWith("![")) {
+        const c = ({alta:{bg:"rgba(220,38,38,0.10)",color:"#b91c1c",border:"rgba(220,38,38,0.25)",label:"!!! Alta"},media:{bg:"rgba(217,119,6,0.10)",color:"#b45309",border:"rgba(217,119,6,0.25)",label:"!! Media"},baixa:{bg:"rgba(22,163,74,0.10)",color:"#15803d",border:"rgba(22,163,74,0.25)",label:"! Baixa"}} as Record<string,{bg:string;color:string;border:string;label:string}>)[match[4]] || {bg:"rgba(22,163,74,0.10)",color:"#15803d",border:"rgba(22,163,74,0.25)",label:"! Baixa"};
+        partes.push(<span key={`cr${idx++}`} style={{ display:"inline-flex", alignItems:"center", background:c.bg, color:c.color, border:`1px solid ${c.border}`, borderRadius:999, padding:"0 7px", fontSize:10, fontWeight:500, margin:"0 2px", lineHeight:1.7 }}>{c.label}</span>);
+      }
+      ultimo = match.index + token.length;
+    }
+    if (ultimo < txt.length) partes.push(<span key={`t${idx++}`}>{txt.slice(ultimo)}</span>);
+    return partes;
+  };
+
 
   return (
     <div className="space-y-4">
@@ -3049,12 +3091,13 @@ export default function AdminProjetos() {
             </div>
             {/* Nova entrada */}
             <div className="px-4 pt-3 pb-3 border-b shrink-0 space-y-2">
-              <textarea
-                rows={3}
-                className="w-full text-xs resize-none rounded-md border px-3 py-2 bg-background placeholder:text-muted-foreground/60 focus:outline-none focus:ring-1 focus:ring-ring"
-                placeholder="Registre uma decisao, ocorrencia ou marco..."
+              <MencaoAutocomplete
                 value={diarioTexto}
-                onChange={(e) => setDiarioTexto(e.target.value)}
+                onChange={(texto, mencionados, tags, crit) => { setDiarioTexto(texto); setDiarioMencionados(mencionados); setDiarioTags(tags || []); setDiarioCriticidade(crit || null); }}
+                projetoId={detailProjeto?.id || ""}
+                currentUserId={user?.id}
+                rows={3}
+                disabled={diarioSaving}
               />
               <div className="flex items-center justify-between gap-2">
                 <select
@@ -3093,22 +3136,115 @@ export default function AdminProjetos() {
               ) : (
                 diarioEntradas.map((entrada) => {
                   const cores = getCategoriaCores(entrada.categoria);
-                  const [y, m, d] = entrada.data.split("-");
-                  const dataFmt = `${d}/${m}`;
+                  const [, em, ed] = entrada.data.split("-");
+                  const dataFmt = `${ed}/${em}`;
+                  const temMencaoAtiva = (entrada.mencoes_detalhes || []).some((mn: any) => mn.status === "pendente" || mn.status === "ciente");
                   return (
-                    <div key={entrada.id} className={`rounded-lg border p-3 ${cores.bg} ${cores.border}`}>
-                      <div className="flex items-center gap-2 mb-1.5 flex-wrap">
-                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${cores.bg} ${cores.text} ${cores.border}`}>
-                          {getCategoriaLabel(entrada.categoria)}
-                        </span>
-                        <span className="text-[10px] text-muted-foreground">
-                          {dataFmt}{entrada.autor_nome ? ` · ${entrada.autor_nome}` : ""}
-                        </span>
-                        {entrada.origem === "consultor" && (
-                          <span className="text-[9px] px-1 py-0.5 rounded bg-white/60 border text-muted-foreground">consultor</span>
-                        )}
+                    <div key={entrada.id} className={`rounded-lg border p-3 space-y-2 ${cores.bg} ${temMencaoAtiva ? "border-l-4 border-red-400" : cores.border}`}>
+                      {/* Header */}
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded border ${cores.bg} ${cores.text} ${cores.border}`}>{getCategoriaLabel(entrada.categoria)}</span>
+                        <span className="text-[10px] text-muted-foreground">{dataFmt}{entrada.autor_nome ? ` - ${entrada.autor_nome}` : ""}</span>
+                        {entrada.origem === "consultor" && <span className="text-[9px] px-1 py-0.5 rounded bg-white/60 border text-muted-foreground">cons</span>}
+                        {temMencaoAtiva && <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-red-100 text-red-700 border border-red-300 font-semibold">@ pendente</span>}
                       </div>
-                      <p className="text-xs text-foreground leading-relaxed">{entrada.texto}</p>
+
+                      {/* Texto */}
+                      <p className="text-xs text-foreground leading-relaxed">{renderTextoComChips(entrada.texto)}</p>
+
+                      {/* Mencoes */}
+                      {(entrada.mencoes_detalhes || []).length > 0 && (
+                        <div className="flex flex-col gap-2 pt-1 border-t border-white/40">
+                          {(entrada.mencoes_detalhes || []).map((men: any) => {
+                            const euFuiMencionado = men.mencionado_id === user?.id;
+                            const agedorId = men.resolvido_por || men.mencionado_id;
+                            const fmtTs = (ts: string | null) => !ts ? "" : new Date(ts).toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+                            return (
+                              <div key={men.id} style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                                {/* chip cinza contexto -- so quando pendente ou ciente */}
+                                {(men.status === "pendente" || men.status === "ciente") && (
+                                  <div style={{ display:"flex", justifyContent:"flex-start" }}>
+                                    <span style={{ background:"rgba(0,0,0,0.04)", border:"0.5px solid rgba(0,0,0,0.08)", borderRadius:"0 7px 7px 7px", padding:"2px 8px", fontSize:9, color:"#9CA3AF" }}>
+                                      @{men.mencionado_nome || "usuario"} - {euFuiMencionado ? "voce foi mencionado" : "mencionou"}
+                                    </span>
+                                  </div>
+                                )}
+                                {/* PENDENTE: botoes esquerda */}
+                                {men.status === "pendente" && (
+                                  <div style={{ display:"flex", justifyContent:"flex-start", gap:6 }}>
+                                    {euFuiMencionado && <button onClick={() => diarioMarcarCiente(men.id)} style={{ fontSize:9, padding:"2px 8px", borderRadius:4, border:"0.5px solid #FCD34D", background:"#FFFBEB", color:"#92400E", cursor:"pointer" }}>Ciente</button>}
+                                    {euFuiMencionado && <button onClick={() => diarioMarcarResolvido(men.id, entrada.id)} style={{ fontSize:9, padding:"2px 8px", borderRadius:4, border:"0.5px solid #6EE7B7", background:"#F0FDF4", color:"#065F46", cursor:"pointer" }}>Resolver</button>}
+                                  </div>
+                                )}
+                                {/* CIENTE: badge lado do agedor + Resolver direita (minha acao) */}
+                                {men.status === "ciente" && (
+                                  <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+                                    <div style={{ display:"flex", justifyContent: euFuiMencionado ? "flex-start" : "flex-end" }}>
+                                      <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:9, color:"#b45309", fontWeight:600, padding:"2px 8px", borderRadius: euFuiMencionado ? "0 12px 12px 12px" : "12px 12px 0 12px", background:"#FFFBEB", border:"0.5px solid #FDE68A" }}>Ciente<span style={{ fontSize:8, color:"#9CA3AF", marginLeft:3 }}>{fmtTs(men.ciente_em)}</span></span>
+                                    </div>
+                                    {euFuiMencionado && (
+                                      <div style={{ display:"flex", justifyContent:"flex-end" }}>
+                                        <button onClick={() => diarioMarcarResolvido(men.id, entrada.id)} style={{ fontSize:9, padding:"3px 10px", borderRadius:"12px 12px 0 12px", border:"1px solid #059669", background:"#ffffff", color:"#059669", cursor:"pointer", fontWeight:600 }}>Resolver</button>
+                                      </div>
+                                    )}
+                                  </div>
+                                )}
+                                {/* RESOLVIDO: sem chip contexto, badge lado do agedor */}
+                                {men.status === "resolvido" && (
+                                  <div style={{ display:"flex", justifyContent: agedorId === user?.id ? "flex-end" : "flex-start" }}>
+                                    <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:9, color:"#059669", fontWeight:600, padding:"2px 8px", borderRadius: agedorId === user?.id ? "12px 12px 0 12px" : "0 12px 12px 12px", background:"#F0FDF4", border:"0.5px solid #BBF7D0" }}>Resolvido<span style={{ fontSize:8, color:"#9CA3AF", marginLeft:3 }}>{fmtTs(men.resolvido_em)}</span></span>
+                                  </div>
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Replies -- bolha direita */}
+                      {(entrada.replies || []).length > 0 && (
+                        <div className="flex flex-col gap-2">
+                          {(entrada.replies || []).map((r: any) => {
+                            const [, rm, rd] = (r.data || "--").split("-");
+                            return (
+                              <div key={r.id} className="flex justify-end">
+                                <div style={{ maxWidth: "65%", background: "#F0FDF4", border: "0.5px solid #BBF7D0", borderRadius: "12px 12px 0 12px", padding: "7px 11px" }}>
+                                  <div className="flex items-center gap-2 mb-1">
+                                    <span className="text-[9px] font-semibold text-emerald-600">{r.autor_nome || r.origem}</span>
+                                    <span className="text-[9px] text-muted-foreground">{rd}/{rm}</span>
+                                  </div>
+                                  <p className="text-[11px] leading-relaxed">{renderTextoComChips(r.texto)}</p>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      )}
+
+                      {/* Botao responder -- apenas quando mencao ativa */}
+                      {temMencaoAtiva && (
+                        replyEntradaId === entrada.id ? (
+                          <div className="pt-1 border-t border-white/40 space-y-1.5">
+                            <MencaoAutocomplete
+                              value={replyTexto}
+                              onChange={(t, mn) => { setReplyTexto(t); setReplyMencionados(mn); }}
+                              projetoId={detailProjeto?.id || ""}
+                              currentUserId={user?.id}
+                              rows={2}
+                              placeholder="Escreva sua resposta..."
+                              disabled={diarioSaving}
+                            />
+                            <div className="flex items-center gap-2 justify-end">
+                              <button onClick={() => { setReplyEntradaId(null); setReplyTexto(""); setReplyMencionados([]); }} className="text-[10px] text-muted-foreground hover:text-foreground">Cancelar</button>
+                              <button disabled={diarioSaving || !replyTexto.trim()} onClick={async () => { if (!detailProjeto) return; const ok = await insertDiarioReply({ projeto_id: detailProjeto.id, entrada_id: entrada.id, texto: replyTexto, origem: "coordenador", mencionados: replyMencionados }); if (ok) { setReplyEntradaId(null); setReplyTexto(""); setReplyMencionados([]); } }} className="inline-flex items-center gap-1 text-[10px] px-2 py-1 rounded bg-primary text-primary-foreground disabled:opacity-50">
+                                {diarioSaving ? <Loader2 className="h-3 w-3 animate-spin" /> : null}Responder
+                              </button>
+                            </div>
+                          </div>
+                        ) : (
+                          <button onClick={() => { setReplyEntradaId(entrada.id); setReplyTexto(""); }} className="text-[10px] text-muted-foreground hover:text-foreground">Responder</button>
+                        )
+                      )}
                     </div>
                   );
                 })

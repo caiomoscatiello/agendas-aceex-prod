@@ -51,7 +51,8 @@ import {
 
 // Hooks existentes -- zero alteracao
 import { usePendencias } from "@/components/consultor/hooks/usePendencias";
-import { useDiario } from "@/components/consultor/hooks/useDiario";
+import { useDiario, type StatusMencao } from "@/components/consultor/hooks/useDiario";
+import { MencaoAutocomplete } from "@/components/consultor/ui/MencaoAutocomplete";
 
 // Componentes existentes -- zero alteracao
 import { PendenciasPMOCard } from "@/components/consultor/ui/PendenciasPMOCard";
@@ -59,6 +60,7 @@ import { BacklogBoard } from "@/components/consultor/ui/BacklogBoard";
 import { SLABadgeSimples } from "@/components/ui/SLABadge";
 import { GanttCanvas } from "@/components/consultor/ui/GanttCanvas";
 import { useSharepointDocs, formatFileSize } from "@/components/consultor/hooks/useSharepointDocs";
+import { BacklogConsultorModal } from "@/components/consultor/ui/BacklogConsultorModal";
 
 // Tipos do arquivo centralizado
 import type {
@@ -263,6 +265,14 @@ export default function ConsultorDashboardV2() {
   const [apontDescricao, setApontDescricao] = useState("");
   const [diarioObs, setDiarioObs] = useState("");
   const [diarioCategoria, setDiarioCategoria] = useState<"geral"|"decisao"|"ocorrencia"|"marco"|"alerta">("geral");
+  const [diarioMencionados, setDiarioMencionados] = useState<string[]>([]);
+  const [diarioTags, setDiarioTags] = useState<string[]>([]);
+  const [diarioCriticidade, setDiarioCriticidade] = useState<string | null>(null);
+  const [diarioFormOpen, setDiarioFormOpen] = useState(false);
+  const [diarioReplyId, setDiarioReplyId] = useState<string | null>(null);
+  const [diarioReplyTexto, setDiarioReplyTexto] = useState("");
+  const [diarioReplyMencionados, setDiarioReplyMencionados] = useState<string[]>([]);
+  const [diarioReplyTags, setDiarioReplyTags] = useState<string[]>([]);
 
   // ── State: despesa ─────────────────────────────────────────────────────────
   const [despesaOpen, setDespesaOpen] = useState(false);
@@ -328,6 +338,7 @@ export default function ConsultorDashboardV2() {
   const [reqHistorico, setReqHistorico] = useState<any[]>([]);
   const [reqHistLoading, setReqHistLoading] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
+  const [backlogModalOpen, setBacklogModalOpen] = useState(false);
 
   // Search bar — projetos Liberados filtrados por query
   const projetosAtivos = useMemo(() => {
@@ -342,7 +353,7 @@ export default function ConsultorDashboardV2() {
 
   // ── Hooks ─────────────────────────────────────────────────────────────────
   const { pendencias, totalPendencias, loadingPendencias, loadPendencias } = usePendencias(user?.id);
-  const { entradas: diarioEntradas, loading: diarioLoading, loadEntradas: loadDiarioEntradas, insertEntrada } = useDiario();
+  const { entradas: diarioEntradas, loading: diarioLoading, saving: diarioSaving, loadEntradas: loadDiarioEntradas, insertEntrada, insertReply, marcarCiente, marcarResolvido, loadUsuariosMencionaveis, usuariosMencionaveis, totalMencoesPendentes, getStatusMencaoCores } = useDiario();
   const { files: spFiles, loading: spLoading, error: spError, loadFiles: loadSpFiles, clear: clearSpFiles } = useSharepointDocs();
 
   // ── Effects ───────────────────────────────────────────────────────────────
@@ -362,6 +373,57 @@ export default function ConsultorDashboardV2() {
   useEffect(() => {
     calcularTimesheet();
   }, [currentMonth, user]);
+
+  // Renderizar texto do diario com chips visuais (@mencao #tag !criticidade)
+  const renderTextoComChips = (texto: string) => {
+    const partes: React.ReactNode[] = [];
+    const regex = /(@\[([^\]]+)\]\([a-f0-9-]{36}\)|#\[([^\]]+)\]|!\[(alta|media|baixa)\])/g;
+    let ultimo = 0;
+    let match;
+    let idx = 0;
+    while ((match = regex.exec(texto)) !== null) {
+      if (match.index > ultimo) {
+        partes.push(<span key={`t${idx++}`}>{texto.slice(ultimo, match.index)}</span>);
+      }
+      const token = match[0];
+      if (token.startsWith('@[')) {
+        const nome = match[2];
+        partes.push(
+          <span key={`m${idx++}`} style={{ display: "inline-flex", alignItems: "center", background: "rgba(37,99,235,0.10)", color: "#1d4ed8", border: "1px solid rgba(37,99,235,0.25)", borderRadius: 999, padding: "0 7px", fontSize: 10, fontWeight: 500, margin: "0 2px", lineHeight: 1.7 }}>
+            @{nome}
+          </span>
+        );
+      } else if (token.startsWith('#[')) {
+        const tag = match[3];
+        partes.push(
+          <span key={`tg${idx++}`} style={{ display: "inline-flex", alignItems: "center", background: "rgba(124,58,237,0.10)", color: "#6d28d9", border: "1px solid rgba(124,58,237,0.25)", borderRadius: 999, padding: "0 7px", fontSize: 10, fontWeight: 500, margin: "0 2px", lineHeight: 1.7 }}>
+            #{tag}
+          </span>
+        );
+      } else if (token.startsWith('![')) {
+        const crit = match[4] as "alta" | "media" | "baixa";
+        const corMap: Record<string, { bg: string; color: string; border: string; label: string }> = {
+          alta:  { bg: "rgba(220,38,38,0.10)",  color: "#b91c1c", border: "rgba(220,38,38,0.25)",  label: "!!! Alta"  },
+          media: { bg: "rgba(217,119,6,0.10)",  color: "#b45309", border: "rgba(217,119,6,0.25)",  label: "!! Media" },
+          baixa: { bg: "rgba(22,163,74,0.10)",  color: "#15803d", border: "rgba(22,163,74,0.25)",  label: "! Baixa"  },
+        };
+        const c = corMap[crit] || corMap.baixa;
+        partes.push(
+          <span key={`cr${idx++}`} style={{ display: "inline-flex", alignItems: "center", background: c.bg, color: c.color, border: `1px solid ${c.border}`, borderRadius: 999, padding: "0 7px", fontSize: 10, fontWeight: 500, margin: "0 2px", lineHeight: 1.7 }}>
+            {c.label}
+          </span>
+        );
+      }
+      ultimo = match.index + token.length;
+    }
+    if (ultimo < texto.length) partes.push(<span key={`t${idx++}`}>{texto.slice(ultimo)}</span>);
+    return partes;
+  };
+
+  // Carregar usuarios mencionaveis sempre que projeto muda
+  useEffect(() => {
+    if (projetoSelecionado?.id) loadUsuariosMencionaveis(projetoSelecionado.id);
+  }, [projetoSelecionado?.id]);
 
   // Auto-select agenda: fonte unica de verdade via handleSelectAgenda
   // handleSelectAgenda atualiza projetoSelecionado, SP, diario, etc
@@ -814,6 +876,15 @@ export default function ConsultorDashboardV2() {
     clearSpFiles();
     setProjetoDocs([]);
     setCronogramaItensPorAtividade({});
+    // Reset form diario ao trocar de agenda/projeto
+    setDiarioFormOpen(false);
+    setDiarioObs("");
+    setDiarioMencionados([]);
+    setDiarioTags([]);
+    setDiarioCriticidade(null);
+    setDiarioCategoria("geral");
+    setDiarioReplyId(null);
+    setDiarioReplyTexto("");
     setSelectedClienteId(agenda.id);
     const proj = offProjetos.find(p => p.nome_cliente === agenda.cliente) || null;
     setProjetoSelecionado(proj);
@@ -821,6 +892,7 @@ export default function ConsultorDashboardV2() {
     setCtxTab("diario");
     if (proj) {
       loadDiarioEntradas(proj.id);
+      loadUsuariosMencionaveis(proj.id);
       if (agenda.codigo_cliente) loadSpFiles(agenda.codigo_cliente, agenda.cliente);
       loadProjetoDocs(agenda.cliente);
       supabase.from("projeto_atividades").select("id, codigo").eq("projeto_id", proj.id)
@@ -1011,6 +1083,7 @@ export default function ConsultorDashboardV2() {
                       setCtxVisible(true);
                       setCtxTab("diario");
                       loadDiarioEntradas(proj.id);
+                      loadUsuariosMencionaveis(proj.id);
                       loadProjetoDocs(proj.nome_cliente);
                       if ((proj as any).codigo_cliente) loadSpFiles((proj as any).codigo_cliente, proj.nome_cliente);
                       supabase.from("projeto_atividades").select("id, codigo").eq("projeto_id", proj.id)
@@ -1187,7 +1260,7 @@ export default function ConsultorDashboardV2() {
             { icon: <IcoDashboard />, label: "Dashboard",   fn: () => { setNavAtiva("Dashboard"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
             { icon: <IcoPend />,      label: "Pendencias",  badge: totalPendencias > 0 ? totalPendencias : null, badgeColor: RED,   fn: () => { setNavAtiva("Pendencias"); setPendenciasModalOpen(true); } },
             { icon: <IcoReq />,       label: "Requisicoes", badge: requisicoesPendentes.length > 0 ? requisicoesPendentes.length : null, badgeColor: AMBER, fn: () => { setNavAtiva("Requisicoes"); setReqModalOpen(true); loadReqHistorico(); } },
-            { icon: <IcoBacklog />,   label: "Backlog",     badgeText: "em breve", fn: () => setNavAtiva("Backlog") },
+            { icon: <IcoBacklog />,   label: "Meu Backlog",  fn: () => { setNavAtiva("Meu Backlog"); setBacklogModalOpen(true); } },
           ].map(item => {
             const isActive = navAtiva === item.label;
             return (
@@ -1708,31 +1781,192 @@ export default function ConsultorDashboardV2() {
               {/* Pane */}
               <div style={{ background: "#fff", borderWidth: "0 0.5px 0.5px 0.5px", borderStyle: "solid", borderColor: "rgba(0,0,0,0.07)", borderRadius: "0 0 10px 10px", minHeight: 240 }}>
 
-                {/* DIARIO */}
+                {/* DIARIO -- BL-CONS-001-F2 */}
                 {ctxTab === "diario" && (
-                  <div style={{ padding: 16 }}>
+                  <div style={{ padding: 16, display: "flex", flexDirection: "column", gap: 10 }}>
+
+                    {/* Formulario nova entrada */}
+                    {diarioFormOpen ? (
+                      <div style={{ background: "rgba(57,255,135,0.04)", border: "0.5px solid rgba(57,255,135,0.2)", borderRadius: 8, padding: 12, display: "flex", flexDirection: "column", gap: 8 }}>
+                        <MencaoAutocomplete
+                          value={diarioObs}
+                          onChange={(t, m, tgs, crit) => { setDiarioObs(t); setDiarioMencionados(m); setDiarioTags(tgs || []); setDiarioCriticidade(crit || null); }}
+                          projetoId={projetoSelecionado?.id || ""}
+                          currentUserId={user?.id}
+                          rows={3}
+                          placeholder="Registre uma decisao, ocorrencia ou marco..."
+                          disabled={diarioSaving}
+                        />
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+                          <select
+                            value={diarioCategoria}
+                            onChange={e => setDiarioCategoria(e.target.value as any)}
+                            style={{ fontSize: 11, padding: "3px 8px", borderRadius: 6, border: "0.5px solid rgba(0,0,0,0.15)", background: "#fff", color: "#374151", height: 28 }}
+                          >
+                            <option value="geral">Geral</option>
+                            <option value="decisao">Decisao</option>
+                            <option value="ocorrencia">Ocorrencia</option>
+                            <option value="marco">Marco</option>
+                            <option value="alerta">Alerta</option>
+                          </select>
+                          <div style={{ display: "flex", gap: 6 }}>
+                            <button
+                              onClick={() => { setDiarioFormOpen(false); setDiarioObs(""); setDiarioMencionados([]); setDiarioCategoria("geral"); }}
+                              style={{ fontSize: 11, padding: "4px 10px", borderRadius: 6, border: "0.5px solid rgba(0,0,0,0.15)", background: "transparent", color: "#6B7280", cursor: "pointer" }}
+                            >
+                              Cancelar
+                            </button>
+                            <button
+                              disabled={diarioSaving || !diarioObs.trim()}
+                              onClick={async () => {
+                                if (!projetoSelecionado || !diarioObs.trim()) return;
+                                const ok = await insertEntrada({
+                                  projeto_id: projetoSelecionado.id,
+                                  texto: diarioObs.trim(),
+                                  categoria: diarioCategoria,
+                                  origem: "consultor",
+                                  mencionados: diarioMencionados,
+                                  tags: diarioTags,
+                                  criticidade: diarioCriticidade,
+                                });
+                                if (ok) { setDiarioFormOpen(false); setDiarioObs(""); setDiarioMencionados([]); setDiarioTags([]); setDiarioCriticidade(null); setDiarioCategoria("geral"); }
+                              }}
+                              style={{ fontSize: 11, padding: "4px 12px", borderRadius: 6, border: "none", background: "#0B1628", color: "#39FF87", cursor: "pointer", opacity: diarioSaving || !diarioObs.trim() ? 0.5 : 1, display: "flex", alignItems: "center", gap: 4 }}
+                            >
+                              {diarioSaving ? <Loader2 size={10} style={{ animation: "spin 1s linear infinite" }} /> : null}
+                              Registrar
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    ) : (
+                      <button
+                        onClick={() => { setDiarioFormOpen(true); if (projetoSelecionado) loadUsuariosMencionaveis(projetoSelecionado.id); }}
+                        style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: "7px 0", fontSize: 11, color: "#39FF87", background: "rgba(57,255,135,0.06)", border: "0.5px dashed rgba(57,255,135,0.3)", borderRadius: 7, cursor: "pointer" }}
+                      >
+                        + Nova entrada do dia
+                      </button>
+                    )}
+
+                    {/* Feed de entradas */}
                     {diarioLoading ? (
                       <div style={{ display: "flex", alignItems: "center", justifyContent: "center", padding: 32 }}>
                         <Loader2 size={20} style={{ color: "#9CA3AF", animation: "spin 1s linear infinite" }} />
                       </div>
                     ) : diarioEntradas.length === 0 ? (
-                      <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 11 }}>Nenhuma entrada no diario para este projeto</div>
+                      <div style={{ textAlign: "center", padding: 24, color: "#9CA3AF", fontSize: 11 }}>Nenhuma entrada ainda</div>
                     ) : (
-                      <div style={{ display: "flex", flexDirection: "column" }}>
-                        {diarioEntradas.slice(0, 3).map(e => (
-                          <div key={e.id} style={{ padding: "9px 0", borderBottom: "0.5px solid rgba(0,0,0,0.07)" }}>
-                            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
-                              <span style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: "#9CA3AF" }}>{format(parseISO(e.data), "dd MMM yyyy", { locale: ptBR })} - {e.origem}</span>
-                              <span style={{ fontSize: 8, padding: "1px 6px", borderRadius: 4, fontFamily: "'DM Mono', monospace", background: e.origem === "coordenador" ? "rgba(245,166,35,0.1)" : "rgba(57,255,135,0.1)", color: e.origem === "coordenador" ? "#D97706" : GREEN }}>{e.origem}</span>
+                      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+                        {diarioEntradas.slice(0, 5).map(e => {
+                          const temMencaoPendente = e.tem_mencao && (e.mencoes_detalhes || []).some(m => m.status !== "resolvido");
+                          return (
+                            <div key={e.id} style={{ padding: "9px 10px", borderRadius: 8, border: temMencaoPendente ? "1.5px solid #FCA5A5" : "0.5px solid rgba(0,0,0,0.08)", borderLeft: temMencaoPendente ? "3px solid #EF4444" : undefined, background: temMencaoPendente ? "#FFF5F5" : "#FAFAFA" }}>
+                              <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 3 }}>
+                                <span style={{ fontSize: 9, fontFamily: "'DM Mono', monospace", color: "#9CA3AF" }}>
+                                  {format(parseISO(e.data), "dd MMM", { locale: ptBR })} - {e.autor_nome || e.origem}
+                                </span>
+                                <div style={{ display: "flex", alignItems: "center", gap: 4 }}>
+                                  {temMencaoPendente && (
+                                    <span style={{ fontSize: 8, padding: "1px 5px", borderRadius: 10, background: "#FEE2E2", color: "#DC2626", fontFamily: "'DM Mono', monospace" }}>@ pendente</span>
+                                  )}
+                                  <span style={{ fontSize: 8, padding: "1px 6px", borderRadius: 4, fontFamily: "'DM Mono', monospace", background: "#F3F4F6", color: "#6B7280" }}>{e.categoria}</span>
+                                </div>
+                              </div>
+                              <div style={{ fontSize: 11, color: "#4B5563", lineHeight: 1.55, marginBottom: (e.mencoes_detalhes || []).length > 0 || (e.replies || []).length > 0 ? 6 : 0 }}>{renderTextoComChips(e.texto)}</div>
+
+                              {/* Mencoes */}
+                              {(e.mencoes_detalhes || []).length > 0 && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4, paddingTop: 6, borderTop: "0.5px solid rgba(0,0,0,0.06)" }}>
+                                  {(e.mencoes_detalhes || []).map(men => {
+                                    const euFuiMencionado = men.mencionado_id === user?.id;
+                                    const agedorId = men.resolvido_por || men.mencionado_id;
+                                    const fmtTs = (ts: string | null) => !ts ? "" : new Date(ts).toLocaleString("pt-BR", {day:"2-digit",month:"2-digit",hour:"2-digit",minute:"2-digit"});
+                                    return (
+                                      <div key={men.id} style={{ display:"flex", flexDirection:"column", gap:4 }}>
+                                        {/* chip cinza contexto -- so quando pendente ou ciente */}
+                                        {(men.status === "pendente" || men.status === "ciente") && (
+                                          <div style={{ display:"flex", justifyContent:"flex-start" }}>
+                                            <span style={{ background:"rgba(0,0,0,0.04)", border:"0.5px solid rgba(0,0,0,0.08)", borderRadius:"0 7px 7px 7px", padding:"2px 8px", fontSize:9, color:"#9CA3AF" }}>
+                                              @{men.mencionado_nome || "usuario"} - {euFuiMencionado ? "voce foi mencionado" : "mencionou"}
+                                            </span>
+                                          </div>
+                                        )}
+                                        {/* PENDENTE: botoes esquerda */}
+                                        {men.status === "pendente" && (
+                                          <div style={{ display:"flex", justifyContent:"flex-start", gap:6 }}>
+                                            {euFuiMencionado && <button onClick={() => marcarCiente(men.id)} style={{ fontSize:9, padding:"2px 8px", borderRadius:4, border:"0.5px solid #FCD34D", background:"#FFFBEB", color:"#92400E", cursor:"pointer" }}>Ciente</button>}
+                                            {euFuiMencionado && <button onClick={() => marcarResolvido(men.id, e.id)} style={{ fontSize:9, padding:"2px 8px", borderRadius:4, border:"0.5px solid #6EE7B7", background:"#F0FDF4", color:"#065F46", cursor:"pointer" }}>Resolver</button>}
+                                          </div>
+                                        )}
+                                        {/* CIENTE: badge lado do agedor + Resolver direita (minha acao) */}
+                                        {men.status === "ciente" && (
+                                          <div style={{ display:"flex", flexDirection:"column", gap:3 }}>
+                                            <div style={{ display:"flex", justifyContent: euFuiMencionado ? "flex-start" : "flex-end" }}>
+                                              <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:9, color:"#b45309", fontWeight:600, padding:"2px 8px", borderRadius: euFuiMencionado ? "0 12px 12px 12px" : "12px 12px 0 12px", background:"#FFFBEB", border:"0.5px solid #FDE68A" }}>Ciente<span style={{ fontSize:8, color:"#9CA3AF", marginLeft:3 }}>{fmtTs(men.ciente_em)}</span></span>
+                                            </div>
+                                            {euFuiMencionado && (
+                                              <div style={{ display:"flex", justifyContent:"flex-end" }}>
+                                                <button onClick={() => marcarResolvido(men.id, e.id)} style={{ fontSize:9, padding:"3px 10px", borderRadius:"12px 12px 0 12px", border:"1px solid #059669", background:"#ffffff", color:"#059669", cursor:"pointer", fontWeight:600 }}>Resolver</button>
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                        {/* RESOLVIDO: sem chip contexto, badge lado do agedor */}
+                                        {men.status === "resolvido" && (
+                                          <div style={{ display:"flex", justifyContent: agedorId === user?.id ? "flex-end" : "flex-start" }}>
+                                            <span style={{ display:"inline-flex", alignItems:"center", gap:4, fontSize:9, color:"#059669", fontWeight:600, padding:"2px 8px", borderRadius: agedorId === user?.id ? "12px 12px 0 12px" : "0 12px 12px 12px", background:"#F0FDF4", border:"0.5px solid #BBF7D0" }}>Resolvido<span style={{ fontSize:8, color:"#9CA3AF", marginLeft:3 }}>{fmtTs(men.resolvido_em)}</span></span>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              )}
+
+                              {/* Replies */}
+                              {(e.replies || []).length > 0 && (
+                                <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+                                  {(e.replies || []).map(r => (
+                                    <div key={r.id} style={{ display: "flex", justifyContent: "flex-end" }}>
+                                      <div style={{ maxWidth: "65%", background: "#F0FDF4", border: "0.5px solid #BBF7D0", borderRadius: "12px 12px 0 12px", padding: "7px 11px" }}>
+                                        <div style={{ display: "flex", alignItems: "center", gap: 6, marginBottom: 3 }}>
+                                          <span style={{ fontSize: 9, color: "#059669", fontWeight: 500 }}>{r.autor_nome || r.origem}</span>
+                                          <span style={{ fontSize: 9, color: "#9CA3AF", fontFamily: "'DM Mono', monospace" }}>{r.data}</span>
+                                        </div>
+                                        <div style={{ fontSize: 11, color: "#374151", lineHeight: 1.5 }}>{renderTextoComChips(r.texto)}</div>
+                                      </div>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+
+                              {/* Botao responder -- so quando mencao pendente ou ciente */}
+                              {(e.mencoes_detalhes || []).some(mn => mn.status === "pendente" || mn.status === "ciente") && (
+                                diarioReplyId === e.id ? (
+                                  <div style={{ marginTop: 4, display: "flex", flexDirection: "column", gap: 6, paddingTop: 6, borderTop: "0.5px solid rgba(0,0,0,0.06)" }}>
+                                    <MencaoAutocomplete
+                                      value={diarioReplyTexto}
+                                      onChange={(t, m) => { setDiarioReplyTexto(t); setDiarioReplyMencionados(m); }}
+                                      projetoId={projetoSelecionado?.id || ""}
+                                      currentUserId={user?.id}
+                                      rows={2}
+                                      placeholder="Sua resposta..."
+                                      disabled={diarioSaving}
+                                    />
+                                    <div style={{ display: "flex", justifyContent: "flex-end", gap: 6 }}>
+                                      <button onClick={() => { setDiarioReplyId(null); setDiarioReplyTexto(""); }} style={{ fontSize: 10, padding: "3px 8px", borderRadius: 5, border: "0.5px solid rgba(0,0,0,0.15)", background: "transparent", color: "#6B7280", cursor: "pointer" }}>Cancelar</button>
+                                      <button disabled={diarioSaving || !diarioReplyTexto.trim()} onClick={async () => { if (!projetoSelecionado) return; const ok = await insertReply({ projeto_id: projetoSelecionado.id, entrada_id: e.id, texto: diarioReplyTexto, origem: "consultor", mencionados: diarioReplyMencionados, tags: diarioReplyTags }); if (ok) { setDiarioReplyId(null); setDiarioReplyTexto(""); setDiarioReplyMencionados([]); setDiarioReplyTags([]); } }} style={{ fontSize: 10, padding: "3px 10px", borderRadius: 5, border: "none", background: "#0B1628", color: "#39FF87", cursor: "pointer", opacity: diarioSaving || !diarioReplyTexto.trim() ? 0.5 : 1 }}>Responder</button>
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <button onClick={() => { setDiarioReplyId(e.id); if (projetoSelecionado) loadUsuariosMencionaveis(projetoSelecionado.id); }} style={{ marginTop: 2, fontSize: 9, color: "#9CA3AF", background: "none", border: "none", cursor: "pointer", padding: 0 }}>Responder</button>
+                                )
+                              )}
                             </div>
-                            <div style={{ fontSize: 11, color: "#4B5563", lineHeight: 1.55 }}>{e.texto}</div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
-                    <button style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 6, width: "100%", padding: 8, border: "0.5px dashed rgba(57,255,135,0.3)", borderRadius: 7, fontSize: 10, color: GREEN, cursor: "pointer", marginTop: 10, background: "rgba(57,255,135,0.02)", fontWeight: 600 }}>
-                      + Nova entrada do dia
-                    </button>
                   </div>
                 )}
 
@@ -1985,6 +2219,23 @@ export default function ConsultorDashboardV2() {
   function renderDialogs() {
     return (
       <>
+        {/* Modal Meu Backlog -- BL-CONS-001 */}
+        <BacklogConsultorModal
+          open={backlogModalOpen}
+          onClose={() => { setBacklogModalOpen(false); setNavAtiva("Dashboard"); }}
+          userId={user?.id}
+          onOpenRequisicao={(cliente, _projetoId) => {
+            setBacklogModalOpen(false);
+            if (cliente) setReqCliente(cliente);
+            setReqOpen(true);
+          }}
+          onOpenUpload={(agendaId, _itemCronograma) => {
+            setBacklogModalOpen(false);
+            const agenda = agendas.find(a => a.id === agendaId);
+            if (agenda) handleSelectAgenda(agenda);
+          }}
+        />
+
         {/* Modal Requisições — historico e acompanhamento */}
         <Dialog open={reqModalOpen} onOpenChange={v => { setReqModalOpen(v); if (!v) setNavAtiva("Dashboard"); }}>
           <DialogContent className="max-w-lg max-h-[85dvh] flex flex-col !p-0 !gap-0 overflow-hidden [&>button[aria-label=Close]]:!hidden">
