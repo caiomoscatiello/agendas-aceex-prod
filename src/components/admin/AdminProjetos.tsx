@@ -2281,78 +2281,296 @@ export default function AdminProjetos() {
     </div>
   );
 
-  const renderSheetHeader = () => (
-    <div className="space-y-0">
-      <div className="flex items-start justify-between gap-2">
-        <div className="min-w-0 flex-1">
-          <h2 className="text-base font-semibold truncate">
-            {sheetMode === "new" ? "Novo projeto" : detailProjeto?.nome_cliente}
-          </h2>
-          {sheetMode !== "new" && detailProjeto && (
-            <p className="text-xs text-muted-foreground truncate">
-              {detailProjeto.codigo_cliente}  ·  {getCoordenadorName(detailProjeto.coordenador_id)}  ·  {detailProjeto.status}
-              {detailProjeto.monday_board_id && "  ·  Monday vinculado"}
-            </p>
+  // fichaOpen -- controla drawer de ficha do projeto
+  const [fichaOpen, setFichaOpen] = React.useState(false);
+  // projDropOpen -- controla dropdown seletor de projeto no header
+  const [projDropOpen, setProjDropOpen] = React.useState(false);
+
+  const renderSheetHeader = () => {
+    const isEditable = sheetMode === "edit" || sheetMode === "new";
+    const NAVY = "#0B1628";
+    const LIME = "#39FF87";
+    const GREEN = "#059669";
+    const AMBER = "#F5A623";
+    const RED = "#E24B4A";
+
+    // Health Score do projeto aberto (ultimo snapshot)
+    const hs = healthHistorico?.[0];
+    const hsScore = hs?.score_total ?? null;
+    const hsColor = hsScore === null ? "#9CA3AF" : hsScore >= 75 ? GREEN : hsScore >= 50 ? AMBER : RED;
+
+    // Status dot color
+    const statusColor = detailProjeto?.status === "Liberado" ? GREEN
+      : detailProjeto?.status === "Encerrado" ? RED : AMBER;
+
+    if (isEditable || sheetMode === "new") {
+      // Modo edicao/novo: header simples
+      return (
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 8, paddingBottom: 4 }}>
+          <div>
+            <h2 style={{ fontSize: 15, fontWeight: 600, color: "#111827", margin: 0 }}>
+              {sheetMode === "new" ? "Novo projeto" : `Editar: ${detailProjeto?.nome_cliente}`}
+            </h2>
+            {sheetMode !== "new" && detailProjeto && (
+              <p style={{ fontSize: 11, color: "#9CA3AF", marginTop: 2 }}>{detailProjeto.codigo_cliente}</p>
+            )}
+          </div>
+          <button onClick={() => { setSheetMode("view"); if (sheetMode === "new") setSheetOpen(false); }}
+            style={{ background: "none", border: "none", cursor: "pointer", color: "#9CA3AF", fontSize: 11, display: "flex", alignItems: "center", gap: 4 }}>
+            <X className="h-4 w-4" /> Cancelar
+          </button>
+        </div>
+      );
+    }
+
+    return (
+      <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+        {/* Linha 1: dropdown projeto + codigo + status + links + ficha + menu */}
+        <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+          {/* Botao voltar */}
+          <button
+            onClick={() => { setSheetOpen(false); setDetailProjeto(null); setListExpanded(true); }}
+            style={{ background: "none", border: "none", cursor: "pointer", display: "flex", alignItems: "center", gap: 3, fontSize: 11, color: "#9CA3AF", padding: 0, flexShrink: 0 }}
+          >
+            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
+            Projetos
+          </button>
+
+          {/* Dropdown seletor de projeto */}
+          <div style={{ position: "relative" }}>
+            <button
+              onClick={() => setProjDropOpen(v => !v)}
+              style={{
+                display: "flex", alignItems: "center", gap: 6,
+                padding: "4px 10px", borderRadius: 8,
+                border: "0.5px solid rgba(0,0,0,0.12)",
+                background: "#F9FAFB", cursor: "pointer",
+                fontSize: 13, fontWeight: 600, color: "#111827",
+              }}
+            >
+              <div style={{ width: 7, height: 7, borderRadius: "50%", background: statusColor, flexShrink: 0 }} />
+              {detailProjeto?.nome_cliente || "Selecione"}
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ opacity: 0.4 }}><polyline points="6 9 12 15 18 9"/></svg>
+            </button>
+            {projDropOpen && (
+              <div style={{
+                position: "absolute", top: "calc(100% + 4px)", left: 0,
+                background: "#0F1E35", border: "0.5px solid rgba(57,255,135,0.15)",
+                borderRadius: 10, minWidth: 240,
+                boxShadow: "0 8px 24px rgba(0,0,0,0.4)", zIndex: 100,
+                paddingTop: 4, paddingBottom: 6,
+              }}>
+                <div style={{ padding: "6px 13px 4px", fontSize: 8, fontFamily: "'DM Mono', monospace", color: "rgba(57,255,135,0.4)", letterSpacing: "0.12em", textTransform: "uppercase", borderBottom: "0.5px solid rgba(255,255,255,0.06)", marginBottom: 3 }}>
+                  Projetos
+                </div>
+                {projetos.map(p => (
+                  <button key={p.id}
+                    onClick={() => { loadProjetoDetails(p); setSheetMode("view"); setSheetOpen(true); setProjDropOpen(false); }}
+                    style={{
+                      display: "flex", alignItems: "center", gap: 8, width: "100%",
+                      padding: "7px 13px", border: "none", cursor: "pointer",
+                      background: detailProjeto?.id === p.id ? "rgba(57,255,135,0.08)" : "transparent",
+                      color: detailProjeto?.id === p.id ? LIME : "rgba(255,255,255,0.65)",
+                      fontSize: 12, fontWeight: detailProjeto?.id === p.id ? 600 : 400,
+                      textAlign: "left", fontFamily: "'Plus Jakarta Sans', sans-serif",
+                      borderLeft: detailProjeto?.id === p.id ? `2px solid ${LIME}` : "2px solid transparent",
+                    }}
+                    onMouseEnter={e => { if (detailProjeto?.id !== p.id) (e.currentTarget as HTMLElement).style.background = "rgba(57,255,135,0.05)"; }}
+                    onMouseLeave={e => { if (detailProjeto?.id !== p.id) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+                  >
+                    <div style={{ width: 6, height: 6, borderRadius: "50%", background: p.status === "Liberado" ? GREEN : p.status === "Encerrado" ? RED : AMBER, flexShrink: 0 }} />
+                    <span style={{ flex: 1, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nome_cliente}</span>
+                    <span style={{ fontSize: 9, color: "rgba(255,255,255,0.3)", fontFamily: "'DM Mono', monospace" }}>{p.codigo_cliente}</span>
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+
+          {/* Codigo */}
+          <span style={{ fontSize: 10, color: "#9CA3AF", background: "#F3F4F6", padding: "2px 7px", borderRadius: 5, fontFamily: "'DM Mono', monospace" }}>
+            {detailProjeto?.codigo_cliente}
+          </span>
+
+          {/* Status inline */}
+          <select
+            value={detailProjeto?.status || "Em planejamento"}
+            onChange={async e => {
+              if (!detailProjeto) return;
+              const novoStatus = e.target.value;
+              await supabase.from("projetos").update({ status: novoStatus }).eq("id", detailProjeto.id);
+              setDetailProjeto(prev => prev ? { ...prev, status: novoStatus } : prev);
+              setProjetos(prev => prev.map(p => p.id === detailProjeto.id ? { ...p, status: novoStatus } : p));
+              toast({ title: "Status atualizado!" });
+            }}
+            style={{
+              fontSize: 11, border: "0.5px solid rgba(0,0,0,0.12)",
+              borderRadius: 20, padding: "3px 8px",
+              background: detailProjeto?.status === "Liberado" ? "rgba(5,150,105,0.08)" : detailProjeto?.status === "Encerrado" ? "rgba(226,75,74,0.08)" : "rgba(245,166,35,0.08)",
+              color: detailProjeto?.status === "Liberado" ? "#065f46" : detailProjeto?.status === "Encerrado" ? "#991b1b" : "#92400e",
+              cursor: "pointer", fontWeight: 500,
+            }}
+          >
+            <option value="Em planejamento">Em planejamento</option>
+            <option value="Liberado">Liberado</option>
+            <option value="Encerrado">Encerrado</option>
+          </select>
+
+          {/* Links de integracao + acoes */}
+          <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 5 }}>
+            {/* Ficha */}
+            <button
+              onClick={() => setFichaOpen(v => !v)}
+              style={{
+                display: "flex", alignItems: "center", gap: 4, fontSize: 11,
+                padding: "3px 10px", border: "0.5px solid rgba(0,0,0,0.12)",
+                borderRadius: 6, cursor: "pointer", background: "#fff",
+                color: fichaOpen ? NAVY : "#6B7280", fontWeight: fichaOpen ? 500 : 400,
+              }}
+            >
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/><line x1="12" y1="12" x2="12" y2="16"/><line x1="10" y1="14" x2="14" y2="14"/></svg>
+              Ficha
+            </button>
+
+            {/* Monday */}
+            {detailProjeto?.monday_board_url && (
+              <button onClick={() => window.open(detailProjeto.monday_board_url!, "_blank")} title="Monday.com"
+                style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "#fff" }}>
+                <svg width="14" height="14" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg"><circle cx="18" cy="68" r="18" fill="#ff3750"/><circle cx="50" cy="68" r="18" fill="#ffcb00"/><circle cx="82" cy="68" r="18" fill="#00ca72"/></svg>
+              </button>
+            )}
+
+            {/* SharePoint */}
+            {detailProjeto?.sharepoint_pasta_url && (
+              <button onClick={() => window.open(detailProjeto.sharepoint_pasta_url!, "_blank")} title="SharePoint"
+                style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "#fff" }}>
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#036C70" strokeWidth="2.5" strokeLinecap="round"><circle cx="9" cy="9" r="6"/><circle cx="15" cy="15" r="5"/></svg>
+              </button>
+            )}
+
+            {/* Autentique */}
+            {detailProjeto?.autentique_folder_url && (
+              <button onClick={() => window.open(detailProjeto.autentique_folder_url!, "_blank")} title="Autentique"
+                style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "#fff", fontSize: 9, fontWeight: 700, color: "#7c3aed" }}>
+                Au
+              </button>
+            )}
+
+            {/* Editar */}
+            <button
+              onClick={() => { if (detailProjeto) { openEdit(detailProjeto); setSheetMode("edit"); } }}
+              title="Editar projeto"
+              style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "#fff" }}>
+              <Edit className="h-3.5 w-3.5" style={{ color: "#9CA3AF" }} />
+            </button>
+
+            {/* Menu outras acoes */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button style={{ width: 28, height: 28, borderRadius: 6, border: "0.5px solid rgba(0,0,0,0.1)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer", background: "#fff" }}>
+                  <ChevronDown className="h-3.5 w-3.5" style={{ color: "#9CA3AF" }} />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end" className="w-52">
+                <DropdownMenuItem className="gap-2 text-sm" onClick={() => { if (detailProjeto) { loadHealthScore(detailProjeto.id); setHealthOpen(true); } }}>
+                  <Activity className="h-3.5 w-3.5" /> Health Score Analytics
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="gap-2 text-sm" onClick={() => { if (detailProjeto) { loadDiario(detailProjeto.id); loadDiarioUsuarios(detailProjeto.id); setDiarioOpen(true); } }}>
+                  <BookOpen className="h-3.5 w-3.5" /> Diario de bordo
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2 text-sm" onClick={() => { if (detailProjeto) { loadSLA(detailProjeto.id); setSlaOpen(true); } }}>
+                  <Settings2 className="h-3.5 w-3.5" /> Config SLA
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="gap-2 text-sm" onClick={() => handleAbrirCsvWizard()}>
+                  <Upload className="h-4 w-4" /> Importar CSV Backlog
+                </DropdownMenuItem>
+                <DropdownMenuItem className="gap-2 text-sm" onClick={() => setAtividadesCsvOpen(true)}>
+                  <Upload className="h-4 w-4" /> Importar CSV Atividades
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem className="gap-2 text-sm text-destructive focus:text-destructive" onClick={() => { if (detailProjeto) handleDelete(detailProjeto.id); }}>
+                  <Trash2 className="h-3.5 w-3.5" /> Excluir projeto
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
+        </div>
+
+        {/* Linha 2: metadados (coordenador, contato, health score, horas) */}
+        <div style={{ display: "flex", alignItems: "center", gap: 16, flexWrap: "wrap" }}>
+          {detailProjeto?.coordenador_id && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#6B7280" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+              {getCoordenadorName(detailProjeto.coordenador_id)} (coord.)
+            </div>
+          )}
+          {detailProjeto?.email_contato && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#6B7280" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+              {detailProjeto.email_contato}
+            </div>
+          )}
+          {detailProjeto?.contato_telefone && (
+            <div style={{ display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#6B7280" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 10a19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 3.56 0h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L8.09 7.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+              {detailProjeto.contato_telefone}
+            </div>
+          )}
+          {hsScore !== null && (
+            <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+              <span style={{ fontSize: 10, color: "#9CA3AF" }}>Health Score</span>
+              <div style={{ width: 56, height: 4, background: "#E5E7EB", borderRadius: 2, overflow: "hidden" }}>
+                <div style={{ width: `${Math.min(100, hsScore)}%`, height: "100%", background: hsColor, borderRadius: 2 }} />
+              </div>
+              <span style={{ fontSize: 12, fontWeight: 600, color: hsColor }}>{hsScore}</span>
+            </div>
+          )}
+          {detailProjeto?.horas_contratadas && (
+            <div style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 4, fontSize: 11, color: "#6B7280" }}>
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+              {detailProjeto.horas_contratadas}h contratadas
+            </div>
           )}
         </div>
-        {sheetMode !== "new" && (
-          <DropdownMenu>
-            <DropdownMenuTrigger asChild>
-              <Button variant="outline" size="sm" className="gap-1.5 h-8 text-xs shrink-0">
-                Outras ações <ChevronDown className="h-3 w-3" />
-              </Button>
-            </DropdownMenuTrigger>
-            <DropdownMenuContent align="end" className="w-48">
-              <DropdownMenuItem className="gap-2 text-sm" onClick={() => { if (detailProjeto) { openEdit(detailProjeto); setSheetMode("edit"); } }}>
-                <Edit className="h-3.5 w-3.5" /> Editar projeto
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="gap-2 text-sm"
-                onClick={() => { if (detailProjeto) { loadHealthScore(detailProjeto.id); setHealthOpen(true); } }}
-              >
-                <Activity className="h-3.5 w-3.5" /> Health Score Analytics
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="gap-2 text-sm"
-                onClick={() => { if (detailProjeto) { loadDiario(detailProjeto.id); loadDiarioUsuarios(detailProjeto.id); setDiarioOpen(true); } }}
-              >
-                <BookOpen className="h-3.5 w-3.5" /> Diario de bordo
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="gap-2 text-sm"
-                onClick={() => { if (detailProjeto) { loadSLA(detailProjeto.id); setSlaOpen(true); } }}
-              >
-                <Settings2 className="h-3.5 w-3.5" /> Config SLA
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem
-                className="gap-2 text-sm"
-                onClick={() => handleAbrirCsvWizard()}
-              >
-                <Upload className="h-4 w-4" /> Importar CSV Backlog
-              </DropdownMenuItem>
-              <DropdownMenuItem
-                className="gap-2 text-sm"
-                onClick={() => setAtividadesCsvOpen(true)}
-              >
-                <Upload className="h-4 w-4" /> Importar CSV Atividades
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 text-sm text-destructive focus:text-destructive" onClick={() => { if (detailProjeto) handleDelete(detailProjeto.id); }}>
-                <Trash2 className="h-3.5 w-3.5" /> Excluir projeto
-              </DropdownMenuItem>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem className="gap-2 text-sm text-muted-foreground" onClick={() => { setSheetOpen(false); setDetailProjeto(null); setListExpanded(true); }}>
-                <X className="h-3.5 w-3.5" /> Fechar
-              </DropdownMenuItem>
-            </DropdownMenuContent>
-          </DropdownMenu>
+
+        {/* Ficha drawer inline -- aparece abaixo do header quando aberto */}
+        {fichaOpen && detailProjeto && (
+          <div style={{
+            background: "#F9FAFB", border: "0.5px solid rgba(0,0,0,0.1)",
+            borderRadius: 8, padding: "12px 14px",
+            display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: "8px 16px",
+          }}>
+            <div>
+              <p style={{ fontSize: 9, color: "#9CA3AF", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.06em" }}>Nome do cliente</p>
+              <p style={{ fontSize: 12, color: "#111827", fontWeight: 500 }}>{detailProjeto.nome_cliente}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: 9, color: "#9CA3AF", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.06em" }}>Contato</p>
+              <p style={{ fontSize: 12, color: "#111827" }}>{detailProjeto.contato_nome || "—"}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: 9, color: "#9CA3AF", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.06em" }}>Telefone</p>
+              <p style={{ fontSize: 12, color: "#111827" }}>{detailProjeto.contato_telefone || "—"}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: 9, color: "#9CA3AF", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.06em" }}>Site</p>
+              <p style={{ fontSize: 12, color: "#111827" }}>{detailProjeto.site_cliente || "—"}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: 9, color: "#9CA3AF", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.06em" }}>Endereco</p>
+              <p style={{ fontSize: 12, color: "#111827" }}>{detailProjeto.endereco_cliente || "—"}</p>
+            </div>
+            <div>
+              <p style={{ fontSize: 9, color: "#9CA3AF", marginBottom: 2, textTransform: "uppercase", letterSpacing: "0.06em" }}>Deslocamento</p>
+              <p style={{ fontSize: 12, color: "#111827" }}>{detailProjeto.deslocamento}h</p>
+            </div>
+          </div>
         )}
       </div>
-    </div>
-  );
+    );
+  };
 
   const renderSheetFooter = () => {
     const isEditable = sheetMode === "edit" || sheetMode === "new";
@@ -2391,55 +2609,125 @@ export default function AdminProjetos() {
   };
 
 
-  return (
-    <div className="space-y-4">
-      {/* DESKTOP */}
-      <div className="hidden sm:flex" style={{ height: "calc(100vh - 8rem)" }}>
-        {listExpanded && !sheetOpen ? (
-          <div className="w-[300px] shrink-0 border rounded-lg overflow-hidden flex flex-col mr-4 bg-background">{renderDesktopList()}</div>
-        ) : sheetOpen && !listExpanded ? (
-          <div className="w-[52px] shrink-0 border rounded-lg overflow-hidden flex flex-col mr-4 bg-background">{renderRail()}</div>
-        ) : (
-          <div className="w-[300px] shrink-0 border rounded-lg overflow-hidden flex flex-col mr-4 bg-background">{renderDesktopList()}</div>
-        )}
+  // Fechar dropdown de projeto ao clicar fora
+  React.useEffect(() => {
+    if (!projDropOpen) return;
+    const handler = (e: MouseEvent) => {
+      setProjDropOpen(false);
+    };
+    document.addEventListener("mousedown", handler);
+    return () => document.removeEventListener("mousedown", handler);
+  }, [projDropOpen]);
 
-        {sheetOpen && (detailProjeto || sheetMode === "new") ? (
-          <div className="flex-1 min-w-0">
-            <Card className="flex flex-col h-full">
-              <CardHeader className="pb-2 shrink-0">{renderSheetHeader()}</CardHeader>
-              <CardContent className="flex-1 min-h-0 flex flex-col overflow-hidden pb-0">{renderSheetBody()}</CardContent>
-              <div className="px-6 pb-4 shrink-0">{renderSheetFooter()}</div>
-            </Card>
-          </div>
-        ) : (
-          <div className="flex-1 min-w-0 flex flex-col gap-3">
-            <div className="grid grid-cols-4 gap-3">
+  return (
+    <div>
+      {/* DESKTOP -- layout novo: lista na barra de busca + view full */}
+      <div className="hidden sm:flex flex-col" style={{ minHeight: "calc(100vh - 9rem)" }}>
+
+        {/* Header de lista com busca e filtros */}
+        {!sheetOpen && (
+          <div>
+            {/* KPIs compactos */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 8, marginBottom: 12 }}>
               {[
-                { label: "Total de projetos", value: projetos.length, sub: "cadastrados", color: "" },
-                { label: "Liberados", value: countByStatus.liberado, sub: "em execução", color: "text-emerald-600" },
-                { label: "Em planejamento", value: countByStatus.planejamento, sub: "aguardando início", color: "text-yellow-600" },
-                { label: "Sem board Monday", value: projetos.filter(p => !p.monday_board_id).length, sub: "pendente criação", color: "text-red-500" },
-              ].map(({ label, value, sub, color }) => (
-                <Card key={label} className="bg-muted/30">
-                  <CardContent className="p-4">
-                    <p className="text-xs text-muted-foreground mb-1">{label}</p>
-                    <p className={cn("text-3xl font-medium", color)}>{value}</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5">{sub}</p>
-                  </CardContent>
-                </Card>
+                { label: "Total", value: projetos.length, color: "#111827" },
+                { label: "Liberados", value: countByStatus.liberado, color: "#059669" },
+                { label: "Planejamento", value: countByStatus.planejamento, color: "#D97706" },
+                { label: "Sem board Monday", value: projetos.filter(p => !p.monday_board_id).length, color: "#E24B4A" },
+              ].map(({ label, value, color }) => (
+                <div key={label} style={{ background: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", borderRadius: 9, padding: "10px 14px" }}>
+                  <p style={{ fontSize: 10, color: "#9CA3AF", marginBottom: 2 }}>{label}</p>
+                  <p style={{ fontSize: 22, fontWeight: 500, color }}>{value}</p>
+                </div>
               ))}
             </div>
-            <div className="flex-1 flex items-center justify-center rounded-lg border border-dashed">
-              <div className="text-center space-y-1">
-                <p className="text-sm text-muted-foreground">Selecione um projeto para ver detalhes</p>
-                <p className="text-xs text-muted-foreground/60">ou clique em + para cadastrar novo</p>
+
+            {/* Barra de busca + filtros + novo */}
+            <div style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+              <div style={{ flex: 1, display: "flex", alignItems: "center", gap: 6, background: "#fff", border: "0.5px solid rgba(0,0,0,0.1)", borderRadius: 8, padding: "6px 10px", minWidth: 200 }}>
+                <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+                <input
+                  value={searchQuery}
+                  onChange={e => setSearchQuery(e.target.value)}
+                  placeholder="Buscar projeto ou codigo..."
+                  style={{ background: "transparent", border: "none", outline: "none", fontSize: 12, color: "#111827", width: "100%", fontFamily: "'Plus Jakarta Sans', sans-serif" }}
+                />
               </div>
+              <div style={{ display: "flex", gap: 4, flexWrap: "wrap" }}>
+                {[
+                  { key: "todos",        label: `Todos (${countByStatus.todos})` },
+                  { key: "liberado",     label: `Liberados (${countByStatus.liberado})` },
+                  { key: "planejamento", label: `Planejamento (${countByStatus.planejamento})` },
+                  { key: "encerrado",    label: `Encerrados (${countByStatus.encerrado})` },
+                ].map(({ key, label }) => (
+                  <button key={key} onClick={() => setFiltroStatus(key)} style={{
+                    fontSize: 11, padding: "4px 10px", borderRadius: 20, cursor: "pointer",
+                    border: filtroStatus === key ? "0.5px solid rgba(57,255,135,0.45)" : "0.5px solid rgba(0,0,0,0.1)",
+                    background: filtroStatus === key ? "rgba(57,255,135,0.1)" : "#fff",
+                    color: filtroStatus === key ? "#065f46" : "#6B7280",
+                    fontWeight: filtroStatus === key ? 500 : 400,
+                  }}>{label}</button>
+                ))}
+              </div>
+              <button
+                onClick={() => { openNew(); setSheetMode("new"); setSheetOpen(true); }}
+                style={{
+                  display: "flex", alignItems: "center", gap: 5, padding: "6px 14px",
+                  background: "#0B1628", borderRadius: 7, border: "none",
+                  fontSize: 12, color: "#39FF87", cursor: "pointer", fontWeight: 500,
+                  fontFamily: "'Plus Jakarta Sans', sans-serif",
+                }}>
+                <Plus className="h-3.5 w-3.5" /> Novo projeto
+              </button>
             </div>
+
+            {/* Lista de projetos em cards compactos */}
+            {loading ? (
+              <div className="flex justify-center py-8"><Loader2 className="h-5 w-5 animate-spin" /></div>
+            ) : projetosFiltrados.length === 0 ? (
+              <p style={{ fontSize: 13, color: "#9CA3AF", textAlign: "center", padding: "32px 0" }}>Nenhum projeto encontrado.</p>
+            ) : (
+              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                {projetosFiltrados.map(p => (
+                  <div
+                    key={p.id}
+                    onClick={() => { loadProjetoDetails(p); setSheetMode("view"); setSheetOpen(true); setListExpanded(false); }}
+                    style={{
+                      background: "#fff", border: "0.5px solid rgba(0,0,0,0.08)", borderRadius: 9,
+                      padding: "10px 14px", display: "flex", alignItems: "center", gap: 10,
+                      cursor: "pointer", transition: "border-color 0.12s",
+                    }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(57,255,135,0.4)"}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.borderColor = "rgba(0,0,0,0.08)"}
+                  >
+                    <div style={{ width: 8, height: 8, borderRadius: "50%", background: p.status === "Liberado" ? "#059669" : p.status === "Encerrado" ? "#E24B4A" : "#F5A623", flexShrink: 0 }} />
+                    <div style={{ flex: 1, minWidth: 0 }}>
+                      <p style={{ fontSize: 13, fontWeight: 500, color: "#111827", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{p.nome_cliente}</p>
+                      <p style={{ fontSize: 10, color: "#9CA3AF" }}>{p.codigo_cliente} · {getCoordenadorName(p.coordenador_id)}</p>
+                    </div>
+                    {p.monday_board_id
+                      ? <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: "rgba(59,130,246,0.08)", color: "#1d4ed8", border: "0.5px solid rgba(59,130,246,0.2)", flexShrink: 0 }}>Monday</span>
+                      : <span style={{ fontSize: 9, padding: "2px 6px", borderRadius: 4, background: "#F3F4F6", color: "#9CA3AF", border: "0.5px solid rgba(0,0,0,0.08)", flexShrink: 0 }}>Sem board</span>
+                    }
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#9CA3AF" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ flexShrink: 0 }}><polyline points="9 18 15 12 9 6"/></svg>
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
+        )}
+
+        {/* Projeto aberto -- view full */}
+        {sheetOpen && (detailProjeto || sheetMode === "new") && (
+          <Card className="flex flex-col" style={{ flex: 1 }}>
+            <CardHeader className="pb-2 shrink-0">{renderSheetHeader()}</CardHeader>
+            <CardContent className="flex-1 min-h-0 flex flex-col overflow-hidden pb-0">{renderSheetBody()}</CardContent>
+            <div className="px-6 pb-4 shrink-0">{renderSheetFooter()}</div>
+          </Card>
         )}
       </div>
 
-      {/* MOBILE */}
+      {/* MOBILE -- comportamento original preservado */}
       <div className="sm:hidden">
         {renderMobileCards()}
         <Sheet open={sheetOpen && isMobile} onOpenChange={setSheetOpen}>
