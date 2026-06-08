@@ -1,37 +1,34 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { FolderPlus, UserPlus, FileText } from "lucide-react";
-import AdminProjetos from "./AdminProjetos";
-import AdminCadastroUsuarios from "./AdminCadastroUsuarios";
-import AdminTiposDocumento from "./AdminTiposDocumento";
+// src/components/admin/AdminCadastros.tsx
+// BL-ADM-002 -- Adapta para receber subAtivo via prop (flyout do AdminDashboard)
+// Preserva: AdminProjetos, AdminCadastroUsuarios, AdminTiposDocumento integrais
+// Encoding: UTF-8 sem BOM
 
-export default function AdminCadastros() {
+import { useEffect, useState } from "react";
+import AdminProjetos          from "./AdminProjetos";
+import AdminCadastroUsuarios  from "./AdminCadastroUsuarios";
+import AdminTiposDocumento    from "./AdminTiposDocumento";
+
+type SubCadastros = "projetos" | "usuarios" | "documentos";
+
+type Props = {
+  subAtivo?: string;
+};
+
+export default function AdminCadastros({ subAtivo }: Props) {
+  const [aba, setAba] = useState<SubCadastros>("projetos");
+
+  // Sincroniza com o flyout do AdminDashboard
+  useEffect(() => {
+    if (subAtivo === "projetos" || subAtivo === "usuarios" || subAtivo === "documentos") {
+      setAba(subAtivo as SubCadastros);
+    }
+  }, [subAtivo]);
+
   return (
-    <div className="space-y-4">
-      <Tabs defaultValue="projetos" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="projetos" className="gap-2 text-xs sm:text-sm">
-            <FolderPlus className="h-4 w-4" />
-            Projetos
-          </TabsTrigger>
-          <TabsTrigger value="usuarios" className="gap-2 text-xs sm:text-sm">
-            <UserPlus className="h-4 w-4" />
-            Usuários
-          </TabsTrigger>
-          <TabsTrigger value="documentos" className="gap-2 text-xs sm:text-sm">
-            <FileText className="h-4 w-4" />
-            Documentos
-          </TabsTrigger>
-        </TabsList>
-        <TabsContent value="projetos">
-          <AdminProjetos />
-        </TabsContent>
-        <TabsContent value="usuarios">
-          <AdminCadastroUsuarios />
-        </TabsContent>
-        <TabsContent value="documentos">
-          <AdminTiposDocumento />
-        </TabsContent>
-      </Tabs>
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {aba === "projetos"   && <AdminProjetos />}
+      {aba === "usuarios"   && <AdminCadastroUsuarios />}
+      {aba === "documentos" && <AdminTiposDocumento />}
     </div>
   );
 }
