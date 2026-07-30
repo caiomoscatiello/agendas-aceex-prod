@@ -1,5 +1,5 @@
 // src/pages/AdminDashboard.tsx
-// BL-ADM-001 v3 -- Flyout posicionado dinamicamente no item clicado
+// BL-ADM-001 v4 -- Fix: item ativo (pagina atual) nao pode ficar marcado junto com item de flyout aberto
 // Encoding: UTF-8 sem BOM
 
 import { useState, useRef, useEffect, useCallback } from "react";
@@ -12,6 +12,7 @@ import AdminRelatorio       from "@/components/admin/AdminRelatorio";
 import AdminWorkflows       from "@/components/admin/AdminWorkflows";
 import AdminStatusReport    from "@/components/admin/AdminStatusReport";
 import AdminIntegrationLogs from "@/components/admin/AdminIntegrationLogs";
+import PortfolioPMO         from "@/components/admin/PortfolioPMO";
 
 // ── Tokens identicos ao ConsultorDashboardV2 ──────────────────────────────────
 const NAVY  = "#0B1628";
@@ -20,7 +21,7 @@ const BG    = "#EDF0F5";
 const AMBER = "#F5A623";
 
 // ── Tipos ─────────────────────────────────────────────────────────────────────
-type Secao = "dashboard" | "cadastros" | "agendas" | "relatorio" | "workflows" | "statusreport" | "logs";
+type Secao = "dashboard" | "cadastros" | "agendas" | "relatorio" | "workflows" | "statusreport" | "logs" | "portfolio";
 
 type FlyoutPos = { top: number; left: number };
 
@@ -63,6 +64,14 @@ const IcoSR = () => (
     <line x1="18" y1="20" x2="18" y2="10"/>
     <line x1="12" y1="20" x2="12" y2="4"/>
     <line x1="6" y1="20" x2="6" y2="14"/>
+  </svg>
+);
+const IcoPortfolio = () => (
+  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+    <rect x="2" y="7" width="20" height="14" rx="2"/>
+    <path d="M16 7V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2"/>
+    <line x1="12" y1="12" x2="12" y2="16"/>
+    <line x1="10" y1="14" x2="14" y2="14"/>
   </svg>
 );
 const IcoLog = () => (
@@ -125,9 +134,10 @@ type NavItem = {
 };
 
 const NAV_GESTAO: NavItem[] = [
-  { id: "dashboard",    label: "Dashboard",     icon: <IcoDash /> },
-  { id: "statusreport", label: "Status Report", icon: <IcoSR   /> },
-  { id: "relatorio",    label: "Relatorio",     icon: <IcoRel  /> },
+  { id: "dashboard",    label: "Dashboard",     icon: <IcoDash      /> },
+  { id: "portfolio",    label: "Portfolio PMO", icon: <IcoPortfolio /> },
+  { id: "statusreport", label: "Status Report", icon: <IcoSR        /> },
+  { id: "relatorio",    label: "Relatorio",     icon: <IcoRel       /> },
 ];
 
 const NAV_OPERACAO: NavItem[] = [
@@ -213,6 +223,9 @@ export default function AdminDashboard() {
         left: SIDEBAR_W + 6,
       });
       setFlyoutAberto(item.id);
+      // NAO alteramos secaoAtiva aqui: abrir o flyout e apenas exibir o submenu,
+      // a pagina so muda de fato quando um item do flyout e selecionado
+      // (ver handleFlyoutItem). Isso evita 2 itens marcados como ativos ao mesmo tempo.
     } else {
       setFlyoutAberto(null);
       setSecaoAtiva(item.id);
@@ -226,12 +239,25 @@ export default function AdminDashboard() {
     setFlyoutAberto(null);
   }
 
-  function isItemAtivo(item: NavItem): boolean {
-    return secaoAtiva === item.id || flyoutAberto === item.id;
+  // Pagina realmente ativa (o que esta renderizado em <main>).
+  // Independente do flyout estar aberto ou nao -- isso e o que deve
+  // controlar o destaque verde + barra lateral do item.
+  function isPaginaAtiva(item: NavItem): boolean {
+    return secaoAtiva === item.id;
   }
 
   function breadcrumb(): string {
-    const base = `/ admin / ${secaoAtiva}`;
+    const labels: Record<Secao, string> = {
+      dashboard:    "dashboard",
+      portfolio:    "portfolio pmo",
+      cadastros:    "cadastros",
+      agendas:      "agendas",
+      relatorio:    "relatorio",
+      workflows:    "workflows",
+      statusreport: "status report",
+      logs:         "logs",
+    };
+    const base = `/ admin / ${labels[secaoAtiva] ?? secaoAtiva}`;
     if (subAtivo) return `${base} / ${subAtivo}`;
     return base;
   }
@@ -239,6 +265,7 @@ export default function AdminDashboard() {
   function renderConteudo() {
     switch (secaoAtiva) {
       case "dashboard":    return <AdminDashboardView />;
+      case "portfolio":    return <PortfolioPMO />;
       case "cadastros":    return <AdminCadastros subAtivo={subAtivo} />;
       case "agendas":      return <AdminAgendas   subAtivo={subAtivo} />;
       case "relatorio":    return <AdminRelatorio />;
@@ -251,29 +278,34 @@ export default function AdminDashboard() {
 
   // Item de nav
   function NavItemEl({ item }: { item: NavItem }) {
-    const isAtivo   = isItemAtivo(item);
-    const hasFlyout = !!item.flyout;
+    // isAtivo = a pagina atualmente renderizada em <main> e esta (destaque verde + barra lateral).
+    // isExpandido = o flyout deste item esta aberto agora, mas a pagina ativa pode ser outra
+    // (destaque neutro, so indica "submenu aberto", nunca verde).
+    const isAtivo     = isPaginaAtiva(item);
+    const isExpandido = flyoutAberto === item.id;
+    const hasFlyout   = !!item.flyout;
     return (
       <div
         onClick={e => handleNavClick(item, e)}
+        data-testid={`nav-${item.id}`}
         style={{
           display: "flex", alignItems: "center", gap: 9,
           padding: "6px 10px", borderRadius: 7, cursor: "pointer",
-          color: isAtivo ? LIME : "rgba(255,255,255,0.4)",
+          color: isAtivo ? LIME : isExpandido ? "rgba(255,255,255,0.75)" : "rgba(255,255,255,0.4)",
           fontSize: 11, fontWeight: isAtivo ? 600 : 500,
-          background: isAtivo ? "rgba(57,255,135,0.09)" : "transparent",
+          background: isAtivo ? "rgba(57,255,135,0.09)" : isExpandido ? "rgba(255,255,255,0.06)" : "transparent",
           position: "relative", transition: "all 0.15s",
           userSelect: "none",
         }}
-        onMouseEnter={e => { if (!isAtivo) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
-        onMouseLeave={e => { if (!isAtivo) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
+        onMouseEnter={e => { if (!isAtivo && !isExpandido) (e.currentTarget as HTMLElement).style.background = "rgba(255,255,255,0.04)"; }}
+        onMouseLeave={e => { if (!isAtivo && !isExpandido) (e.currentTarget as HTMLElement).style.background = "transparent"; }}
       >
         <div style={{ width: 16, height: 16, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0, opacity: isAtivo ? 1 : 0.65 }}>
           {item.icon}
         </div>
         <span style={{ flex: 1 }}>{item.label}</span>
         {hasFlyout && (
-          <div style={{ opacity: 0.35, transform: flyoutAberto === item.id ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
+          <div style={{ opacity: 0.35, transform: isExpandido ? "rotate(90deg)" : "rotate(0deg)", transition: "transform 0.15s" }}>
             <IcoChevronRight />
           </div>
         )}
@@ -285,8 +317,11 @@ export default function AdminDashboard() {
   }
 
   function SidebarSectionLabel({ label }: { label: string }) {
+    const testId = "sidebar-section-" + label.toLowerCase().replace(/\s+/g, "-");
     return (
-      <div style={{
+      <div
+        data-testid={testId}
+        style={{
         fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.22em",
         color: "rgba(255,255,255,0.17)", textTransform: "uppercase",
         padding: "10px 10px 3px",
@@ -341,7 +376,9 @@ export default function AdminDashboard() {
             background: "rgba(57,255,135,0.08)", border: "0.5px solid rgba(57,255,135,0.18)",
             borderRadius: 100, padding: "4px 14px",
             fontSize: 9, fontFamily: "'DM Mono', monospace", color: LIME, letterSpacing: "0.08em",
-          }}>
+          }}
+          data-testid="role-badge"
+          >
             <div style={{ width: 5, height: 5, borderRadius: "50%", background: LIME }} />
             {roleLabel(role).toUpperCase()}
           </div>
@@ -381,7 +418,7 @@ export default function AdminDashboard() {
       </header>
 
       {/* ── SIDEBAR ── */}
-      <aside ref={sidebarRef} style={{
+      <aside ref={sidebarRef} data-testid="sidebar" style={{
         position: "fixed", top: TOPBAR_H, bottom: 0, left: 0,
         width: SIDEBAR_W, background: NAVY,
         borderRight: "0.5px solid rgba(57,255,135,0.06)",
@@ -393,7 +430,7 @@ export default function AdminDashboard() {
           background: "rgba(57,255,135,0.06)", border: "0.5px solid rgba(57,255,135,0.14)",
           borderRadius: 9, padding: 12, flexShrink: 0,
         }}>
-          <div style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.14em", color: "rgba(57,255,135,0.45)", textTransform: "uppercase", marginBottom: 6 }}>
+          <div data-testid="sidebar-role-card" style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.14em", color: "rgba(57,255,135,0.45)", textTransform: "uppercase", marginBottom: 6 }}>
             Painel de gestao
           </div>
           <div style={{ fontSize: 13, fontWeight: 700, color: "#fff", letterSpacing: "-0.01em", lineHeight: 1.2, marginBottom: 2 }}>
@@ -458,6 +495,7 @@ export default function AdminDashboard() {
       {flyoutSec && flyoutSec.flyout && (
         <div
           ref={flyoutRef}
+          data-testid={`flyout-${flyoutAberto}`}
           style={{
             position: "fixed",
             top: flyoutPos.top,
@@ -486,6 +524,7 @@ export default function AdminDashboard() {
             return (
               <button
                 key={item.value}
+                data-testid="flyout-item"
                 onClick={() => handleFlyoutItem(flyoutAberto!, item.value)}
                 style={{
                   display: "flex", alignItems: "center", width: "100%",
@@ -509,7 +548,7 @@ export default function AdminDashboard() {
       )}
 
       {/* ── CONTEUDO ── */}
-      <main style={{ marginLeft: SIDEBAR_W, paddingTop: TOPBAR_H, minHeight: "100vh" }}>
+      <main data-testid="main-content" style={{ marginLeft: SIDEBAR_W, paddingTop: TOPBAR_H, minHeight: "100vh" }}>
         <div style={{ padding: "20px 24px", minHeight: `calc(100vh - ${TOPBAR_H}px)` }}>
           {renderConteudo()}
         </div>
