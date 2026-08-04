@@ -8,6 +8,7 @@ type AuthContextType = {
   user: User | null;
   role: UserRole;
   isAdmin: boolean;
+  isProjteAuthorized: boolean;
   loading: boolean;
   isPasswordRecovery: boolean;
   clearPasswordRecovery: () => void;
@@ -22,10 +23,11 @@ export const useAuth = () => useContext(AuthContext);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [role, setRole] = useState<UserRole>(null);
+  const [isProjteAuthorized, setIsProjteAuthorized] = useState(false);
   const [loading, setLoading] = useState(true);
   // Detect recovery from URL on initial load (before any event fires)
   const [isPasswordRecovery, setIsPasswordRecovery] = useState(() => {
-    return window.location.pathname === "/reset-password" && 
+    return window.location.pathname === "/reset-password" &&
       !window.location.hash.includes("error_code");
   });
 
@@ -36,6 +38,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       .eq("user_id", userId)
       .single();
     setRole((data?.role as UserRole) ?? null);
+  };
+
+  // Provisório (Etapa 3): checa se o usuário está autorizado no control-plane
+  // da PROJTE (schema projte_config), decoplado do app_role do produto Aceex.
+  const fetchProjteAuthorization = async (userId: string) => {
+    const { data } = await (supabase as any)
+      .schema("projte_config")
+      .from("usuarios_autorizados")
+      .select("user_id")
+      .eq("user_id", userId)
+      .maybeSingle();
+    setIsProjteAuthorized(!!data);
   };
 
   const isAdmin = role === "admin";
@@ -53,10 +67,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(currentUser);
         if (currentUser) {
           setTimeout(() => {
-            if (isMounted) fetchRole(currentUser.id);
+            if (isMounted) {
+              fetchRole(currentUser.id);
+              fetchProjteAuthorization(currentUser.id);
+            }
           }, 0);
         } else {
           setRole(null);
+          setIsProjteAuthorized(false);
         }
       }
     );
@@ -68,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
         if (currentUser) {
-          await fetchRole(currentUser.id);
+          await Promise.all([fetchRole(currentUser.id), fetchProjteAuthorization(currentUser.id)]);
         }
       } finally {
         if (isMounted) setLoading(false);
@@ -92,12 +110,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
     setUser(null);
     setRole(null);
+    setIsProjteAuthorized(false);
   };
 
   const clearPasswordRecovery = () => setIsPasswordRecovery(false);
 
   return (
-    <AuthContext.Provider value={{ user, role, isAdmin, loading, isPasswordRecovery, clearPasswordRecovery, signIn, signOut }}>
+    <AuthContext.Provider value={{ user, role, isAdmin, isProjteAuthorized, loading, isPasswordRecovery, clearPasswordRecovery, signIn, signOut }}>
       {children}
     </AuthContext.Provider>
   );
