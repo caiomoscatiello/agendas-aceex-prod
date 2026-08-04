@@ -1,0 +1,17 @@
+# Normaliza quebra de linha para LF em todo o repositorio, independente do
+# sistema operacional de quem edita. Sem isso, arquivos salvos no Windows
+# (CRLF) e no commit original (LF) fazem diffs de 5 linhas aparecerem como
+# "arquivo inteiro mudou", o que ja causou confusao nesta base de codigo.
+* text=auto eol=lf
+
+# Binarios: nunca normalizar
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.eot binary
+*.pdf binary

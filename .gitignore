@@ -34,3 +34,8 @@ dist-ssr
 .env.*.local
 
 supabase/.temp/
+
+# Arquivos recuperados de comandos quebrados de sessoes anteriores (git diff/
+# git show salvos com nome de arquivo corrompido). Guardados por seguranca,
+# nao fazem parte do projeto.
+.old/
