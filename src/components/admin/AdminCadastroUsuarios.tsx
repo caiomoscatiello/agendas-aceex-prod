@@ -11,7 +11,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "@/hooks/use-toast";
-import { UserPlus, Loader2, Eye, Ban, Trash2, KeyRound, Users, ShieldOff, Pencil, Search } from "lucide-react";
+import { UserPlus, Loader2, Eye, Ban, Trash2, KeyRound, Users, ShieldOff, Pencil, Search, CalendarDays, ChevronLeft, ChevronRight, Save } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 type Profile = {
   user_id: string;
@@ -20,6 +22,30 @@ type Profile = {
   codigo: string;
   contato: string;
   created_at: string;
+  especialidade: string | null;
+  horas_dia: number;
+};
+
+type Disponibilidade = {
+  user_id: string;
+  ano: number;
+  mes: number;
+  percentual: number;
+  observacao: string | null;
+};
+
+const ESPECIALIDADE_LABELS: Record<string, string> = {
+  funcional:     "Funcional",
+  desenvolvedor: "Desenvolvedor",
+  qa:            "QA",
+  techlead:      "Tech Lead",
+};
+
+const ESPECIALIDADE_COLORS: Record<string, string> = {
+  funcional:     "bg-violet-100 text-violet-800 dark:bg-violet-900 dark:text-violet-200",
+  desenvolvedor: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200",
+  qa:            "bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-200",
+  techlead:      "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200",
 };
 
 type UserWithRole = Profile & { role: string };
@@ -67,7 +93,18 @@ export default function AdminCadastroUsuarios() {
   const [editContato, setEditContato] = useState("");
   const [editContatoError, setEditContatoError] = useState<string | null>(null);
   const [editRole, setEditRole] = useState("");
+  const [editEspecialidade, setEditEspecialidade] = useState<string>("");
+  const [editHorasDia, setEditHorasDia] = useState<number>(8);
   const [editLoading, setEditLoading] = useState(false);
+
+  // Disponibilidade mensal
+  const [dispAno, setDispAno] = useState<number>(new Date().getFullYear());
+  const [dispMes, setDispMes] = useState<number>(new Date().getMonth() + 1);
+  const [disponibilidades, setDisponibilidades] = useState<Disponibilidade[]>([]);
+  const [loadingDisp, setLoadingDisp] = useState(false);
+  const [savingDisp, setSavingDisp] = useState<string | null>(null);
+  // grid local: key = "user_id-ano-mes" => percentual editado
+  const [dispEdits, setDispEdits] = useState<Record<string, string>>({});
 
   const isCallerAdmin = callerRole === "admin";
 
@@ -75,7 +112,7 @@ export default function AdminCadastroUsuarios() {
     setLoadingList(true);
     const { data: profiles } = await supabase
       .from("profiles")
-      .select("user_id, name, email, codigo, contato, created_at")
+      .select("user_id, name, email, codigo, contato, created_at, especialidade, horas_dia")
       .order("name");
 
     const { data: roles } = await supabase
@@ -94,6 +131,68 @@ export default function AdminCadastroUsuarios() {
   useEffect(() => {
     loadUsers();
   }, [loadUsers]);
+
+  const loadDisponibilidades = useCallback(async (ano: number, mes: number) => {
+    setLoadingDisp(true);
+    const { data } = await supabase
+      .from("consultor_disponibilidade")
+      .select("user_id, ano, mes, percentual, observacao")
+      .eq("ano", ano)
+      .eq("mes", mes);
+    setDisponibilidades(data || []);
+    // Inicializa edits com valores existentes
+    const edits: Record<string, string> = {};
+    (data || []).forEach((d) => {
+      edits[`${d.user_id}-${ano}-${mes}`] = String(d.percentual);
+    });
+    setDispEdits(edits);
+    setLoadingDisp(false);
+  }, []);
+
+  useEffect(() => {
+    loadDisponibilidades(dispAno, dispMes);
+  }, [dispAno, dispMes, loadDisponibilidades]);
+
+  const getDispKey = (userId: string) => `${userId}-${dispAno}-${dispMes}`;
+
+  const getDispValue = (userId: string): string => {
+    const key = getDispKey(userId);
+    if (key in dispEdits) return dispEdits[key];
+    const existing = disponibilidades.find(
+      (d) => d.user_id === userId && d.ano === dispAno && d.mes === dispMes
+    );
+    return existing ? String(existing.percentual) : "100";
+  };
+
+  const handleDispChange = (userId: string, val: string) => {
+    setDispEdits((prev) => ({ ...prev, [getDispKey(userId)]: val }));
+  };
+
+  const saveDisponibilidade = async (userId: string) => {
+    const key = getDispKey(userId);
+    const raw = dispEdits[key] ?? getDispValue(userId);
+    const pct = parseFloat(raw);
+    if (isNaN(pct) || pct < 0 || pct > 100) {
+      toast({ title: "Valor inválido", description: "Percentual deve ser entre 0 e 100.", variant: "destructive" });
+      return;
+    }
+    setSavingDisp(userId);
+    const { error } = await supabase
+      .from("consultor_disponibilidade")
+      .upsert(
+        { user_id: userId, ano: dispAno, mes: dispMes, percentual: pct },
+        { onConflict: "user_id,ano,mes" }
+      );
+    if (error) {
+      toast({ title: "Erro ao salvar", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: "Salvo", description: `Disponibilidade atualizada para ${pct}%.` });
+      await loadDisponibilidades(dispAno, dispMes);
+    }
+    setSavingDisp(null);
+  };
+
+  const MESES = ["Jan","Fev","Mar","Abr","Mai","Jun","Jul","Ago","Set","Out","Nov","Dez"];
 
   const checkEmailExists = async (emailToCheck: string) => {
     if (!emailToCheck || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(emailToCheck)) {
@@ -209,14 +308,18 @@ export default function AdminCadastroUsuarios() {
     setEditContato(u.contato ? formatPhone(u.contato) : "");
     setEditContatoError(null);
     setEditRole(u.role);
+    setEditEspecialidade(u.especialidade || "");
+    setEditHorasDia(u.horas_dia ?? 8);
   };
 
   const handleEdit = async () => {
     if (!editUser) return;
     setEditLoading(true);
-    if (editContatoError) return;
+    if (editContatoError) { setEditLoading(false); return; }
     const editContatoDigits = editContato.replace(/\D/g, "");
     const currentContatoDigits = (editUser.contato || "").replace(/\D/g, "");
+
+    // Atualiza role/nome/codigo/contato via Edge Function
     const res = await supabase.functions.invoke("update-user", {
       body: {
         user_id: editUser.user_id,
@@ -226,8 +329,22 @@ export default function AdminCadastroUsuarios() {
         new_role: editRole !== editUser.role ? editRole : undefined,
       },
     });
-    if (res.error || res.data?.error) {
-      toast({ title: "Erro", description: res.data?.error || res.error?.message, variant: "destructive" });
+
+    // Atualiza especialidade e horas_dia diretamente em profiles
+    const { error: profileError } = await supabase
+      .from("profiles")
+      .update({
+        especialidade: editEspecialidade || null,
+        horas_dia: editHorasDia,
+      })
+      .eq("user_id", editUser.user_id);
+
+    if (res.error || res.data?.error || profileError) {
+      toast({
+        title: "Erro",
+        description: res.data?.error || res.error?.message || profileError?.message,
+        variant: "destructive",
+      });
     } else {
       toast({ title: "Sucesso", description: "Usuário atualizado!" });
       setEditUser(null);
@@ -339,6 +456,18 @@ export default function AdminCadastroUsuarios() {
         </Dialog>
       </CardHeader>
       <CardContent>
+        <Tabs defaultValue="usuarios">
+          <TabsList className="mb-4">
+            <TabsTrigger value="usuarios" className="gap-2">
+              <Users className="h-4 w-4" /> Usuários
+            </TabsTrigger>
+            <TabsTrigger value="disponibilidade" className="gap-2">
+              <CalendarDays className="h-4 w-4" /> Disponibilidade Mensal
+            </TabsTrigger>
+          </TabsList>
+
+          {/* ── ABA USUÁRIOS ── */}
+          <TabsContent value="usuarios">
         <div className="relative mb-4">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
@@ -369,7 +498,7 @@ export default function AdminCadastroUsuarios() {
                 <TableHead>Código</TableHead>
                 <TableHead>Nome</TableHead>
                 <TableHead>Email</TableHead>
-                
+                <TableHead>Especialidade</TableHead>
                 <TableHead>Tipo</TableHead>
                 <TableHead className="text-right">Ações</TableHead>
               </TableRow>
@@ -382,7 +511,15 @@ export default function AdminCadastroUsuarios() {
                     <TableCell>{u.codigo || "—"}</TableCell>
                     <TableCell className="font-medium">{u.name}</TableCell>
                     <TableCell>{u.email}</TableCell>
-                    
+                    <TableCell>
+                      {u.especialidade ? (
+                        <Badge variant="secondary" className={ESPECIALIDADE_COLORS[u.especialidade] || ""}>
+                          {ESPECIALIDADE_LABELS[u.especialidade] || u.especialidade}
+                        </Badge>
+                      ) : (
+                        <span className="text-xs text-muted-foreground">—</span>
+                      )}
+                    </TableCell>
                     <TableCell>
                       <Badge variant="secondary" className={ROLE_COLORS[u.role] || ""}>
                         {ROLE_LABELS[u.role] || u.role}
@@ -452,6 +589,167 @@ export default function AdminCadastroUsuarios() {
           </Table>
           );
         })()}
+          </TabsContent>
+
+          {/* ── ABA DISPONIBILIDADE ── */}
+          <TabsContent value="disponibilidade">
+            <div className="space-y-4">
+              {/* Navegação mês/ano */}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      if (dispMes === 1) { setDispMes(12); setDispAno(dispAno - 1); }
+                      else setDispMes(dispMes - 1);
+                    }}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                  </Button>
+                  <span className="font-semibold text-sm min-w-[120px] text-center">
+                    {MESES[dispMes - 1]} / {dispAno}
+                  </span>
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={() => {
+                      if (dispMes === 12) { setDispMes(1); setDispAno(dispAno + 1); }
+                      else setDispMes(dispMes + 1);
+                    }}
+                  >
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Defina o % de disponibilidade de cada consultor no mês. Capacidade = % × dias úteis × 8h.
+                </p>
+              </div>
+
+              {/* Grid de disponibilidade */}
+              {loadingDisp ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Consultor</TableHead>
+                      <TableHead>Especialidade</TableHead>
+                      <TableHead>Horas/dia</TableHead>
+                      <TableHead className="w-[180px]">
+                        Disponibilidade % — {MESES[dispMes - 1]}/{dispAno}
+                      </TableHead>
+                      <TableHead className="text-right">Capacidade (h)</TableHead>
+                      <TableHead className="w-[60px]"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {users
+                      .filter((u) => u.role === "consultor" || u.role === "coordenador")
+                      .map((u) => {
+                        const pctStr = getDispValue(u.user_id);
+                        const pct = parseFloat(pctStr) || 0;
+                        // Dias úteis estimados — calculado client-side (sem feriados, aproximação)
+                        // O valor real vem da view SQL no Supabase
+                        const diasUteisMes = (() => {
+                          const d = new Date(dispAno, dispMes - 1, 1);
+                          let count = 0;
+                          while (d.getMonth() === dispMes - 1) {
+                            const dow = d.getDay();
+                            if (dow !== 0 && dow !== 6) count++;
+                            d.setDate(d.getDate() + 1);
+                          }
+                          return count;
+                        })();
+                        const capacidade = ((u.horas_dia ?? 8) * diasUteisMes * pct / 100).toFixed(1);
+                        const barWidth = Math.min(pct, 100);
+                        const barColor = pct >= 80 ? "bg-emerald-500" : pct >= 40 ? "bg-amber-400" : "bg-red-400";
+                        const isSaving = savingDisp === u.user_id;
+                        return (
+                          <TableRow key={u.user_id}>
+                            <TableCell className="font-medium">{u.name || u.email}</TableCell>
+                            <TableCell>
+                              {u.especialidade ? (
+                                <Badge variant="secondary" className={ESPECIALIDADE_COLORS[u.especialidade] || ""}>
+                                  {ESPECIALIDADE_LABELS[u.especialidade] || u.especialidade}
+                                </Badge>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">Não definida</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-sm">{u.horas_dia ?? 8}h</TableCell>
+                            <TableCell>
+                              <div className="space-y-1.5">
+                                <div className="flex items-center gap-2">
+                                  <Input
+                                    type="number"
+                                    min={0}
+                                    max={100}
+                                    step={10}
+                                    value={pctStr}
+                                    onChange={(e) => handleDispChange(u.user_id, e.target.value)}
+                                    onBlur={() => saveDisponibilidade(u.user_id)}
+                                    className="h-8 w-20 text-center text-sm"
+                                  />
+                                  <span className="text-sm text-muted-foreground">%</span>
+                                </div>
+                                <div className="w-full bg-muted rounded-full h-1.5 overflow-hidden">
+                                  <div
+                                    className={`h-full rounded-full transition-all ${barColor}`}
+                                    style={{ width: `${barWidth}%` }}
+                                  />
+                                </div>
+                              </div>
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-sm">
+                              {capacidade}h
+                              <span className="block text-xs text-muted-foreground font-normal">
+                                ~{diasUteisMes} dias úteis
+                              </span>
+                            </TableCell>
+                            <TableCell>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="icon"
+                                    disabled={isSaving}
+                                    onClick={() => saveDisponibilidade(u.user_id)}
+                                  >
+                                    {isSaving
+                                      ? <Loader2 className="h-4 w-4 animate-spin" />
+                                      : <Save className="h-4 w-4 text-primary" />
+                                    }
+                                  </Button>
+                                </TooltipTrigger>
+                                <TooltipContent>Salvar disponibilidade</TooltipContent>
+                              </Tooltip>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    {users.filter((u) => u.role === "consultor" || u.role === "coordenador").length === 0 && (
+                      <TableRow>
+                        <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
+                          Nenhum consultor ou coordenador cadastrado.
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              )}
+
+              <p className="text-xs text-muted-foreground border-t pt-3">
+                💡 A disponibilidade é salva automaticamente ao sair do campo ou ao clicar em salvar.
+                O cálculo de dias úteis exibido é estimado (sem feriados). O valor exato com feriados nacionais
+                é calculado pelo banco de dados na view <code className="font-mono">vw_ocupacao_consultor</code>.
+              </p>
+            </div>
+          </TabsContent>
+
+        </Tabs>
 
         {/* View User Dialog */}
         <Dialog open={!!viewUser} onOpenChange={(open) => !open && setViewUser(null)}>
@@ -571,6 +869,37 @@ export default function AdminCadastroUsuarios() {
                     {editRole === "consultor" && "Acesso ao calendário e apontamentos."}
                     {editRole === "coordenador" && "Acesso de consultor + painel administrativo."}
                     {editRole === "admin" && "Acesso apenas ao painel administrativo."}
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Especialidade Técnica</Label>
+                  <Select value={editEspecialidade} onValueChange={setEditEspecialidade}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione a especialidade" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="">— Sem especialidade —</SelectItem>
+                      {Object.entries(ESPECIALIDADE_LABELS).map(([val, label]) => (
+                        <SelectItem key={val} value={val}>{label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <p className="text-xs text-muted-foreground">
+                    Usado no cálculo de ocupação mensal do portfólio.
+                  </p>
+                </div>
+                <div className="space-y-2">
+                  <Label>Horas por dia útil</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={24}
+                    step={0.5}
+                    value={editHorasDia}
+                    onChange={(e) => setEditHorasDia(parseFloat(e.target.value) || 8)}
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    Padrão: 8h (CLT). Meio período: 4h.
                   </p>
                 </div>
                 <Button className="w-full" onClick={handleEdit} disabled={editLoading || !!editContatoError}>

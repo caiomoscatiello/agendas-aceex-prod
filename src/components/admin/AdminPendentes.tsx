@@ -295,7 +295,7 @@ export default function AdminPendentes() {
               </TableHeader>
               <TableBody>
                 {requisicoes.map((req) => (
-                  <TableRow key={req.id}>
+                  <TableRow key={req.id} data-testid="solicitacao-row">
                     <TableCell className="font-medium">{req.consultor_nome}</TableCell>
                     <TableCell>{format(parseISO(req.data), "dd/MM/yyyy")}</TableCell>
                     <TableCell>{format(parseISO(req.created_at), "dd/MM/yyyy")}</TableCell>
@@ -304,10 +304,11 @@ export default function AdminPendentes() {
                       <Badge variant="secondary">{req.total_horas}h</Badge>
                     </TableCell>
                     <TableCell className="text-right space-x-2">
-                      <Button size="sm" variant="default" className="gap-1" onClick={() => openAcceptDialog(req)}>
+                      <Button data-testid="btn-aprovar-solicitacao" size="sm" variant="default" className="gap-1" onClick={() => openAcceptDialog(req)}>
                         <Check className="h-3 w-3" /> Aceitar
                       </Button>
                       <Button
+                        data-testid="btn-declinar-solicitacao"
                         size="sm"
                         variant="destructive"
                         className="gap-1"
@@ -362,7 +363,7 @@ export default function AdminPendentes() {
                   <p className="text-sm text-destructive">Nenhuma atividade cadastrada para este projeto.</p>
                 ) : (
                   <Select value={selectedAtividade} onValueChange={handleAtividadeChange}>
-                    <SelectTrigger className="h-auto min-h-[2.5rem] py-2 w-full text-left [&>span]:text-left [&>span]:whitespace-normal [&>span]:line-clamp-none [&>span]:overflow-visible">
+                    <SelectTrigger data-testid="select-atividade-aprovacao" className="h-auto min-h-[2.5rem] py-2 w-full text-left [&>span]:text-left [&>span]:whitespace-normal [&>span]:line-clamp-none [&>span]:overflow-visible">
                       <SelectValue placeholder="Selecione a atividade" />
                     </SelectTrigger>
                     <SelectContent className="min-w-[420px]">
@@ -417,12 +418,12 @@ export default function AdminPendentes() {
               </div>
               <div className="space-y-2">
                 <label className="text-sm font-medium">Total de Horas *</label>
-                <Input type="number" step="0.5" value={acceptHoras} onChange={(e) => setAcceptHoras(e.target.value)} />
+                <Input data-testid="input-horas-aprovacao" type="number" step="0.5" value={acceptHoras} onChange={(e) => setAcceptHoras(e.target.value)} />
               </div>
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setAcceptDialog(null)}>Cancelar</Button>
-              <Button onClick={handleAccept} disabled={!selectedAtividade || processing}>
+              <Button data-testid="btn-confirmar-aceitar-atividade" onClick={handleAccept} disabled={!selectedAtividade || processing}>
                 {processing && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
                 Confirmar
               </Button>

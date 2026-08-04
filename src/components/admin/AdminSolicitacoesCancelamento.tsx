@@ -146,7 +146,7 @@ export default function AdminSolicitacoesCancelamento() {
         ) : (
           <div className="space-y-3">
             {solicitacoes.map((sol) => (
-              <div key={sol.id} className="rounded-lg border p-4 space-y-2">
+              <div key={sol.id} data-testid="solicitacao-cancelamento-row" className="rounded-lg border p-4 space-y-2">
                 <div className="flex items-center justify-between">
                   <div>
                     <p className="font-medium text-sm">{sol.agenda_cliente}</p>
@@ -164,6 +164,7 @@ export default function AdminSolicitacoesCancelamento() {
                 </div>
                 <div className="flex gap-2 pt-1">
                   <Button
+                    data-testid="btn-aceitar-cancelamento"
                     size="sm"
                     className="flex-1 gap-1 bg-emerald-600 hover:bg-emerald-700"
                     onClick={() => handleAceitar(sol)}
@@ -173,6 +174,7 @@ export default function AdminSolicitacoesCancelamento() {
                     Aceitar
                   </Button>
                   <Button
+                    data-testid="btn-declinar-cancelamento"
                     size="sm"
                     variant="outline"
                     className="flex-1 gap-1"

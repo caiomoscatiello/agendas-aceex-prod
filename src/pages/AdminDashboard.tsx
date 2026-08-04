@@ -216,11 +216,14 @@ export default function AdminDashboard() {
       // Alinhar topo do flyout com o topo do item clicado
       // Garantir que nao ultrapasse o viewport verticalmente
       const flyoutHeight = (item.flyout.length * 38) + 40; // estimativa
-      const maxTop = window.innerHeight - flyoutHeight - 8;
-      const idealTop = rect.top;
+      const flyoutWidth  = 190; // corresponde ao minWidth usado no style do flyout
+      const maxTop  = window.innerHeight - flyoutHeight - 8;
+      const maxLeft = window.innerWidth - flyoutWidth - 8;
+      const idealTop  = rect.top;
+      const idealLeft = SIDEBAR_W + 6;
       setFlyoutPos({
         top: Math.min(idealTop, maxTop),
-        left: SIDEBAR_W + 6,
+        left: Math.min(idealLeft, Math.max(8, maxLeft)),
       });
       setFlyoutAberto(item.id);
       // NAO alteramos secaoAtiva aqui: abrir o flyout e apenas exibir o submenu,

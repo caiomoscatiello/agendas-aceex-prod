@@ -942,14 +942,14 @@ export default function ConsultorDashboardV2() {
             </span>
             <div className="flex items-center gap-1">
               {role === "coordenador" && (
-                <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="gap-1 text-muted-foreground">
+                <Button data-testid="btn-admin-panel" variant="ghost" size="sm" onClick={() => navigate("/admin")} className="gap-1 text-muted-foreground">
                   <Settings className="h-4 w-4" /><span className="hidden sm:inline">Admin</span>
                 </Button>
               )}
               <Button variant="ghost" size="sm" onClick={() => setResumoFinanceiroOpen(true)} className="gap-1 text-muted-foreground" title="Relatorio Financeiro">
                 <CircleDollarSign className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="sm" onClick={signOut} className="gap-1 text-muted-foreground">
+              <Button data-testid="btn-logout" variant="ghost" size="sm" onClick={signOut} className="gap-1 text-muted-foreground">
                 <LogOut className="h-4 w-4" />
               </Button>
             </div>
@@ -973,7 +973,7 @@ export default function ConsultorDashboardV2() {
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-7 gap-1 text-center">
-                {weekDays.map(d => <div key={d} className="text-xs font-medium text-muted-foreground py-1">{d}</div>)}
+                {weekDays.map((d, i) => <div key={i} className="text-xs font-medium text-muted-foreground py-1">{d}</div>)}
                 {Array.from({ length: firstDayOffset }).map((_, i) => <div key={`e-${i}`} />)}
                 {days.map(day => {
                   const dateStr = format(day, "yyyy-MM-dd");
@@ -1164,13 +1164,13 @@ export default function ConsultorDashboardV2() {
 
           {/* Admin (coordenador) */}
           {role === "coordenador" && (
-            <button onClick={() => navigate("/admin")} title="Admin" style={{ width: 32, height: 32, borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)", cursor: "pointer" }}>
+            <button data-testid="btn-admin-panel" onClick={() => navigate("/admin")} title="Admin" style={{ width: 32, height: 32, borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)", cursor: "pointer" }}>
               <Settings size={14} />
             </button>
           )}
 
           {/* Sair */}
-          <button onClick={signOut} title="Sair" style={{ width: 32, height: 32, borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)", cursor: "pointer" }}>
+          <button data-testid="btn-logout" onClick={signOut} title="Sair" style={{ width: 32, height: 32, borderRadius: 7, background: "rgba(255,255,255,0.05)", border: "0.5px solid rgba(255,255,255,0.07)", display: "flex", alignItems: "center", justifyContent: "center", color: "rgba(255,255,255,0.35)", cursor: "pointer" }}>
             <LogOut size={14} />
           </button>
 
@@ -1182,7 +1182,7 @@ export default function ConsultorDashboardV2() {
       </header>
 
       {/* ── SIDEBAR ── */}
-      <aside style={{
+      <aside data-testid="sidebar" style={{
         position: "fixed", top: topbarH, bottom: 0, left: 0,
         width: sidebarW, background: NAVY,
         borderRight: "0.5px solid rgba(57,255,135,0.06)",
@@ -1255,7 +1255,7 @@ export default function ConsultorDashboardV2() {
         {/* Nav */}
         <nav style={{ flex: 1, padding: "8px 10px", display: "flex", flexDirection: "column", gap: 0, overflow: "hidden" }}>
           {/* Principal */}
-          <div style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.22em", color: "rgba(255,255,255,0.17)", textTransform: "uppercase", padding: "8px 10px 3px", display: "block" }}>Principal</div>
+          <div data-testid="sidebar-section-principal" style={{ fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.22em", color: "rgba(255,255,255,0.17)", textTransform: "uppercase", padding: "8px 10px 3px", display: "block" }}>Principal</div>
           {[
             { icon: <IcoDashboard />, label: "Dashboard",   fn: () => { setNavAtiva("Dashboard"); window.scrollTo({ top: 0, behavior: "smooth" }); } },
             { icon: <IcoPend />,      label: "Pendencias",  badge: totalPendencias > 0 ? totalPendencias : null, badgeColor: RED,   fn: () => { setNavAtiva("Pendencias"); setPendenciasModalOpen(true); } },
@@ -1264,7 +1264,7 @@ export default function ConsultorDashboardV2() {
           ].map(item => {
             const isActive = navAtiva === item.label;
             return (
-            <div key={item.label} onClick={item.fn} style={{
+            <div key={item.label} data-testid={`nav-${item.label.toLowerCase().replace(/\s+/g, "-")}`} onClick={item.fn} style={{
               display: "flex", alignItems: "center", gap: 9,
               padding: "6px 10px", borderRadius: 7, cursor: "pointer",
               color: isActive ? LIME : "rgba(255,255,255,0.4)",
@@ -1286,7 +1286,7 @@ export default function ConsultorDashboardV2() {
           })}
 
           {/* Projeto context */}
-          <div style={{ margin: "6px 0 0", display: "flex", alignItems: "center", gap: 8, fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.18em", color: "rgba(57,255,135,0.35)", textTransform: "uppercase" }}>
+          <div data-testid="sidebar-section-projeto" style={{ margin: "6px 0 0", display: "flex", alignItems: "center", gap: 8, fontSize: 8, fontFamily: "'DM Mono', monospace", letterSpacing: "0.18em", color: "rgba(57,255,135,0.35)", textTransform: "uppercase" }}>
             Projeto{projetoSelecionado ? " - " + projetoSelecionado.nome_cliente.split(" ")[0] : ""}
             <div style={{ flex: 1, height: 0.5, background: "rgba(57,255,135,0.12)" }} />
           </div>
@@ -1335,7 +1335,7 @@ export default function ConsultorDashboardV2() {
       </aside>
 
       {/* ── MAIN ── */}
-      <main style={{ marginLeft: sidebarW, paddingTop: topbarH, minHeight: "100vh" }}>
+      <main data-testid="main-content" style={{ marginLeft: sidebarW, paddingTop: topbarH, minHeight: "100vh" }}>
         <div style={{ padding: 18, display: "flex", flexDirection: "column", gap: 14 }}>
 
           {/* Header — saudacao + pendencias na mesma linha */}
@@ -1486,9 +1486,9 @@ export default function ConsultorDashboardV2() {
                 <div style={{ padding: "12px 14px", borderRight: "0.5px solid rgba(0,0,0,0.07)" }}>
                   <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 10 }}>
                     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-                      <button onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} style={{ width: 22, height: 22, borderRadius: 5, background: "rgba(0,0,0,0.04)", border: "0.5px solid rgba(0,0,0,0.07)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><svg width="7" height="11" viewBox="0 0 7 11" fill="none" stroke="#4B5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,1 1,5.5 6,10"/></svg></button>
-                      <span style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{format(currentMonth, "MMMM yyyy", { locale: ptBR })}</span>
-                      <button onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} style={{ width: 22, height: 22, borderRadius: 5, background: "rgba(0,0,0,0.04)", border: "0.5px solid rgba(0,0,0,0.07)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><svg width="7" height="11" viewBox="0 0 7 11" fill="none" stroke="#4B5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1,1 6,5.5 1,10"/></svg></button>
+                      <button data-testid="cal-mes-anterior" onClick={() => setCurrentMonth(subMonths(currentMonth, 1))} style={{ width: 22, height: 22, borderRadius: 5, background: "rgba(0,0,0,0.04)", border: "0.5px solid rgba(0,0,0,0.07)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><svg width="7" height="11" viewBox="0 0 7 11" fill="none" stroke="#4B5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6,1 1,5.5 6,10"/></svg></button>
+                      <span data-testid="cal-mes-atual" data-mes-atual={format(currentMonth, "yyyy-MM")} style={{ fontSize: 13, fontWeight: 700, color: "#111827" }}>{format(currentMonth, "MMMM yyyy", { locale: ptBR })}</span>
+                      <button data-testid="cal-mes-proximo" onClick={() => setCurrentMonth(addMonths(currentMonth, 1))} style={{ width: 22, height: 22, borderRadius: 5, background: "rgba(0,0,0,0.04)", border: "0.5px solid rgba(0,0,0,0.07)", display: "flex", alignItems: "center", justifyContent: "center", cursor: "pointer" }}><svg width="7" height="11" viewBox="0 0 7 11" fill="none" stroke="#4B5563" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="1,1 6,5.5 1,10"/></svg></button>
                     </div>
                   </div>
                   <div style={{ display: "grid", gridTemplateColumns: "repeat(7,1fr)", gap: 1, textAlign: "center" }}>
@@ -1500,7 +1500,7 @@ export default function ConsultorDashboardV2() {
                       const isSel   = selectedDate === dateStr;
                       const todayDay = isToday(day);
                       return (
-                        <button key={dateStr} onClick={() => setSelectedDate(isSel ? null : dateStr)}
+                        <button key={dateStr} data-testid={`cal-day-${dateStr}`} onClick={() => setSelectedDate(isSel ? null : dateStr)}
                           style={{
                             fontSize: 11,
                             color: isSel && !todayDay ? GREEN : todayDay ? LIME : "#4B5563",
@@ -1544,7 +1544,9 @@ export default function ConsultorDashboardV2() {
                     const statusDisplay = getAgendaStatusDisplay(ag);
                     const isSel = ag.id === selectedClienteId;
                     return (
-                      <div key={ag.id} onClick={() => isSel ? handleDeselectAgenda() : handleSelectAgenda(ag)}
+                      <div key={ag.id}
+                        data-testid={ag.status === "confirmada" ? "agenda-confirmada" : `agenda-${ag.status}`}
+                        onClick={() => isSel ? handleDeselectAgenda() : handleSelectAgenda(ag)}
                         style={{
                           borderWidth: "0.5px 0.5px 0.5px 3px",
                           borderStyle: "solid",
@@ -1622,7 +1624,7 @@ export default function ConsultorDashboardV2() {
                         Selecione uma agenda no calendario
                       </div>
                     )}
-                    <button onClick={() => { if (selectedDate) setReqData(selectedDate); if (projetoSelecionado) setReqCliente(projetoSelecionado.nome_cliente); setReqOpen(true); }}
+                    <button data-testid="btn-requisitar-agenda" onClick={() => { if (selectedDate) setReqData(selectedDate); if (projetoSelecionado) setReqCliente(projetoSelecionado.nome_cliente); setReqOpen(true); }}
                       style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, cursor: "pointer", borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(59,130,246,0.2)", background: "rgba(59,130,246,0.03)", textAlign: "left", width: "100%" }}>
                       <div style={{ width: 28, height: 28, borderRadius: 7, background: "#EFF6FF", display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>
                         <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" strokeWidth="2.5" strokeLinecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
@@ -1668,7 +1670,7 @@ export default function ConsultorDashboardV2() {
                     </div>
                     <div style={{ padding: "8px 12px 12px", display: "flex", flexDirection: "column", gap: 6 }}>
                       {/* Apontamento */}
-                      <button onClick={handleOpenApontamento} disabled={isApontamentoDone || isDateFuture || isProjetoNaoLiberado}
+                      <button data-testid="btn-registrar-apontamento" onClick={handleOpenApontamento} disabled={isApontamentoDone || isDateFuture || isProjetoNaoLiberado}
                         style={{ display: "flex", alignItems: "center", gap: 10, padding: "11px 12px", borderRadius: 8, cursor: isApontamentoDone ? "not-allowed" : "pointer", border: "0.5px solid rgba(57,255,135,0.2)", background: NAVY, textAlign: "left", width: "100%", opacity: isApontamentoDone ? 0.5 : 1 }}>
                         <div style={{ width: 28, height: 28, borderRadius: 7, background: "rgba(57,255,135,0.12)", color: LIME, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><svg width="12" height="12" viewBox="0 0 10 10" fill="#39FF87"><polygon points="2,1 9,5 2,9"/></svg></div>
                         <div style={{ flex: 1 }}>
@@ -1688,7 +1690,7 @@ export default function ConsultorDashboardV2() {
                       </button>
 
                       {/* Requisitar */}
-                      <button onClick={() => { if (selectedDate) setReqData(selectedDate); if (selectedAgenda) setReqCliente(selectedAgenda.cliente); setReqOpen(true); }}
+                      <button data-testid="btn-requisitar-agenda" onClick={() => { if (selectedDate) setReqData(selectedDate); if (selectedAgenda) setReqCliente(selectedAgenda.cliente); setReqOpen(true); }}
                         style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, cursor: "pointer", borderWidth: "0.5px", borderStyle: "solid", borderColor: "rgba(59,130,246,0.2)", background: "rgba(59,130,246,0.03)", textAlign: "left", width: "100%" }}>
                         <div style={{ width: 28, height: 28, borderRadius: 7, background: "#EFF6FF", color: BLUE, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}>+</div>
                         <div style={{ flex: 1 }}>
@@ -1698,7 +1700,7 @@ export default function ConsultorDashboardV2() {
                       </button>
 
                       {/* Cancelamento */}
-                      <button onClick={() => setCancelAgendaOpen(true)} disabled={isApontamentoDone}
+                      <button data-testid="btn-solicitar-cancelamento" onClick={() => setCancelAgendaOpen(true)} disabled={isApontamentoDone}
                         style={{ display: "flex", alignItems: "center", gap: 10, padding: "9px 12px", borderRadius: 8, cursor: isApontamentoDone ? "not-allowed" : "pointer", border: "0.5px solid rgba(0,0,0,0.07)", background: "#fff", textAlign: "left", width: "100%", opacity: isApontamentoDone ? 0.4 : 1 }}>
                         <div style={{ width: 28, height: 28, borderRadius: 7, background: "#FEF2F2", color: RED, display: "flex", alignItems: "center", justifyContent: "center", flexShrink: 0 }}><svg width="11" height="11" viewBox="0 0 12 12" stroke="#E24B4A" strokeWidth="2.5" strokeLinecap="round"><line x1="2" y1="2" x2="10" y2="10"/><line x1="10" y1="2" x2="2" y2="10"/></svg></div>
                         <div style={{ flex: 1 }}>
@@ -2438,7 +2440,7 @@ export default function ConsultorDashboardV2() {
                         if (!a) return;
                         setAtividadesApontadas(prev => prev.map((item, i) => i === idx ? { ...item, atividade_codigo: a.codigo, atividade_descricao: a.descricao, horas: 0, percentual_feeling: null, cronograma_item_id: undefined } : item));
                       }}>
-                        <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Selecione a atividade" /></SelectTrigger>
+                        <SelectTrigger data-testid="select-atividade-apontamento" className="h-8 text-xs"><SelectValue placeholder="Selecione a atividade" /></SelectTrigger>
                         <SelectContent>
                           {projetoAtividades.map(a => (
                             <SelectItem key={a.codigo} value={a.codigo} disabled={getSaldo(a) <= 0 && a.codigo !== aa.atividade_codigo}>
@@ -2474,13 +2476,13 @@ export default function ConsultorDashboardV2() {
                       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6 }}>
                         <div>
                           <div style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>Horas</div>
-                          <Input type="number" min={0} step={0.5} value={aa.horas || ""}
+                          <Input data-testid="input-horas-apontamento" type="number" min={0} step={0.5} value={aa.horas || ""}
                             onChange={e => setAtividadesApontadas(prev => prev.map((item, i) => i === idx ? { ...item, horas: Number(e.target.value) } : item))}
                             className="h-7 text-xs" />
                         </div>
                         <div>
                           <div style={{ fontSize: 9, fontWeight: 700, color: "#9CA3AF", textTransform: "uppercase", letterSpacing: "0.1em", marginBottom: 3 }}>% Conclusao</div>
-                          <Input type="number" min={0} max={100} value={aa.percentual_feeling ?? ""}
+                          <Input data-testid="input-percentual-feeling" type="number" min={0} max={100} value={aa.percentual_feeling ?? ""}
                             onChange={e => setAtividadesApontadas(prev => prev.map((item, i) => i === idx ? { ...item, percentual_feeling: Number(e.target.value) } : item))}
                             className="h-7 text-xs" placeholder="0-100" />
                         </div>
@@ -2546,7 +2548,7 @@ export default function ConsultorDashboardV2() {
               </span>
               <div style={{ display: "flex", gap: 8 }}>
                 <button className="modal-btn-secondary" onClick={() => setApontamentoOpen(false)}>Cancelar</button>
-                <button className="modal-btn-primary" onClick={handleGravarApontamento} disabled={apontamentoLoading}>
+                <button data-testid="btn-continuar-apontamento" className="modal-btn-primary" onClick={handleGravarApontamento} disabled={apontamentoLoading}>
                   {apontamentoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <><span>Continuar</span><ArrowRight className="h-3 w-3" /></>}
                 </button>
               </div>
@@ -2618,7 +2620,7 @@ export default function ConsultorDashboardV2() {
                 <button className="modal-btn-secondary" onClick={() => { setResumoOpen(false); setApontamentoOpen(true); }}>
                   Voltar
                 </button>
-                <button className="modal-btn-primary" onClick={handleConfirmarApontamento} disabled={resumoLoading}>
+                <button data-testid="btn-confirmar-apontamento" className="modal-btn-primary" onClick={handleConfirmarApontamento} disabled={resumoLoading}>
                   {resumoLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <><Check className="h-3 w-3" /><span>Confirmar</span></>}
                 </button>
               </div>
@@ -2706,7 +2708,7 @@ export default function ConsultorDashboardV2() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <div className="modal-field-label">Data solicitada</div>
-                  <Input type="date" value={reqData} onChange={e => setReqData(e.target.value)} className="h-9 text-xs" />
+                  <Input data-testid="input-data-agenda" type="date" value={reqData} onChange={e => setReqData(e.target.value)} className="h-9 text-xs" />
                 </div>
                 <div>
                   <div className="modal-field-label">Projeto</div>
@@ -2722,7 +2724,7 @@ export default function ConsultorDashboardV2() {
                     }
                     setReqAtividadesLoading(false);
                   }}>
-                    <SelectTrigger className="h-9 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
+                    <SelectTrigger data-testid="select-projeto-requisicao" className="h-9 text-xs"><SelectValue placeholder="Selecione" /></SelectTrigger>
                     <SelectContent>
                       {offProjetos.filter(p => p.status === "Liberado").map(p => <SelectItem key={p.id} value={p.nome_cliente}>{p.nome_cliente}</SelectItem>)}
                     </SelectContent>
@@ -2747,7 +2749,7 @@ export default function ConsultorDashboardV2() {
                     setReqCronoItens([]);
                   }
                 }} disabled={reqAtividadesLoading || !reqCliente}>
-                  <SelectTrigger className="h-9 text-xs"><SelectValue placeholder={reqAtividadesLoading ? "Carregando..." : "Selecione a atividade"} /></SelectTrigger>
+                <SelectTrigger data-testid="select-atividade" className="h-9 text-xs"><SelectValue placeholder={reqAtividadesLoading ? "Carregando..." : "Selecione a atividade"} /></SelectTrigger>
                   <SelectContent>
                     {reqAtividades.map((a: any) => <SelectItem key={a.codigo} value={`${a.codigo} - ${a.descricao}`}>{a.codigo} - {a.descricao}</SelectItem>)}
                   </SelectContent>
@@ -2780,7 +2782,7 @@ export default function ConsultorDashboardV2() {
               <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10 }}>
                 <div>
                   <div className="modal-field-label">Horas</div>
-                  <Input type="number" min={0} step={0.5} value={reqHoras} onChange={e => setReqHoras(e.target.value)} className="h-9 text-xs" placeholder="Ex: 8" />
+                  <Input data-testid="input-horas-requisicao" type="number" min={0} step={0.5} value={reqHoras} onChange={e => setReqHoras(e.target.value)} className="h-9 text-xs" placeholder="Ex: 8" />
                 </div>
                 <div>
                   <div className="modal-field-label">Modalidade</div>
@@ -2811,12 +2813,12 @@ export default function ConsultorDashboardV2() {
               </span>
               <div style={{ display: "flex", gap: 8 }}>
                 <button className="modal-btn-secondary" onClick={() => { setReqOpen(false); setNavAtiva("Dashboard"); setReqData(""); setReqCliente(""); setReqHoras(""); setReqAtividade(""); setReqAtividadeId(""); setReqCronoItemId(""); setReqCronoItens([]); setReqJustificativa(""); }}>Cancelar</button>
-                <button className="modal-btn-primary" disabled={!reqData || !reqCliente || !reqHoras}
+                <button data-testid="btn-confirmar-requisicao" className="modal-btn-primary" disabled={!reqData || !reqCliente || !reqHoras}
                   onClick={async () => {
                     if (!user || !reqData || !reqCliente || !reqHoras) return;
                     const { error } = await supabase.from("requisicoes_agenda").insert({
                       user_id: user.id, data: reqData, cliente: reqCliente,
-                      coordenador_id: reqCoordenador || null, atividade: reqAtividade || null,
+                      coordenador: reqCoordenador || null, atividade: reqAtividade || null,
                       total_horas: parseFloat(reqHoras), modalidade: reqModalidade,
                       justificativa: reqJustificativa || null, status: "pendente"
                     });
@@ -2856,7 +2858,7 @@ export default function ConsultorDashboardV2() {
               </div>
               <div>
                 <div className="modal-field-label">Motivo do cancelamento</div>
-                <Textarea value={cancelJustificativa} onChange={e => setCancelJustificativa(e.target.value)}
+                <Textarea data-testid="input-justificativa" value={cancelJustificativa} onChange={e => setCancelJustificativa(e.target.value)}
                   className="text-xs min-h-[100px] resize-none" placeholder="Descreva o motivo do cancelamento..." />
               </div>
             </div>
@@ -2867,9 +2869,23 @@ export default function ConsultorDashboardV2() {
               <div style={{ display: "flex", gap: 8 }}>
                 <button className="modal-btn-secondary" onClick={() => { setCancelAgendaOpen(false); setCancelJustificativa(""); }}>Cancelar</button>
                 <button className="modal-btn-primary" style={{ background: "#991B1B" }}
+                  data-testid="btn-confirmar-cancelamento"
                   disabled={!cancelJustificativa.trim()}
                   onClick={async () => {
-                    if (!selectedAgenda || !cancelJustificativa.trim()) return;
+                    if (!selectedAgenda || !cancelJustificativa.trim() || !user) return;
+                    // BUG CORRIGIDO: antes so atualizava agendas.status, sem nunca
+                    // inserir em solicitacoes_cancelamento -- a tela do coordenador
+                    // (AdminSolicitacoesCancelamento.tsx) so le dessa tabela, entao
+                    // nenhuma solicitacao de cancelamento aparecia pra aprovacao.
+                    const { error: cancelError } = await supabase.from("solicitacoes_cancelamento").insert({
+                      agenda_id: selectedAgenda.id,
+                      user_id: user.id,
+                      justificativa: cancelJustificativa.trim(),
+                    });
+                    if (cancelError) {
+                      toast({ title: "Erro ao solicitar cancelamento", description: cancelError.message, variant: "destructive" });
+                      return;
+                    }
                     await supabase.from("agendas").update({ status: "aguardando_cancelamento" }).eq("id", selectedAgenda.id);
                     toast({ title: "Solicitacao enviada", description: "O coordenador sera notificado." });
                     setCancelAgendaOpen(false);

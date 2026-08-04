@@ -196,7 +196,7 @@ export function useBacklogConsultor(userId: string | undefined) {
         .from("projeto_alertas")
         .select("projeto_id, severidade")
         .in("projeto_id", projetoIds)
-        .eq("resolvido", false);
+        .is("resolvido_em", null);
 
       for (const al of alertasRaw || []) {
         const atual = alertaMap[al.projeto_id];
