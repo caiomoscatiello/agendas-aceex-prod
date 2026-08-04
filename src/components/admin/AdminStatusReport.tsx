@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { toast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
 import { Loader2, BarChart2, Calendar, CheckCircle, AlertTriangle, Clock, TrendingUp, Save, Eye, Plus } from "lucide-react";
-import aceexLogo from "@/assets/aceex_logo.jpg";
+import projteLogo from "@/assets/projte_logo.svg";
 
 type Projeto = {
   id: string;
@@ -1939,11 +1939,11 @@ function PrintLayout({ projeto, coordenadorNome, atividades,
         <div>
           <div style={{ display:'flex', alignItems:'center',
             gap:8, marginBottom:4 }}>
-            <img src={aceexLogo} alt="Grupo Aceex"
+            <img src={projteLogo} alt="PROJTE"
               style={{ height:28, objectFit:'contain' }} />
             <span style={{ fontSize:10, fontWeight:500,
               color: NAVY }}>
-              Grupo Aceex · Consultoria & Implantação
+              PROJTE · Consultoria & Implantação
             </span>
           </div>
           <div style={{ fontSize:15, fontWeight:500,
@@ -2886,7 +2886,7 @@ function PrintLayout({ projeto, coordenadorNome, atividades,
             </div>
             <div style={{ fontSize:8,color:'#777',
               marginTop:1 }}>
-              Grupo Aceex · Consultoria
+              PROJTE · Consultoria
             </div>
             <div style={{ marginTop:4,paddingTop:3,
               borderTop:`0.5px solid #cbd5e1`,
@@ -2946,7 +2946,7 @@ function PrintLayout({ projeto, coordenadorNome, atividades,
           fontSize:7,color:'#bbb',
         }}>
           <span>
-            Grupo Aceex — Documento confidencial.
+            PROJTE — Documento confidencial.
             Uso restrito ao cliente e equipe do projeto.
           </span>
           <span>Página 1 de 1</span>

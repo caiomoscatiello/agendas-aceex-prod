@@ -1,12 +1,12 @@
--- BL-007 � Health Score Analytics
+-- BL-007 — Health Score Analytics
 -- P1: Tabelas projeto_health_config e projeto_health_historico
 
--- ?? TABELA DE CONFIGURA��O ????????????????????????????????????????????????????
+-- ─── TABELA DE CONFIGURAÇÃO ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS projeto_health_config (
   id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   projeto_id           uuid NOT NULL REFERENCES projetos(id) ON DELETE CASCADE,
 
-  -- Pesos das dimens�es (somam 100)
+  -- Pesos das dimensões (somam 100)
   peso_prazo           integer NOT NULL DEFAULT 25,
   peso_custo           integer NOT NULL DEFAULT 25,
   peso_feeling         integer NOT NULL DEFAULT 25,
@@ -46,20 +46,20 @@ CREATE TABLE IF NOT EXISTS projeto_health_config (
   )
 );
 
--- ?? TABELA DE HIST�RICO ???????????????????????????????????????????????????????
+-- ─── TABELA DE HISTÓRICO ────────────────────────────────────────────────────────────
 CREATE TABLE IF NOT EXISTS projeto_health_historico (
   id                   uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   projeto_id           uuid NOT NULL REFERENCES projetos(id) ON DELETE CASCADE,
   data_calculo         date NOT NULL,
 
-  -- Score final e por dimens�o (0�100)
+  -- Score final e por dimensão (0–100)
   score_total          integer NOT NULL DEFAULT 0,
   score_prazo          integer NOT NULL DEFAULT 0,
   score_custo          integer NOT NULL DEFAULT 0,
   score_feeling        integer NOT NULL DEFAULT 0,
   score_alertas        integer NOT NULL DEFAULT 0,
 
-  -- Valores brutos no momento do c�lculo
+  -- Valores brutos no momento do cálculo
   idp_valor            decimal(5,2) NOT NULL DEFAULT 1.00,
   idc_valor            decimal(5,2) NOT NULL DEFAULT 1.00,
   feeling_medio        decimal(5,2),
@@ -69,7 +69,7 @@ CREATE TABLE IF NOT EXISTS projeto_health_historico (
   alertas_altos        integer NOT NULL DEFAULT 0,
   alertas_moderados    integer NOT NULL DEFAULT 0,
 
-  -- Sem�foro calculado
+  -- Semáforo calculado
   semaforo             varchar(10) NOT NULL DEFAULT 'verde'
                        CHECK (semaforo IN ('verde', 'amarelo', 'vermelho')),
 
@@ -81,11 +81,11 @@ CREATE TABLE IF NOT EXISTS projeto_health_historico (
   CONSTRAINT projeto_health_historico_projeto_data_key UNIQUE (projeto_id, data_calculo)
 );
 
--- ?? RLS ???????????????????????????????????????????????????????????????????????
+-- ─── RLS ────────────────────────────────────────────────────────────
 ALTER TABLE projeto_health_config    ENABLE ROW LEVEL SECURITY;
 ALTER TABLE projeto_health_historico ENABLE ROW LEVEL SECURITY;
 
--- Config: admin v� tudo, coordenador v� s� seus projetos
+-- Config: admin vê tudo, coordenador vê só seus projetos
 CREATE POLICY "Hierarquia health_config" ON projeto_health_config
   FOR ALL TO authenticated
   USING (
@@ -97,7 +97,7 @@ CREATE POLICY "Hierarquia health_config" ON projeto_health_config
     OR projeto_id IN (SELECT id FROM projetos WHERE coordenador_id = auth.uid())
   );
 
--- Hist�rico: mesma hierarquia, somente leitura para coordenador
+-- Histórico: mesma hierarquia, somente leitura para coordenador
 CREATE POLICY "Hierarquia health_historico leitura" ON projeto_health_historico
   FOR SELECT TO authenticated
   USING (
@@ -105,13 +105,13 @@ CREATE POLICY "Hierarquia health_historico leitura" ON projeto_health_historico
     OR projeto_id IN (SELECT id FROM projetos WHERE coordenador_id = auth.uid())
   );
 
--- Hist�rico: apenas service_role escreve (via Edge Function)
+-- Histórico: apenas service_role escreve (via Edge Function)
 CREATE POLICY "Service role escreve historico" ON projeto_health_historico
   FOR INSERT TO service_role
   USING (true)
   WITH CHECK (true);
 
--- ?? TRIGGER: cria config com defaults ao criar projeto ????????????????????????
+-- ─── TRIGGER: cria config com defaults ao criar projeto ────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION criar_health_config_padrao()
 RETURNS TRIGGER AS $$
 BEGIN
@@ -128,7 +128,7 @@ CREATE TRIGGER trigger_criar_health_config
   FOR EACH ROW
   EXECUTE FUNCTION criar_health_config_padrao();
 
--- ?? BACKFILL: criar config para projetos j� existentes ????????????????????????
+-- ─── BACKFILL: criar config para projetos já existentes ────────────────────────────────────────────────────────────
 INSERT INTO projeto_health_config (projeto_id)
 SELECT id FROM projetos
 ON CONFLICT (projeto_id) DO NOTHING;

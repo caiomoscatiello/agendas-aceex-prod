@@ -149,7 +149,7 @@ Deno.serve(async (req) => {
           <p>Dentro de <strong>${diasLimite} dias</strong>, o apontamento será automaticamente excluído por falta.</p>
           <br/>
           <p>Obrigado,</p>
-          <p><strong>Coordenação de Projetos Aceex</strong></p>
+          <p><strong>Coordenação de Projetos PROJTE</strong></p>
         </div>
       `;
 

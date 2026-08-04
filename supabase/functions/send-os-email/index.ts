@@ -137,7 +137,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        from: "OS Aceex <onboarding@resend.dev>",
+        from: "OS PROJTE <onboarding@resend.dev>",
         to: recipients,
         subject: `OS - ${cliente} - ${dataFormatted}`,
         html: htmlBody,

@@ -411,19 +411,19 @@ export default function AdminManutencaoAgendas() {
           return;
         }
 
-        // PASSO 3 — Excluir agenda no Aceex
-        const { error: deleteAceexErr } = await supabase
+        // PASSO 3 — Excluir agenda no PROJTE
+        const { error: deleteProjteErr } = await supabase
           .from("agendas")
           .delete()
           .eq("id", editingAgenda.id);
 
-        if (deleteAceexErr) {
-          toast({ title: "Erro ao excluir agenda no sistema", description: deleteAceexErr.message, variant: "destructive" });
+        if (deleteProjteErr) {
+          toast({ title: "Erro ao excluir agenda no sistema", description: deleteProjteErr.message, variant: "destructive" });
           setEditSaving(false);
           return;
         }
 
-        // PASSO 4 — Inserir nova agenda no Aceex com dados alterados
+        // PASSO 4 — Inserir nova agenda no PROJTE com dados alterados
         const { data: novaAgenda, error: insertErr } = await supabase
           .from("agendas")
           .insert({

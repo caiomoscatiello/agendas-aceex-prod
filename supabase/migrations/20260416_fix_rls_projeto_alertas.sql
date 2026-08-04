@@ -1,7 +1,7 @@
 -- Remover policy existente
-DROP POLICY IF EXISTS "Coordenador vê alertas dos seus projetos" ON projeto_alertas;
+DROP POLICY IF EXISTS "Coordenador vÃª alertas dos seus projetos" ON projeto_alertas;
 
--- Recriar com hierarquia: admin vê tudo, coordenador vê só seus projetos
+-- Recriar com hierarquia: admin vÃª tudo, coordenador vÃª sÃ³ seus projetos
 CREATE POLICY "Hierarquia projeto_alertas" ON projeto_alertas
   FOR ALL
   TO authenticated

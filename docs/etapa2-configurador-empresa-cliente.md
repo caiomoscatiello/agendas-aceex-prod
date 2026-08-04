@@ -56,6 +56,24 @@ Etapa 1:
    até você mandar o arquivo, ou mantenho o arquivo do Aceex por enquanto só nesse ponto
    visual. Qual prefere?
 
+## Status — executado em 2026-08-04
+
+Respostas do Caio: (1) trocar tudo por PROJTE, sem exceção — inclusive `AdminStatusReport.tsx` e
+`check-overdue-agendas`; (2) logo enviada (guia de identidade visual PROJTE) — símbolo (triplo
+chevron + terminus lima) e wordmark extraídos e recriados como `src/assets/projte_logo.svg`,
+substituindo `aceex_logo.jpg` nos 4 pontos que usavam logo. Paleta oficial: navy `#0B1628`, lima
+`#39FF87` (`#1DB85A` em fundo claro, usado no SVG por contraste).
+
+Todos os 14 pontos trocados (12 arquivos de texto/branding + 4 usos de logo, alguns arquivos
+tinham mais de um ponto). Os 5 edge functions alteradas (`check-alertas`, `check-overdue-agendas`,
+`protheus-users`, `send-os-email`, `mock-protheus`) foram redeployadas em produção. 3 comentários
+técnicos que descrevem hardcodes históricos específicos do Aceex (`check-alertas`,
+`monday-sync-project`, `protheus-users`) foram mantidos como estão — não são branding, são
+documentação precisa de bugs já corrigidos nesta mesma sessão.
+
+`aceex_logo.jpg` ficou órfão (sem nenhuma referência restante no código) — não foi removido do
+repositório, fica a critério do Caio excluir depois.
+
 ## 2. Onde ficam os dados de identidade da Aceex (CNPJ, endereço, contato, negociação)
 
 Esses dados **não vão para dentro do produto**. Vivem no control-plane separado (Etapa 3,

@@ -1198,7 +1198,7 @@ export default function AdminProjetos() {
   // Download do modelo CSV de atividades
   const downloadModeloCsv = () => {
     const linhas = [
-      "# MODELO DE IMPORTACAO DE ATIVIDADES E ITENS - Aceex",
+      "# MODELO DE IMPORTACAO DE ATIVIDADES E ITENS - PROJTE",
       "# Instrucoes: linhas com # sao comentarios | datas: DD/MM/AAAA | horas: numeros positivos",
       "# tipo=atividade: campos obrigatorios: tipo,codigo,descricao,horas",
       "# tipo=item: campos obrigatorios: tipo,codigo_atividade,descricao,horas_reservadas",

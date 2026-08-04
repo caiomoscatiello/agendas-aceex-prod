@@ -392,7 +392,7 @@ async function enviarEmailAlertas(coordenadorId: string, projetos: any[]) {
 <body style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f2f2f0;margin:0;padding:20px;">
   <div style="max-width:680px;margin:0 auto;background:#fff;border-radius:12px;overflow:hidden;border:1px solid #e0e0de;">
     <div style="background:#0f1117;padding:20px 24px;">
-      <div style="font-size:18px;font-weight:800;color:#fff;">ACEEX</div>
+      <div style="font-size:18px;font-weight:800;color:#fff;">PROJTE</div>
       <div style="font-size:12px;color:rgba(255,255,255,0.5);margin-top:2px;">Resumo de Alertas · ${hoje}</div>
     </div>
     <div style="padding:20px 24px 0;">
@@ -414,7 +414,7 @@ async function enviarEmailAlertas(coordenadorId: string, projetos: any[]) {
       </a>
     </div>` : ""}
     <div style="border-top:1px solid #f0f0ee;padding:14px 24px;text-align:center;">
-      <p style="font-size:10px;color:#bbb;">ACEEX · Resumo automático diário · ${hoje}</p>
+      <p style="font-size:10px;color:#bbb;">PROJTE · Resumo automático diário · ${hoje}</p>
     </div>
   </div>
 </body>
@@ -428,7 +428,7 @@ async function enviarEmailAlertas(coordenadorId: string, projetos: any[]) {
   const { error: emailError } = await supabase.functions.invoke("send-email", {
     body: {
       to: profile.email,
-      subject: `⚠️ ACEEX — ${alertas.length} alerta${alertas.length !== 1 ? "s" : ""} em ${projetos.length} projeto${projetos.length !== 1 ? "s" : ""} · ${hoje}`,
+      subject: `⚠️ PROJTE — ${alertas.length} alerta${alertas.length !== 1 ? "s" : ""} em ${projetos.length} projeto${projetos.length !== 1 ? "s" : ""} · ${hoje}`,
       body: html,
     },
   });

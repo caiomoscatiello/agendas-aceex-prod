@@ -60,7 +60,7 @@ const MODALIDADES_VALIDAS = ["presencial", "remoto", "hibrido"];
 const MAX_ATIVIDADES = 50;
 
 const TEMPLATE_CSV = [
-  "# TEMPLATE - Atividades e Itens de Cronograma - Aceex",
+  "# TEMPLATE - Atividades e Itens de Cronograma - PROJTE",
   "# Instrucoes:",
   "#   tipo=atividade : define uma atividade do projeto",
   "#   tipo=item      : item de cronograma (vinculado via codigo_atividade)",

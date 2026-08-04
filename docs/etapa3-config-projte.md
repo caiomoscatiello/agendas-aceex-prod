@@ -171,3 +171,77 @@ gerar isso por você):
 
 - Nenhuma bloqueando o início do passo 2 (schema + CRUD de clientes). O token (passo 1) é o
   único pré-requisito real antes de qualquer automação de fato.
+
+## 10. Status — executado em 2026-08-04
+
+- Schema `projte_config` criado e exposto via PostgREST dentro do Aceex Production (provisório).
+- Tela `/projte-config`: CRUD completo de `clientes` + aba **Ambientes** por cliente (QA/Produção)
+  com `supabase_project_ref`/`url`, `status`, `template_release_id`, `notas`.
+- **Segredos por ambiente**: nova tabela `projte_config.ambiente_secrets` guarda só a *referência*
+  (UUID) do segredo real, nunca o valor. O valor fica no **Supabase Vault**
+  (`vault.secrets`, extensão já ativa nesse projeto). Como o role `authenticated` não tem
+  permissão de chamar `vault.create_secret`/`update_secret` (confirmado via
+  `has_function_privilege`), criei 3 funções `security definer` em `projte_config`
+  (`vault_create_secret`, `vault_update_secret`, `vault_delete_secret`) que só `service_role`
+  pode executar, e uma edge function nova, `projte-manage-secret`, que: (1) confirma que quem
+  chamou está em `usuarios_autorizados`, (2) usa essas funções via service role pra
+  criar/rotacionar/remover o segredo, (3) nunca devolve o valor de volta — só o UUID.
+  Testado ponta a ponta (criar + remover) antes de entrar na tela.
+- Cliente de teste "Aceex Consultoria" segue como registro de teste (decisão do Caio: não vira
+  o registro real da Aceex por enquanto).
+- **Ainda não conectado**: os projetos Supabase QA/Produção de um cliente real precisam estar
+  numa conta Supabase separada (decisão de isolamento já fechada). Minha conexão MCP atual só
+  enxerga a organização de sempre (ProjTE/Aceex Production, hinode-pmo-dashboard, Accex Project)
+  — para uma conta genuinamente separada, não tenho visibilidade automática; os dados (ref, URL)
+  precisam ser informados manualmente na tela, e as chaves coladas direto no formulário de
+  segredos (nunca em chat).
+
+## 11. Botão "Criar Ambiente" — status executado em 2026-08-04
+
+Pedido do Caio: *"criar o botão criar ambiente, pra fazer o espelho do Projte pro cliente, sem
+levar nenhum dado, apenas os esquemas... prontos pra rodar."* Implementado como v1 = schema-only
+(sem dados, sem subir edge functions, sem configurar secrets de terceiros — isso fica pra uma
+fase futura).
+
+- **`projte_config.template_migrations`** (nova tabela): uma linha por migration do produto
+  (`seq`, `name`, `sql`), vinculada a uma `template_release_id`. É a fonte de verdade das 59
+  migrations que compõem o template v1.0.0 — não ficam embutidas no código da edge function
+  (uma tentativa inicial de embutir como bundle `.ts` gerado por script se mostrou frágil demais
+  pra 59 arquivos/~60KB de SQL; a tabela resolve isso de forma muito mais robusta e também fica
+  fácil de atualizar via SQL quando uma nova release for publicada).
+- **59 de 65 migrations do repositório foram selecionadas** para o template — excluídas: 4
+  específicas do control-plane `projte_config` (schema, grants, `ambiente_secrets`, vault
+  wrappers), `20260416_cron_check_alertas.sql` (sintaxe inválida, substituída por
+  `20260804124759_fix_cron_check_alertas.sql`) e `20260303231509_...sql` (semeava
+  `app_settings.app_url` com a URL do Aceex — erraria o onboarding de um cliente novo).
+- **Hazard de URL hardcoded resolvido via placeholder**: as duas migrations que criam os cron
+  jobs (`fix_cron_check_alertas`, `fix_cron_health_score_semanal`) tinham a URL do projeto Aceex
+  escrita direto no SQL. Nas linhas salvas em `template_migrations`, esse trecho foi trocado pelo
+  token `{{PROJTE_FUNCTIONS_URL}}`, que a edge function substitui pela URL real do ambiente-alvo
+  antes de rodar cada migration.
+- **Duas migrations corrompidas (CP1252 em vez de UTF-8) foram corrigidas** antes de entrarem no
+  template: `20260416_fix_rls_projeto_alertas.sql` (recuperação completa) e
+  `20260428_bl007_health_score.sql` (caracteres acentuados recuperados; 5 linhas decorativas com
+  perda irrecuperável de caracteres — "??" — foram limpas para divisores ASCII simples, mesmo
+  tratamento já usado antes em `health-score-calculator/index.ts`).
+- **Edge function `projte-provision-ambiente`** (nova, `verify_jwt=true`): mesma checagem de
+  `usuarios_autorizados` do resto do painel. Recebe `ambiente_id`, busca o `management_token`
+  desse ambiente no Vault (via `vault_reveal_secret`, 4ª função-ponte criada agora), carrega as
+  migrations da release mais recente e roda cada uma, em sequência, contra a **Supabase
+  Management API do projeto do cliente** (`POST /v1/projects/{ref}/database/query`, autenticado
+  com o `management_token` do próprio cliente — não com as credenciais MCP desta sessão, que não
+  enxergam contas Supabase separadas). Cada migration é logada em `provisionamento_logs`; falha
+  numa migration para o processo e marca `ambientes.status = 'erro'`. Sucesso total marca
+  `status = 'ativo'`, `template_release_id` e `provisionado_em`.
+- **Rodam uma migration por vez, não numa transação única**: uma das migrations do produto faz
+  `ALTER TYPE ... ADD VALUE`, que o Postgres não permite usar na mesma transação em que foi
+  criado — agrupar tudo numa transação gigante quebraria nesse ponto. Rodar migration por
+  migration replica o comportamento real do Supabase CLI.
+- **Botão "Criar Ambiente"** adicionado na aba Ambientes de cada cliente (`ProjteConfigPage.tsx`),
+  ao lado do status do ambiente. Bloqueado até o `project_ref`/`url` estarem salvos e o
+  `management_token` estar registrado nos Segredos; pede confirmação antes de rodar (efeito
+  irreversível — 59 migrations reais no projeto do cliente).
+- **Não testado ainda contra um projeto real** — a tabela/função foram validadas estruturalmente
+  (contagem, ordem de `seq`, ausência de hardcode residual do Aceex, ausência de artefatos de
+  corrupção), mas o primeiro clique real do botão ainda não aconteceu. Recomendação: testar
+  primeiro contra o ambiente QA de um cliente antes de Produção.

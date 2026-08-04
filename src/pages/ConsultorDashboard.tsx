@@ -18,7 +18,7 @@ import { cn } from "@/lib/utils";
 import { useNavigate } from "react-router-dom";
 import { format, startOfMonth, endOfMonth, eachDayOfInterval, getDay, addMonths, subMonths, isToday, isBefore, isAfter, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import aceexLogo from "@/assets/aceex_logo.jpg";
+import projteLogo from "@/assets/projte_logo.svg";
 import { Progress } from "@/components/ui/progress";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel } from "@/components/ui/alert-dialog";
@@ -418,7 +418,7 @@ export default function ConsultorDashboard() {
 
     const html = `<!DOCTYPE html><html><head><meta charset="utf-8"><style>${css}</style></head><body>
       <div class="doc-header">
-        <div><div class="brand">ACEEX</div><div class="brand-sub">Grupo ACEEX — Sistema de Gestão</div></div>
+        <div><div class="brand">PROJTE</div><div class="brand-sub">PROJTE — Sistema de Gestão</div></div>
         <div><div class="meta-title">${titulo}</div><div class="meta-line">Competência: ${mesAno}</div><div class="meta-line">Emissão: ${agora}</div></div>
       </div>
       <div class="info-grid">
@@ -428,7 +428,7 @@ export default function ConsultorDashboard() {
       </div>
       <div class="section-title">Detalhamento</div>
       ${tipo === "horas" ? conteudoHoras : conteudoDesp}
-      <div class="footer"><span>Gerado pelo Sistema ACEEX — Documento de uso interno</span><span>Exportado em ${agora}</span></div>
+      <div class="footer"><span>Gerado pelo Sistema PROJTE — Documento de uso interno</span><span>Exportado em ${agora}</span></div>
     </body></html>`;
 
     const printWin = window.open("", "_blank");
@@ -1274,7 +1274,7 @@ setTsAgendadas(totalAgendadas);
     <div className="min-h-screen bg-background safe-area-top safe-area-bottom flex flex-col">
       <header className="sticky top-0 z-10 border-b bg-card/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
-          <img src={aceexLogo} alt="Grupo ACEEX" className="h-8 object-contain" />
+          <img src={projteLogo} alt="PROJTE" className="h-8 object-contain" />
           <div className="flex items-center gap-1">
             {role === "coordenador" && (
               <Button variant="ghost" size="sm" onClick={() => navigate("/admin")} className="gap-1 text-muted-foreground">

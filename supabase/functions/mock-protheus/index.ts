@@ -8,7 +8,7 @@ const corsHeaders = {
 /**
  * mock-protheus — Simulador do Protheus ERP para testes de integração
  * 
- * Simula o comportamento do endpoint Protheus que recebe agendas do Aceex.
+ * Simula o comportamento do endpoint Protheus que recebe agendas do cliente.
  * Responde dinamicamente com total_processado = items.length.
  * 
  * Endpoints simulados:

@@ -132,5 +132,6 @@ pro commit deste repositório em que este documento foi commitado.
 - [x] Confirmar cron jobs reais via `cron.job` (3, todos parametrizados)
 - [ ] Validar aplicação das migrations do zero num projeto Supabase vazio (bloqueado — sem
       projeto sobressalente disponível agora)
-- [ ] Resolver branding (Etapa 2) antes de considerar o template 100% neutro
-- [ ] Registrar `v1.0.0` em `projte_config.template_releases`
+- [x] Resolver branding (Etapa 2) — todos os 14 pontos trocados por PROJTE, logo própria criada
+      (`src/assets/projte_logo.svg`), 5 edge functions afetadas redeployadas (2026-08-04)
+- [x] Registrar `v1.0.0` em `projte_config.template_releases`

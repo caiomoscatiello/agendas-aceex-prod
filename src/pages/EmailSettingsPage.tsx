@@ -14,7 +14,7 @@ import { ArrowLeft, Eye, EyeOff, Loader2, CheckCircle2, AlertTriangle, Send, Set
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 import { sendEmail } from "@/services/emailService";
-import aceexLogo from "@/assets/aceex_logo.jpg";
+import projteLogo from "@/assets/projte_logo.svg";
 
 interface Integracao {
   id: string;
@@ -385,7 +385,7 @@ export default function EmailSettingsPage() {
     setTesting(true);
     const result = await sendEmail({
       to: form.sender_email,
-      subject: "Teste de Configuração SMTP - Aceex",
+      subject: "Teste de Configuração SMTP - PROJTE",
       body: `<div style="font-family:Arial,sans-serif;max-width:500px;margin:0 auto;padding:20px">
         <h2 style="color:#333">✅ Teste de Email</h2>
         <p>As configurações SMTP estão funcionando corretamente!</p>
@@ -433,7 +433,7 @@ ${integ.guia_integracao || ""}`;
     <div className="min-h-screen bg-background safe-area-top safe-area-bottom">
       <header className="sticky top-0 z-10 border-b bg-card/80 backdrop-blur-sm">
         <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
-          <img src={aceexLogo} alt="Grupo ACEEX" className="h-8 object-contain" />
+          <img src={projteLogo} alt="PROJTE" className="h-8 object-contain" />
           <Button variant="ghost" size="sm" onClick={() => navigate("/")} className="gap-2 text-muted-foreground">
             <ArrowLeft className="h-4 w-4" />
             Voltar
@@ -473,7 +473,7 @@ ${integ.guia_integracao || ""}`;
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label htmlFor="sender_name">Nome do remetente</Label>
-                <Input id="sender_name" placeholder="Ex: Suporte Aceex" value={form.sender_name} onChange={(e) => updateField("sender_name", e.target.value)} />
+                <Input id="sender_name" placeholder="Ex: Suporte PROJTE" value={form.sender_name} onChange={(e) => updateField("sender_name", e.target.value)} />
               </div>
               <div className="space-y-2">
                 <Label htmlFor="sender_email">Email remetente *</Label>

@@ -225,7 +225,7 @@ Deno.serve(async (req) => {
         await client.send({
           from: fromAddress,
           to: email,
-          subject: "Novo usuario Aceex",
+          subject: "Novo usuario PROJTE",
           content: "auto",
           html: `<div style="font-family:Arial,sans-serif;padding:20px">
             <p>Ola, foi criado um novo usuario para voce.</p>

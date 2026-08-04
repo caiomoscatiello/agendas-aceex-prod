@@ -7,7 +7,7 @@ import { Loader2, RefreshCw, Activity, TrendingUp, TrendingDown } from "lucide-r
 import { PieChart, Pie, Cell, Tooltip, ResponsiveContainer, Legend } from "recharts";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import aceexLogo from "@/assets/aceex_logo.jpg";
+import projteLogo from "@/assets/projte_logo.svg";
 
 type Projeto = {
   id: string;
@@ -744,7 +744,7 @@ export default function AdminDashboardView() {
             {clientFavicon && (
               <img src={clientFavicon} alt="Logo cliente" className="h-12 w-12 rounded-xl bg-white p-1 shadow-lg" />
             )}
-            <img src={aceexLogo} alt="ACEEX" className="h-10 object-contain rounded-lg bg-white px-2 py-0.5 shadow-lg" />
+            <img src={projteLogo} alt="PROJTE" className="h-10 object-contain rounded-lg bg-white px-2 py-0.5 shadow-lg" />
           </div>
           <div className="text-right flex flex-col items-end">
             <div className="text-[11px] text-slate-400 uppercase tracking-widest mb-1">Dashboard</div>

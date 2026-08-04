@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Pencil, Trash2, Building2, LogOut, Image as ImageIcon } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Building2, LogOut, Image as ImageIcon, Server, KeyRound, Rocket } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Provisório (Etapa 3): painel de controle interno da PROJTE, decoplado do produto Aceex.
@@ -43,6 +43,32 @@ interface Cliente {
   observacoes_comerciais: string | null;
   status: "prospect" | "ativo" | "suspenso" | "cancelado";
 }
+
+interface Ambiente {
+  id: string;
+  cliente_id: string;
+  tipo: "qa" | "producao";
+  supabase_project_ref: string | null;
+  supabase_project_url: string | null;
+  status: "nao_provisionado" | "provisionando" | "ativo" | "erro" | "pausado";
+  template_release_id: string | null;
+  notas: string | null;
+}
+
+interface AmbienteSecret {
+  id: string;
+  ambiente_id: string;
+  tipo: string;
+  descricao: string | null;
+  created_at: string;
+}
+
+interface TemplateRelease {
+  id: string;
+  versao: string;
+}
+
+const SECRET_TIPOS = ["service_role_key", "anon_key", "db_password", "management_token", "outro"];
 
 const emptyForm = {
   nome_fantasia: "",
@@ -96,9 +122,185 @@ export default function ProjteConfigPage() {
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
 
+  const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
+  const [ambienteSecrets, setAmbienteSecrets] = useState<Record<string, AmbienteSecret[]>>({});
+  const [templateReleases, setTemplateReleases] = useState<TemplateRelease[]>([]);
+  const [loadingAmbientes, setLoadingAmbientes] = useState(false);
+  const [savingAmbiente, setSavingAmbiente] = useState<string | null>(null);
+  const [savingSecret, setSavingSecret] = useState<string | null>(null);
+  const [secretForms, setSecretForms] = useState<Record<string, { tipo: string; valor: string; descricao: string }>>({});
+  const [provisioning, setProvisioning] = useState<string | null>(null);
+
   useEffect(() => {
     loadClientes();
+    loadTemplateReleases();
   }, []);
+
+  const loadTemplateReleases = async () => {
+    const { data } = await projteConfig()
+      .from("template_releases")
+      .select("id, versao")
+      .order("publicado_em", { ascending: false });
+    setTemplateReleases((data as TemplateRelease[]) ?? []);
+  };
+
+  const loadAmbientes = async (clienteId: string) => {
+    setLoadingAmbientes(true);
+    const { data: ambData } = await projteConfig()
+      .from("ambientes")
+      .select("*")
+      .eq("cliente_id", clienteId);
+    const amb = (ambData as Ambiente[]) ?? [];
+    setAmbientes(amb);
+
+    if (amb.length > 0) {
+      const { data: secData } = await projteConfig()
+        .from("ambiente_secrets")
+        .select("id, ambiente_id, tipo, descricao, created_at")
+        .in("ambiente_id", amb.map((a) => a.id));
+      const grouped: Record<string, AmbienteSecret[]> = {};
+      ((secData as AmbienteSecret[]) ?? []).forEach((s) => {
+        grouped[s.ambiente_id] = [...(grouped[s.ambiente_id] || []), s];
+      });
+      setAmbienteSecrets(grouped);
+    } else {
+      setAmbienteSecrets({});
+    }
+    setLoadingAmbientes(false);
+  };
+
+  const ensureAmbiente = async (clienteId: string, tipo: "qa" | "producao") => {
+    setSavingAmbiente(tipo);
+    const { data, error } = await projteConfig()
+      .from("ambientes")
+      .insert({ cliente_id: clienteId, tipo, status: "nao_provisionado" })
+      .select()
+      .single();
+    if (error) {
+      toast({ title: "Erro ao criar ambiente", description: error.message, variant: "destructive" });
+    } else {
+      setAmbientes((prev) => [...prev, data as Ambiente]);
+    }
+    setSavingAmbiente(null);
+  };
+
+  const updateAmbienteLocal = (id: string, patch: Partial<Ambiente>) => {
+    setAmbientes((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
+  };
+
+  const saveAmbiente = async (amb: Ambiente) => {
+    setSavingAmbiente(amb.tipo);
+    const { error } = await projteConfig()
+      .from("ambientes")
+      .update({
+        supabase_project_ref: amb.supabase_project_ref || null,
+        supabase_project_url: amb.supabase_project_url || null,
+        status: amb.status,
+        template_release_id: amb.template_release_id || null,
+        notas: amb.notas || null,
+        atualizado_em: new Date().toISOString(),
+      })
+      .eq("id", amb.id);
+    if (error) {
+      toast({ title: "Erro ao salvar ambiente", description: error.message, variant: "destructive" });
+    } else {
+      toast({ title: `Ambiente ${amb.tipo === "qa" ? "QA" : "Produção"} salvo` });
+    }
+    setSavingAmbiente(null);
+  };
+
+  const getSecretForm = (ambienteId: string) =>
+    secretForms[ambienteId] || { tipo: "service_role_key", valor: "", descricao: "" };
+
+  const updateSecretForm = (ambienteId: string, patch: Partial<{ tipo: string; valor: string; descricao: string }>) => {
+    setSecretForms((prev) => ({ ...prev, [ambienteId]: { ...getSecretForm(ambienteId), ...patch } }));
+  };
+
+  const handleSaveSecret = async (ambienteId: string) => {
+    const form = getSecretForm(ambienteId);
+    if (!form.valor.trim()) {
+      toast({ title: "Informe o valor do segredo", variant: "destructive" });
+      return;
+    }
+    setSavingSecret(ambienteId);
+    try {
+      const { data, error } = await supabase.functions.invoke("projte-manage-secret", {
+        body: { ambiente_id: ambienteId, tipo: form.tipo, valor: form.valor, descricao: form.descricao },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      toast({ title: "Segredo salvo no Vault" });
+      setSecretForms((prev) => ({ ...prev, [ambienteId]: { tipo: "service_role_key", valor: "", descricao: "" } }));
+
+      const { data: secData } = await projteConfig()
+        .from("ambiente_secrets")
+        .select("id, ambiente_id, tipo, descricao, created_at")
+        .eq("ambiente_id", ambienteId);
+      setAmbienteSecrets((prev) => ({ ...prev, [ambienteId]: (secData as AmbienteSecret[]) ?? [] }));
+    } catch (err: any) {
+      toast({ title: "Erro ao salvar segredo", description: err.message, variant: "destructive" });
+    }
+    setSavingSecret(null);
+  };
+
+  const handleRemoveSecret = async (ambienteId: string, tipo: string) => {
+    if (!confirm("Remover esse segredo do Vault? Essa ação não pode ser desfeita.")) return;
+    try {
+      const { data, error } = await supabase.functions.invoke("projte-manage-secret", {
+        body: { action: "remove", ambiente_id: ambienteId, tipo },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      setAmbienteSecrets((prev) => ({
+        ...prev,
+        [ambienteId]: (prev[ambienteId] || []).filter((s) => s.tipo !== tipo),
+      }));
+      toast({ title: "Segredo removido" });
+    } catch (err: any) {
+      toast({ title: "Erro ao remover segredo", description: err.message, variant: "destructive" });
+    }
+  };
+
+  const handleProvisionAmbiente = async (amb: Ambiente) => {
+    if (!amb.supabase_project_ref?.trim() || !amb.supabase_project_url?.trim()) {
+      toast({ title: "Preencha e salve o project ref e a URL antes de criar o ambiente", variant: "destructive" });
+      return;
+    }
+    const secrets = ambienteSecrets[amb.id] || [];
+    if (!secrets.some((s) => s.tipo === "management_token")) {
+      toast({ title: "Registre o management_token nos Segredos antes de criar o ambiente", variant: "destructive" });
+      return;
+    }
+    const label = amb.tipo === "qa" ? "QA" : "Produção";
+    if (
+      !confirm(
+        `Isso vai espelhar o schema do template PROJTE (sem dados) no projeto Supabase "${amb.supabase_project_ref}" (${label}). Pode levar alguns minutos. Continuar?`
+      )
+    ) {
+      return;
+    }
+
+    setProvisioning(amb.id);
+    updateAmbienteLocal(amb.id, { status: "provisionando" });
+    try {
+      const { data, error } = await supabase.functions.invoke("projte-provision-ambiente", {
+        body: { ambiente_id: amb.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      toast({
+        title: `Ambiente ${label} provisionado`,
+        description: `${(data as any)?.migrations_applied ?? 0} migrations aplicadas.`,
+      });
+    } catch (err: any) {
+      toast({ title: "Erro ao criar ambiente", description: err.message, variant: "destructive" });
+    }
+    await loadAmbientes(amb.cliente_id);
+    setProvisioning(null);
+  };
 
   const loadClientes = async () => {
     setLoading(true);
@@ -117,11 +319,14 @@ export default function ProjteConfigPage() {
   const openNew = () => {
     setEditing(null);
     setForm(emptyForm);
+    setAmbientes([]);
+    setAmbienteSecrets({});
     setDialogOpen(true);
   };
 
   const openEdit = (c: Cliente) => {
     setEditing(c);
+    loadAmbientes(c.id);
     setForm({
       nome_fantasia: c.nome_fantasia || "",
       razao_social: c.razao_social || "",
@@ -306,18 +511,19 @@ export default function ProjteConfigPage() {
       </main>
 
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
-        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-3xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editing ? "Editar Cliente" : "Novo Cliente"}</DialogTitle>
             <DialogDescription>Cadastro completo do cliente da PROJTE.</DialogDescription>
           </DialogHeader>
 
           <Tabs defaultValue="identificacao" className="w-full">
-            <TabsList className="grid w-full grid-cols-4">
+            <TabsList className="grid w-full grid-cols-5">
               <TabsTrigger value="identificacao">Identificação</TabsTrigger>
               <TabsTrigger value="endereco">Endereço</TabsTrigger>
               <TabsTrigger value="contato">Contato</TabsTrigger>
               <TabsTrigger value="comercial">Comercial</TabsTrigger>
+              <TabsTrigger value="ambientes">Ambientes</TabsTrigger>
             </TabsList>
 
             <TabsContent value="identificacao" className="space-y-4 pt-4">
@@ -450,6 +656,194 @@ export default function ProjteConfigPage() {
                 <Label>Observações comerciais</Label>
                 <Textarea rows={4} value={form.observacoes_comerciais} onChange={(e) => setForm((p) => ({ ...p, observacoes_comerciais: e.target.value }))} placeholder="Negociação, condições especiais, histórico..." />
               </div>
+            </TabsContent>
+
+            <TabsContent value="ambientes" className="space-y-4 pt-4">
+              {!editing ? (
+                <p className="text-sm text-muted-foreground">Salve o cadastro do cliente primeiro para gerenciar os ambientes dele.</p>
+              ) : loadingAmbientes ? (
+                <div className="flex justify-center py-6">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : (
+                (["qa", "producao"] as const).map((tipo) => {
+                  const amb = ambientes.find((a) => a.tipo === tipo);
+                  const label = tipo === "qa" ? "QA" : "Produção";
+
+                  if (!amb) {
+                    return (
+                      <Card key={tipo}>
+                        <CardContent className="p-4 flex items-center justify-between">
+                          <span className="text-sm text-muted-foreground">Ambiente de {label} ainda não registrado</span>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            onClick={() => ensureAmbiente(editing.id, tipo)}
+                            disabled={savingAmbiente === tipo}
+                          >
+                            {savingAmbiente === tipo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
+                            Registrar {label}
+                          </Button>
+                        </CardContent>
+                      </Card>
+                    );
+                  }
+
+                  const secrets = ambienteSecrets[amb.id] || [];
+                  const secretForm = getSecretForm(amb.id);
+
+                  return (
+                    <Card key={tipo}>
+                      <CardHeader className="pb-3">
+                        <div className="flex items-center justify-between">
+                          <CardTitle className="text-sm flex items-center gap-2">
+                            <Server className="h-4 w-4" /> {label}
+                            <Badge variant="outline" className="text-[10px] font-normal">{amb.status}</Badge>
+                          </CardTitle>
+                          <Button
+                            size="sm"
+                            variant={amb.status === "ativo" ? "outline" : "default"}
+                            className="gap-2"
+                            onClick={() => handleProvisionAmbiente(amb)}
+                            disabled={provisioning === amb.id}
+                          >
+                            {provisioning === amb.id ? (
+                              <Loader2 className="h-4 w-4 animate-spin" />
+                            ) : (
+                              <Rocket className="h-4 w-4" />
+                            )}
+                            {provisioning === amb.id
+                              ? "Provisionando..."
+                              : amb.status === "ativo"
+                                ? "Recriar Ambiente"
+                                : "Criar Ambiente"}
+                          </Button>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground pt-1">
+                          Espelha o schema do template PROJTE (sem dados) no projeto Supabase acima, usando o
+                          management_token registrado nos Segredos.
+                        </p>
+                      </CardHeader>
+                      <CardContent className="space-y-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Project ref</Label>
+                            <Input
+                              className="h-8 text-xs font-mono"
+                              value={amb.supabase_project_ref || ""}
+                              onChange={(e) => updateAmbienteLocal(amb.id, { supabase_project_ref: e.target.value })}
+                              placeholder="abcdxyz"
+                            />
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Project URL</Label>
+                            <Input
+                              className="h-8 text-xs font-mono"
+                              value={amb.supabase_project_url || ""}
+                              onChange={(e) => updateAmbienteLocal(amb.id, { supabase_project_url: e.target.value })}
+                              placeholder="https://abcdxyz.supabase.co"
+                            />
+                          </div>
+                        </div>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div className="space-y-1">
+                            <Label className="text-xs">Status</Label>
+                            <Select value={amb.status} onValueChange={(v) => updateAmbienteLocal(amb.id, { status: v as Ambiente["status"] })}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="nao_provisionado">Não provisionado</SelectItem>
+                                <SelectItem value="provisionando">Provisionando</SelectItem>
+                                <SelectItem value="ativo">Ativo</SelectItem>
+                                <SelectItem value="erro">Erro</SelectItem>
+                                <SelectItem value="pausado">Pausado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Release do template</Label>
+                            <Select
+                              value={amb.template_release_id || "none"}
+                              onValueChange={(v) => updateAmbienteLocal(amb.id, { template_release_id: v === "none" ? null : v })}
+                            >
+                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="none">Nenhuma</SelectItem>
+                                {templateReleases.map((r) => (
+                                  <SelectItem key={r.id} value={r.id}>{r.versao}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Notas</Label>
+                          <Textarea
+                            rows={2}
+                            className="text-xs"
+                            value={amb.notas || ""}
+                            onChange={(e) => updateAmbienteLocal(amb.id, { notas: e.target.value })}
+                          />
+                        </div>
+                        <Button size="sm" onClick={() => saveAmbiente(amb)} disabled={savingAmbiente === tipo}>
+                          {savingAmbiente === tipo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                          Salvar ambiente
+                        </Button>
+
+                        <div className="border-t pt-3 space-y-2">
+                          <p className="text-xs font-medium flex items-center gap-1 text-muted-foreground">
+                            <KeyRound className="h-3 w-3" /> Segredos (Supabase Vault)
+                          </p>
+                          {secrets.length === 0 ? (
+                            <p className="text-xs text-muted-foreground">Nenhum segredo registrado.</p>
+                          ) : (
+                            <div className="space-y-1">
+                              {secrets.map((s) => (
+                                <div key={s.id} className="flex items-center justify-between text-xs bg-muted rounded px-2 py-1.5">
+                                  <span className="font-mono">{s.tipo}{s.descricao ? ` — ${s.descricao}` : ""}</span>
+                                  <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => handleRemoveSecret(amb.id, s.tipo)}>
+                                    <Trash2 className="h-3 w-3 text-destructive" />
+                                  </Button>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+                            <Select value={secretForm.tipo} onValueChange={(v) => updateSecretForm(amb.id, { tipo: v })}>
+                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                              <SelectContent>
+                                {SECRET_TIPOS.map((t) => (
+                                  <SelectItem key={t} value={t}>{t}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Input
+                              className="h-8 text-xs sm:col-span-2"
+                              type="password"
+                              placeholder="Valor do segredo"
+                              value={secretForm.valor}
+                              onChange={(e) => updateSecretForm(amb.id, { valor: e.target.value })}
+                            />
+                          </div>
+                          <div className="flex gap-2">
+                            <Input
+                              className="h-8 text-xs flex-1"
+                              placeholder="Descrição (opcional)"
+                              value={secretForm.descricao}
+                              onChange={(e) => updateSecretForm(amb.id, { descricao: e.target.value })}
+                            />
+                            <Button size="sm" className="h-8" onClick={() => handleSaveSecret(amb.id)} disabled={savingSecret === amb.id}>
+                              {savingSecret === amb.id ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
+                            </Button>
+                          </div>
+                          <p className="text-[11px] text-muted-foreground">
+                            O valor nunca é reexibido depois de salvo — só o tipo e a descrição ficam visíveis aqui.
+                          </p>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })
+              )}
             </TabsContent>
           </Tabs>
 

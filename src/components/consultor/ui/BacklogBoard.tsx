@@ -413,7 +413,7 @@ export function BacklogBoard({ projetoId, projetoNome, userId, isCoordinator = f
     try {
       const ExcelJS = (await import("exceljs")).default;
       const wb = new ExcelJS.Workbook();
-      wb.creator = "Aceex";
+      wb.creator = "PROJTE";
       wb.created = new Date();
 
       const hoje = new Date().toLocaleDateString("pt-BR");
