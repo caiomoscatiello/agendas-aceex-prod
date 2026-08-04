@@ -76,12 +76,13 @@ serve(async (req) => {
       throw new Error("Nenhum destinatário encontrado (coordenador ou contato do projeto)");
     }
 
-    // TEMPORARY TEST MODE: Resend sandbox only allows sending to the account owner email.
-    // Replace the line below with your Resend account email to test.
-    const TEST_MODE = true;
-    const TEST_EMAIL = "delivered@resend.dev"; // Change to your Resend account email
-    const recipients = TEST_MODE ? [TEST_EMAIL] : allRecipients;
-    console.log(`[send-os-email] TEST_MODE=${TEST_MODE}, sending to: ${recipients.join(", ")} (original: ${allRecipients.join(", ")})`);
+    // TEST_MODE removido (estava travado em `true`, redirecionando todo e-mail
+    // de OS pra caixa de sandbox do Resend em vez do coordenador/contato real).
+    // Requer que a conta Resend tenha um dominio de envio verificado -- sem
+    // isso, o Resend recusa envio pra qualquer destinatario que nao seja o
+    // dono da conta, mesmo com TEST_MODE fora.
+    const recipients = allRecipients;
+    console.log(`[send-os-email] sending to: ${recipients.join(", ")}`);
 
     // Build activity rows HTML
     const atividadeRows = (atividades as any[])

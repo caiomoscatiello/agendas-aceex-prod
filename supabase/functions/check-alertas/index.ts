@@ -301,6 +301,17 @@ async function enviarEmailAlertas(coordenadorId: string, projetos: any[]) {
     .limit(1)
     .maybeSingle();
 
+  // Buscar URL do app (mesma chave usada em protheus-users) -- evita hardcode
+  // do dominio do Aceex; cada instancia/cliente configura o seu proprio
+  // app_settings.app_url. Sem hardcode de fallback: se nao configurado, o
+  // botao "Abrir Dashboard" simplesmente nao aparece no e-mail (ver abaixo).
+  const { data: appUrlSetting } = await supabase
+    .from("app_settings")
+    .select("value")
+    .eq("key", "app_url")
+    .maybeSingle();
+  const appUrl = appUrlSetting?.value || "";
+
   if (!smtp?.smtp_host) {
     console.warn("SMTP não configurado — e-mail de alertas não enviado");
     return;
@@ -394,13 +405,14 @@ async function enviarEmailAlertas(coordenadorId: string, projetos: any[]) {
     ${secao("#A32D2D", "#fff5f5", "#F7C1C1", "🔴 Críticos", criticos)}
     ${secao("#854F0B", "#fffbf4", "#FAD8A0", "🟠 Altos", altos)}
     ${secao("#185FA5", "#f8fbff", "#b5d4f4", "🔵 Moderados", moderados)}
+    ${appUrl ? `
     <div style="padding:24px;text-align:center;">
-      <a href="https://preview--agendas-aceex.lovable.app/admin"
+      <a href="${appUrl}/admin"
          style="background:#1a1a1a;color:#fff;text-decoration:none;font-size:12px;
                 font-weight:700;padding:10px 24px;border-radius:8px;display:inline-block;">
         Abrir Dashboard
       </a>
-    </div>
+    </div>` : ""}
     <div style="border-top:1px solid #f0f0ee;padding:14px 24px;text-align:center;">
       <p style="font-size:10px;color:#bbb;">ACEEX · Resumo automático diário · ${hoje}</p>
     </div>
@@ -408,14 +420,23 @@ async function enviarEmailAlertas(coordenadorId: string, projetos: any[]) {
 </body>
 </html>`;
 
-  // Invocar a Edge Function de e-mail já existente no projeto
-  await supabase.functions.invoke("send-os-email", {
+  // Invocar a Edge Function de e-mail generica via SMTP (email_settings) --
+  // ANTES chamava "send-os-email" (API Resend, exige projeto_id, payload com
+  // "html"), que sempre falhava aqui por faltar projeto_id e o erro nunca era
+  // checado. "send-email" e o caminho certo: mesmo SMTP generico usado pela
+  // tela de configuracoes (Gmail, Office 365, etc.), payload espera "body".
+  const { error: emailError } = await supabase.functions.invoke("send-email", {
     body: {
       to: profile.email,
       subject: `⚠️ ACEEX — ${alertas.length} alerta${alertas.length !== 1 ? "s" : ""} em ${projetos.length} projeto${projetos.length !== 1 ? "s" : ""} · ${hoje}`,
-      html,
+      body: html,
     },
   });
+
+  if (emailError) {
+    console.error(`Falha ao enviar e-mail de alertas para ${profile.email}:`, emailError);
+    return;
+  }
 
   console.log(`E-mail enviado para ${profile.email} — ${alertas.length} alertas`);
 }

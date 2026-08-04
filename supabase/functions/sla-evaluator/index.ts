@@ -1,11 +1,11 @@
 // BL-013 P2 -- Edge Function: sla-evaluator
 // Caminho: supabase/functions/sla-evaluator/index.ts
-// Deploy: supabase functions deploy sla-evaluator --project-ref ofolgjtqgmudfeoppwtb
-// Roda via pg_cron 1x/dia -- configurar apos deploy:
-//   select cron.schedule('sla-evaluator-diario', '0 11 * * *',
-//     $$select net.http_post(url:='https://ofolgjtqgmudfeoppwtb.supabase.co/functions/v1/sla-evaluator',
-//     headers:='{"Authorization":"Bearer <SERVICE_ROLE_KEY>","Content-Type":"application/json"}'::jsonb,
-//     body:='{}'::jsonb)$$);
+// Deploy: supabase functions deploy sla-evaluator
+// Roda via pg_cron 1x/dia -- agendado pela migration
+// supabase/migrations/<timestamp>_fix_cron_sla_evaluator.sql, que le a URL de
+// app_settings.supabase_functions_url (nao hardcoded, clonavel) e usa
+// verify_jwt=false (mesmo padrao de check-alertas e health-score-calculator,
+// evita ter que guardar a service role key em texto dentro do cron.job).
 
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";

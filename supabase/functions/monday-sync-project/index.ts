@@ -147,17 +147,16 @@ async function handleCreate(supabase: any, apiKey: string, workspaceId: string, 
   // A EF monday-webhook-receiver filtra internamente pela coluna documento_anexo
   let webhookId: string | null = null;
   try {
+    // NAO hardcodear a URL do projeto aqui -- antes a mutation ignorava
+    // webhookUrl (calculada dinamicamente logo acima) e usava a URL do
+    // projeto Supabase do Aceex hardcoded. Isso fazia o webhook do board de
+    // QUALQUER cliente apontar sempre pro projeto do Aceex. Corrigido pra
+    // usar webhookUrl de verdade.
     const webhookUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/monday-webhook-receiver`;
-    console.log("Webhook URL:", webhookUrl);  
-    const webhookMutation = `mutation { create_webhook(board_id: ${boardId}, url: "https://ofolgjtqgmudfeoppwtb.supabase.co/functions/v1/monday-webhook-receiver", event: change_column_value) { id } }`;
+    console.log("Webhook URL:", webhookUrl);
+    const webhookMutation = `mutation { create_webhook(board_id: ${boardId}, url: "${webhookUrl}", event: change_column_value) { id } }`;
     console.log("Webhook mutation:", webhookMutation);
     const webhookRes = await mondayQuery(apiKey, webhookMutation);
-    //const webhookRes = await mondayQuery(
-    //  apiKey,
-    //  `mutation { create_webhook(board_id: ${boardId}, url: "https://ofolgjtqgmudfeoppwtb.supabase.co/functions/v1/monday-webhook-receiver", event: change_column_value) { id } }`,
-      //`mutation { create_webhook(board_id: ${boardId}, url: "https://mgkpvctvkkfvvornexuq.supabase.co/functions/v1/monday-webhook-receiver", event: change_column_value) { id } }`,
-      //`mutation { create_webhook(board_id: ${boardId}, url: "${Deno.env.get("SUPABASE_URL")}/functions/v1/monday-webhook-receiver", event: change_column_value) { id } }`,
-    //);
     webhookId = String(webhookRes.data?.create_webhook?.id || "");
     console.log("Webhook criado:", webhookId);
   } catch (e) {

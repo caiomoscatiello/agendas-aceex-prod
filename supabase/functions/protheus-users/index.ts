@@ -208,11 +208,19 @@ Deno.serve(async (req) => {
             appUrl = appUrlSetting.value;
           }
         } catch (_) { /* ignore */ }
+        // NAO usar hardcode de dominio do Aceex aqui -- se nenhuma das fontes
+        // acima (app_settings.app_url ou header Origin) resolver, o e-mail
+        // sai sem o link em vez de apontar pro ambiente errado (do Aceex) num
+        // clone/outro cliente.
         if (!appUrl) {
-          appUrl = "https://agendas-aceex.lovable.app";
+          console.warn("[protheus-users] app_url nao configurado e sem header Origin -- e-mail sera enviado sem link de acesso");
         }
 
         console.log("[protheus-users] Sending email from:", fromAddress, "to:", email);
+
+        const linhaAcesso = appUrl
+          ? `<p>Os dados para acesso são: <a href="${appUrl}">${appUrl}</a></p>`
+          : `<p>Acesse o sistema com o link fornecido pela sua equipe.</p>`;
 
         await client.send({
           from: fromAddress,
@@ -221,7 +229,7 @@ Deno.serve(async (req) => {
           content: "auto",
           html: `<div style="font-family:Arial,sans-serif;padding:20px">
             <p>Ola, foi criado um novo usuario para voce.</p>
-            <p>Os dados para acesso são: <a href="${appUrl}">${appUrl}</a></p>
+            ${linhaAcesso}
             <p>Seu usuario e senha são: <strong>${codigo}</strong> - <strong>${password}</strong></p>
           </div>`,
         });
