@@ -1,3 +1,8 @@
+# ATENÇÃO (Etapa 1.4 - template reproduzível): este project_id é o ref do projeto
+# Aceex Production. Ao clonar este repositório pra provisionar o ambiente de um
+# novo cliente, troque para o ref do projeto Supabase daquele cliente antes de
+# rodar `supabase link` / `supabase functions deploy` — senão os comandos locais
+# apontam pro projeto errado (Aceex).
 project_id = "ofolgjtqgmudfeoppwtb"
 
 [functions.create-user]
@@ -37,4 +42,23 @@ verify_jwt = false
 verify_jwt = false
 
 [functions.agendas-maintenance]
+verify_jwt = false
+
+# As 4 abaixo estavam configuradas como verify_jwt=false em produção mas
+# ausentes deste arquivo (drift encontrado na Etapa 1.4) — sem isso, clonar o
+# template faria essas functions subirem com verify_jwt=true (padrão) e
+# quebrarem: health-score-calculator e sla-evaluator são chamadas por cron
+# (sem Authorization header), monday-webhook-receiver recebe webhook externo
+# do Monday.com (sem JWT do Supabase), mock-protheus é endpoint de simulação
+# usado em QA (sem necessidade de auth).
+[functions.health-score-calculator]
+verify_jwt = false
+
+[functions.sla-evaluator]
+verify_jwt = false
+
+[functions.monday-webhook-receiver]
+verify_jwt = false
+
+[functions.mock-protheus]
 verify_jwt = false
