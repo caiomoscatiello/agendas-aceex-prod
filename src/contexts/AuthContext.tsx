@@ -66,11 +66,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const currentUser = session?.user ?? null;
         setUser(currentUser);
         if (currentUser) {
+          // Trava o roteamento (loading=true) até role E autorização PROJTE
+          // resolverem. Sem isso, o AppRoutes re-renderiza com isProjteAuthorized
+          // ainda no valor padrão (false) e redireciona /projte-config pra "/"
+          // antes da checagem real terminar, mesmo pro usuário autorizado.
+          setLoading(true);
           setTimeout(() => {
-            if (isMounted) {
-              fetchRole(currentUser.id);
-              fetchProjteAuthorization(currentUser.id);
-            }
+            if (!isMounted) return;
+            Promise.all([fetchRole(currentUser.id), fetchProjteAuthorization(currentUser.id)]).finally(() => {
+              if (isMounted) setLoading(false);
+            });
           }, 0);
         } else {
           setRole(null);
