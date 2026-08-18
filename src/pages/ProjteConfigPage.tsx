@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Plus, Pencil, Trash2, Building2, LogOut, Image as ImageIcon, Server, KeyRound, Rocket } from "lucide-react";
+import { Loader2, Plus, Pencil, Trash2, Building2, LogOut, Image as ImageIcon, Server, KeyRound, Rocket, CheckCircle2, Circle, Lock, Info } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 
 // Provisório (Etapa 3): painel de controle interno da PROJTE, decoplado do produto Aceex.
@@ -70,6 +70,31 @@ interface TemplateRelease {
 }
 
 const SECRET_TIPOS = ["service_role_key", "anon_key", "db_password", "management_token", "monitor_credentials", "outro"];
+
+// Sequenciador de instalação do ambiente (pedido do Caio: "um passo a passo,
+// como um install padrão, com progressão e validando as etapas realizadas" —
+// em vez de ficar descobrindo pré-requisitos na marra a cada nova etapa).
+// Cada item do card de Ambiente vira um "chip" de status: verde = feito,
+// âmbar = pendente (ação disponível agora), cinza = bloqueado (depende de um
+// passo anterior). Passos 6/7 (camada 3/4) mostram só "disparado com
+// sucesso", não "passou o teste" — o resultado real fica no GitHub Actions.
+function StepBadge({ status, label }: { status: "ok" | "pendente" | "bloqueado" | "info"; label: string }) {
+  const styles =
+    status === "ok"
+      ? "bg-green-50 border-green-300 text-green-700"
+      : status === "bloqueado"
+        ? "bg-muted border-muted-foreground/20 text-muted-foreground/60"
+        : status === "info"
+          ? "bg-blue-50 border-blue-300 text-blue-700"
+          : "bg-amber-50 border-amber-300 text-amber-700";
+  const Icon = status === "ok" ? CheckCircle2 : status === "bloqueado" ? Lock : status === "info" ? Info : Circle;
+  return (
+    <div className={`flex items-center gap-1 text-[11px] px-2 py-1 rounded-full border whitespace-nowrap ${styles}`}>
+      <Icon className="h-3 w-3" />
+      {label}
+    </div>
+  );
+}
 
 const emptyForm = {
   nome_fantasia: "",
@@ -135,6 +160,14 @@ export default function ProjteConfigPage() {
   const [checkResult, setCheckResult] = useState<{ label: string; relatorio: any } | null>(null);
   const [runningCamada3, setRunningCamada3] = useState<string | null>(null);
   const [runningCamada4, setRunningCamada4] = useState<string | null>(null);
+  // Status transiente (só desta sessão do navegador) de cada camada, por
+  // ambiente -- alimenta os chips do sequenciador. Não é persistido no
+  // banco de propósito: o resultado real e permanente já fica registrado em
+  // provisionamento_logs; isso aqui é só feedback visual imediato de "cliquei
+  // e disparou certo" enquanto a pessoa está na tela.
+  const [layerStatus, setLayerStatus] = useState<
+    Record<string, { camada12?: "ok" | "erro"; camada3?: "ok" | "erro"; camada4?: "ok" | "erro" }>
+  >({});
 
   useEffect(() => {
     loadClientes();
@@ -326,8 +359,10 @@ export default function ProjteConfigPage() {
       });
       if (error) throw error;
       setCheckResult({ label, relatorio: (data as any)?.relatorio ?? data });
+      setLayerStatus((prev) => ({ ...prev, [amb.id]: { ...prev[amb.id], camada12: "ok" } }));
     } catch (err: any) {
       toast({ title: "Erro ao verificar ambiente", description: err.message, variant: "destructive" });
+      setLayerStatus((prev) => ({ ...prev, [amb.id]: { ...prev[amb.id], camada12: "erro" } }));
     }
     setChecking(null);
   };
@@ -357,8 +392,10 @@ export default function ProjteConfigPage() {
           : "Rodando no GitHub Actions (não consegui obter o link direto — confira na aba Actions do repositório).",
       });
       if (runUrl) window.open(runUrl, "_blank");
+      setLayerStatus((prev) => ({ ...prev, [amb.id]: { ...prev[amb.id], camada3: "ok" } }));
     } catch (err: any) {
       toast({ title: "Erro ao disparar verificação de camada 3", description: err.message, variant: "destructive" });
+      setLayerStatus((prev) => ({ ...prev, [amb.id]: { ...prev[amb.id], camada3: "erro" } }));
     }
     setRunningCamada3(null);
   };
@@ -396,8 +433,10 @@ export default function ProjteConfigPage() {
           : "Rodando no GitHub Actions (não consegui obter o link direto — confira na aba Actions do repositório).",
       });
       if (runUrl) window.open(runUrl, "_blank");
+      setLayerStatus((prev) => ({ ...prev, [amb.id]: { ...prev[amb.id], camada4: "ok" } }));
     } catch (err: any) {
       toast({ title: "Erro ao disparar suite completa", description: err.message, variant: "destructive" });
+      setLayerStatus((prev) => ({ ...prev, [amb.id]: { ...prev[amb.id], camada4: "erro" } }));
     }
     setRunningCamada4(null);
   };
@@ -792,6 +831,19 @@ export default function ProjteConfigPage() {
                   const secrets = ambienteSecrets[amb.id] || [];
                   const secretForm = getSecretForm(amb.id);
 
+                  // Booleans do sequenciador -- cada etapa só fica disponível
+                  // depois que a anterior está ok (ver StepBadge acima).
+                  const step1Ok = !!(amb.supabase_project_ref?.trim() && amb.supabase_project_url?.trim());
+                  const step2Ok = secrets.some((s) => s.tipo === "management_token");
+                  const step3Ok = amb.status === "ativo";
+                  const camada12Status = layerStatus[amb.id]?.camada12;
+                  const step4Status: "ok" | "pendente" | "bloqueado" = !step3Ok ? "bloqueado" : camada12Status === "ok" ? "ok" : "pendente";
+                  const step5Ok = !!amb.frontend_url?.trim();
+                  const camada3Status = layerStatus[amb.id]?.camada3;
+                  const step6Status: "ok" | "pendente" | "bloqueado" = !step5Ok ? "bloqueado" : camada3Status === "ok" ? "ok" : "pendente";
+                  const camada4Status = layerStatus[amb.id]?.camada4;
+                  const step7Status: "ok" | "pendente" | "bloqueado" = !step5Ok || !step3Ok ? "bloqueado" : camada4Status === "ok" ? "ok" : "pendente";
+
                   return (
                     <Card key={tipo}>
                       <CardHeader className="pb-3">
@@ -800,80 +852,26 @@ export default function ProjteConfigPage() {
                             <Server className="h-4 w-4" /> {label}
                             <Badge variant="outline" className="text-[10px] font-normal">{amb.status}</Badge>
                           </CardTitle>
-                          <div className="flex items-center gap-2">
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="gap-2"
-                              onClick={() => handleCheckAmbiente(amb)}
-                              disabled={checking === amb.id}
-                            >
-                              {checking === amb.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Server className="h-4 w-4" />
-                              )}
-                              {checking === amb.id ? "Verificando..." : "Verificar Ambiente"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="gap-2"
-                              onClick={() => handleVerificarCamada3(amb)}
-                              disabled={runningCamada3 === amb.id || !amb.frontend_url?.trim()}
-                              title={!amb.frontend_url?.trim() ? "Preencha o Frontend URL primeiro" : undefined}
-                            >
-                              {runningCamada3 === amb.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Server className="h-4 w-4" />
-                              )}
-                              {runningCamada3 === amb.id ? "Disparando..." : "Verificar Login (camada 3)"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant="ghost"
-                              className="gap-2"
-                              onClick={() => handleRodarSuiteCompleta(amb)}
-                              disabled={runningCamada4 === amb.id || !amb.frontend_url?.trim() || amb.status !== "ativo"}
-                              title={!amb.frontend_url?.trim() ? "Preencha o Frontend URL primeiro" : undefined}
-                            >
-                              {runningCamada4 === amb.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Server className="h-4 w-4" />
-                              )}
-                              {runningCamada4 === amb.id ? "Disparando..." : "Rodar Suite Completa (camada 4)"}
-                            </Button>
-                            <Button
-                              size="sm"
-                              variant={amb.status === "ativo" ? "outline" : "default"}
-                              className="gap-2"
-                              onClick={() => handleProvisionAmbiente(amb)}
-                              disabled={provisioning === amb.id}
-                            >
-                              {provisioning === amb.id ? (
-                                <Loader2 className="h-4 w-4 animate-spin" />
-                              ) : (
-                                <Rocket className="h-4 w-4" />
-                              )}
-                              {provisioning === amb.id
-                                ? "Provisionando..."
-                                : amb.status === "ativo"
-                                  ? "Recriar Ambiente"
-                                  : "Criar Ambiente"}
-                            </Button>
-                          </div>
                         </div>
                         <p className="text-[11px] text-muted-foreground pt-1">
-                          Espelha o schema do template PROJTE (sem dados) no projeto Supabase acima, usando o
-                          management_token registrado nos Segredos.
+                          Sequência de instalação — siga a ordem abaixo. Cada chip mostra se a etapa está pronta,
+                          pendente ou bloqueada por uma anterior.
                         </p>
+                        <div className="flex flex-wrap gap-1.5 pt-2">
+                          <StepBadge status={step1Ok ? "ok" : "pendente"} label="1. Projeto Supabase" />
+                          <StepBadge status={step2Ok ? "ok" : "pendente"} label="2. management_token" />
+                          <StepBadge status={step3Ok ? "ok" : step1Ok && step2Ok ? "pendente" : "bloqueado"} label="3. Criar Ambiente" />
+                          <StepBadge status={step4Status} label="4. Verificar Ambiente" />
+                          <StepBadge status={step5Ok ? "ok" : step3Ok ? "pendente" : "bloqueado"} label="5. Publicar Frontend" />
+                          <StepBadge status={step6Status} label="6. Login (camada 3)" />
+                          <StepBadge status={step7Status} label="7. Suite Completa (camada 4)" />
+                          <StepBadge status="info" label="8. Integrações (opcional)" />
+                        </div>
                       </CardHeader>
                       <CardContent className="space-y-3">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-1">
-                            <Label className="text-xs">Project ref</Label>
+                            <Label className="text-xs">1. Project ref</Label>
                             <Input
                               className="h-8 text-xs font-mono"
                               value={amb.supabase_project_ref || ""}
@@ -882,7 +880,7 @@ export default function ProjteConfigPage() {
                             />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs">Project URL</Label>
+                            <Label className="text-xs">1. Project URL</Label>
                             <Input
                               className="h-8 text-xs font-mono"
                               value={amb.supabase_project_url || ""}
@@ -891,66 +889,14 @@ export default function ProjteConfigPage() {
                             />
                           </div>
                         </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Frontend URL (opcional)</Label>
-                          <Input
-                            className="h-8 text-xs font-mono"
-                            value={amb.frontend_url || ""}
-                            onChange={(e) => updateAmbienteLocal(amb.id, { frontend_url: e.target.value })}
-                            placeholder="https://app-do-cliente.vercel.app (preencha quando existir um frontend publicado)"
-                          />
-                          <p className="text-[10px] text-muted-foreground">
-                            Usado pela verificação de camada 3 (login real via Playwright). Sem essa URL, a
-                            verificação só confere o backend (Supabase).
-                          </p>
-                        </div>
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                          <div className="space-y-1">
-                            <Label className="text-xs">Status</Label>
-                            <Select value={amb.status} onValueChange={(v) => updateAmbienteLocal(amb.id, { status: v as Ambiente["status"] })}>
-                              <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="nao_provisionado">Não provisionado</SelectItem>
-                                <SelectItem value="provisionando">Provisionando</SelectItem>
-                                <SelectItem value="ativo">Ativo</SelectItem>
-                                <SelectItem value="erro">Erro</SelectItem>
-                                <SelectItem value="pausado">Pausado</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">Release do template</Label>
-                            <Select
-                              value={amb.template_release_id || "none"}
-                              onValueChange={(v) => updateAmbienteLocal(amb.id, { template_release_id: v === "none" ? null : v })}
-                            >
-                              <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none">Nenhuma</SelectItem>
-                                {templateReleases.map((r) => (
-                                  <SelectItem key={r.id} value={r.id}>{r.versao}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                        </div>
-                        <div className="space-y-1">
-                          <Label className="text-xs">Notas</Label>
-                          <Textarea
-                            rows={2}
-                            className="text-xs"
-                            value={amb.notas || ""}
-                            onChange={(e) => updateAmbienteLocal(amb.id, { notas: e.target.value })}
-                          />
-                        </div>
-                        <Button size="sm" onClick={() => saveAmbiente(amb)} disabled={savingAmbiente === tipo}>
+                        <Button size="sm" variant="outline" onClick={() => saveAmbiente(amb)} disabled={savingAmbiente === tipo}>
                           {savingAmbiente === tipo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                          Salvar ambiente
+                          Salvar projeto Supabase
                         </Button>
 
                         <div className="border-t pt-3 space-y-2">
                           <p className="text-xs font-medium flex items-center gap-1 text-muted-foreground">
-                            <KeyRound className="h-3 w-3" /> Segredos (Supabase Vault)
+                            <KeyRound className="h-3 w-3" /> 2. Segredos (Supabase Vault) — registre o management_token aqui
                           </p>
                           {secrets.length === 0 ? (
                             <p className="text-xs text-muted-foreground">Nenhum segredo registrado.</p>
@@ -996,6 +942,164 @@ export default function ProjteConfigPage() {
                           </div>
                           <p className="text-[11px] text-muted-foreground">
                             O valor nunca é reexibido depois de salvo — só o tipo e a descrição ficam visíveis aqui.
+                          </p>
+                        </div>
+
+                        <div className="border-t pt-3 space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            3. Criar Ambiente (espelha o schema + usuário de monitoramento) · 4. Verificar Ambiente (projeto ativo + schema funcional)
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant={amb.status === "ativo" ? "outline" : "default"}
+                              className="gap-2"
+                              onClick={() => handleProvisionAmbiente(amb)}
+                              disabled={provisioning === amb.id || !step1Ok || !step2Ok}
+                              title={!step1Ok || !step2Ok ? "Preencha o passo 1 e registre o management_token (passo 2) primeiro" : undefined}
+                            >
+                              {provisioning === amb.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Rocket className="h-4 w-4" />
+                              )}
+                              {provisioning === amb.id
+                                ? "Provisionando..."
+                                : amb.status === "ativo"
+                                  ? "Recriar Ambiente"
+                                  : "Criar Ambiente"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-2"
+                              onClick={() => handleCheckAmbiente(amb)}
+                              disabled={checking === amb.id || !step3Ok}
+                              title={!step3Ok ? "Rode 'Criar Ambiente' primeiro" : undefined}
+                            >
+                              {checking === amb.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Server className="h-4 w-4" />
+                              )}
+                              {checking === amb.id ? "Verificando..." : "Verificar Ambiente"}
+                            </Button>
+                          </div>
+                        </div>
+
+                        <div className="space-y-1 border-t pt-3">
+                          <Label className="text-xs">5. Frontend URL</Label>
+                          <Input
+                            className="h-8 text-xs font-mono"
+                            value={amb.frontend_url || ""}
+                            onChange={(e) => updateAmbienteLocal(amb.id, { frontend_url: e.target.value })}
+                            placeholder="https://app-do-cliente.vercel.app (preencha quando existir um frontend publicado)"
+                          />
+                          <p className="text-[10px] text-muted-foreground">
+                            Publicação hoje é manual (Vercel) — cole a URL aqui depois de publicar. Sem ela, as
+                            camadas 6 e 7 abaixo ficam bloqueadas (não há o que o Playwright abrir).
+                          </p>
+                          <Button size="sm" variant="outline" className="mt-1" onClick={() => saveAmbiente(amb)} disabled={savingAmbiente === tipo}>
+                            {savingAmbiente === tipo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Salvar Frontend URL
+                          </Button>
+                        </div>
+
+                        <div className="border-t pt-3 space-y-2">
+                          <p className="text-xs font-medium text-muted-foreground">
+                            6. Verificar Login (camada 3) · 7. Rodar Suite Completa (camada 4)
+                          </p>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-2"
+                              onClick={() => handleVerificarCamada3(amb)}
+                              disabled={runningCamada3 === amb.id || !step5Ok}
+                              title={!step5Ok ? "Preencha o Frontend URL (passo 5) primeiro" : undefined}
+                            >
+                              {runningCamada3 === amb.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Server className="h-4 w-4" />
+                              )}
+                              {runningCamada3 === amb.id ? "Disparando..." : "Verificar Login (camada 3)"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-2"
+                              onClick={() => handleRodarSuiteCompleta(amb)}
+                              disabled={runningCamada4 === amb.id || !step5Ok || !step3Ok}
+                              title={!step5Ok ? "Preencha o Frontend URL (passo 5) primeiro" : undefined}
+                            >
+                              {runningCamada4 === amb.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Server className="h-4 w-4" />
+                              )}
+                              {runningCamada4 === amb.id ? "Disparando..." : "Rodar Suite Completa (camada 4)"}
+                            </Button>
+                          </div>
+                          <p className="text-[10px] text-muted-foreground">
+                            Os dois rodam em background no GitHub Actions — o chip acima vira verde quando o
+                            disparo deu certo, não quando os testes terminam. Acompanhe o resultado real pelo link
+                            que abre numa aba nova.
+                          </p>
+                        </div>
+
+                        <div className="border-t pt-3 space-y-2">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <Label className="text-xs">Release do template</Label>
+                              <Select
+                                value={amb.template_release_id || "none"}
+                                onValueChange={(v) => updateAmbienteLocal(amb.id, { template_release_id: v === "none" ? null : v })}
+                              >
+                                <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="none">Nenhuma</SelectItem>
+                                  {templateReleases.map((r) => (
+                                    <SelectItem key={r.id} value={r.id}>{r.versao}</SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                            <div className="space-y-1">
+                              <Label className="text-xs">Status (manual, override)</Label>
+                              <Select value={amb.status} onValueChange={(v) => updateAmbienteLocal(amb.id, { status: v as Ambiente["status"] })}>
+                                <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="nao_provisionado">Não provisionado</SelectItem>
+                                  <SelectItem value="provisionando">Provisionando</SelectItem>
+                                  <SelectItem value="ativo">Ativo</SelectItem>
+                                  <SelectItem value="erro">Erro</SelectItem>
+                                  <SelectItem value="pausado">Pausado</SelectItem>
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          </div>
+                          <div className="space-y-1">
+                            <Label className="text-xs">Notas</Label>
+                            <Textarea
+                              rows={2}
+                              className="text-xs"
+                              value={amb.notas || ""}
+                              onChange={(e) => updateAmbienteLocal(amb.id, { notas: e.target.value })}
+                            />
+                          </div>
+                          <Button size="sm" variant="outline" onClick={() => saveAmbiente(amb)} disabled={savingAmbiente === tipo}>
+                            {savingAmbiente === tipo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                            Salvar
+                          </Button>
+                        </div>
+
+                        <div className="border-t pt-3 flex items-start gap-2 bg-blue-50 rounded-md p-2">
+                          <Info className="h-3.5 w-3.5 text-blue-700 mt-0.5 shrink-0" />
+                          <p className="text-[11px] text-blue-700">
+                            8. Integrações opcionais (Monday.com, Autentique, E-mail, SharePoint) não são
+                            configuradas por aqui — são feitas dentro do próprio ambiente, logado como admin, em
+                            Configurações. Faça isso depois que a camada 6 (login) estiver passando.
                           </p>
                         </div>
                       </CardContent>
