@@ -173,7 +173,13 @@ Deno.serve(async (req) => {
     // renumeracao de seq entre tentativas).
     let MIGRATIONS = ALL_MIGRATIONS;
     let retomando = false;
-    if (ambiente.status === "erro") {
+    // Tambem entra aqui quando status === "ativo": clicar em "Criar Ambiente"
+    // de novo num ambiente ja provisionado (ex.: reflexo/curiosidade do
+    // usuario, ou reprovisionamento intencional) nao pode tentar rodar TODAS
+    // as migrations do zero -- isso quebra na primeira (CREATE TYPE sem
+    // idempotencia) e derruba o status de "ativo" pra "erro" mesmo o projeto
+    // continuando saudavel. Bug real encontrado em 2026-08-18 no ambiente QA.
+    if (ambiente.status === "erro" || ambiente.status === "ativo") {
       const { data: logsAnteriores, error: logsErr } = await projteSchema
         .from("provisionamento_logs")
         .select("etapa")
@@ -184,13 +190,22 @@ Deno.serve(async (req) => {
       const nomesAplicados = new Set((logsAnteriores || []).map((l: { etapa: string }) => l.etapa));
       const pendentes = ALL_MIGRATIONS.filter((m) => !nomesAplicados.has(m.name));
 
-      if (pendentes.length > 0 && pendentes.length < ALL_MIGRATIONS.length) {
+      if (pendentes.length === 0 && nomesAplicados.size > 0) {
+        // Todas as migrations do release atual ja constam como aplicadas
+        // (caso tipico: reclicar "Criar Ambiente" num ambiente que ja estava
+        // "ativo"). Nao ha nada pra rodar -- pular o loop e so seguir pro
+        // resto do provisionamento (chaves, usuario de monitoramento).
+        // Bug real corrigido em 2026-08-18: antes disso, esse caso caia no
+        // "else" e rodava as 60 migrations do zero contra um projeto que ja
+        // tinha o schema, quebrando na primeira (CREATE TYPE sem idempotencia).
+        MIGRATIONS = [];
+        retomando = true;
+      } else if (pendentes.length > 0 && pendentes.length < ALL_MIGRATIONS.length) {
         MIGRATIONS = pendentes;
         retomando = true;
       }
-      // Se nada foi aplicado ainda (pendentes.length === ALL_MIGRATIONS.length)
-      // ou se por algum motivo tudo ja consta como aplicado, roda a lista
-      // completa normalmente (comportamento antigo, seguro nesses dois casos).
+      // Se nada foi aplicado ainda (pendentes.length === ALL_MIGRATIONS.length),
+      // roda a lista completa normalmente (comportamento antigo, seguro nesse caso).
     }
 
     await projteSchema.from("ambientes").update({ status: "provisionando" }).eq("id", ambienteId);
