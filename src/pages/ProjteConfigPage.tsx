@@ -96,6 +96,28 @@ function StepBadge({ status, label }: { status: "ok" | "pendente" | "bloqueado" 
   );
 }
 
+// Bug real encontrado em 2026-08-18 testando a camada 3 contra o QA
+// republicado: quando uma Edge Function responde HTTP não-2xx, o
+// supabase-js joga um FunctionsHttpError com .message genérico ("Edge
+// Function returned a non-2xx status code") -- a mensagem de erro REAL que
+// a function devolveu no corpo JSON (ex.: "GITHUB_PAT não configurado...")
+// fica só em error.context (o Response bruto), e nunca aparecia no toast.
+// Isso mascarou o diagnóstico por várias rodadas de teste. Esta função lê
+// o corpo de verdade quando disponível.
+async function extractFunctionErrorMessage(error: any): Promise<string> {
+  try {
+    const ctx = error?.context;
+    if (ctx && typeof ctx.json === "function") {
+      const cloned = typeof ctx.clone === "function" ? ctx.clone() : ctx;
+      const body = await cloned.json();
+      if (body?.error) return String(body.error);
+    }
+  } catch (_e) {
+    // corpo não era JSON ou já foi consumido -- cai pra mensagem genérica
+  }
+  return error?.message || "Erro desconhecido";
+}
+
 const emptyForm = {
   nome_fantasia: "",
   razao_social: "",
@@ -357,7 +379,7 @@ export default function ProjteConfigPage() {
       const { data, error } = await supabase.functions.invoke("projte-check-ambiente", {
         body: { ambiente_id: amb.id },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       setCheckResult({ label, relatorio: (data as any)?.relatorio ?? data });
       setLayerStatus((prev) => ({ ...prev, [amb.id]: { ...prev[amb.id], camada12: "ok" } }));
     } catch (err: any) {
@@ -381,7 +403,7 @@ export default function ProjteConfigPage() {
       const { data, error } = await supabase.functions.invoke("projte-verificar-camada3", {
         body: { ambiente_id: amb.id },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
 
       const runUrl = (data as any)?.run_url as string | null;
@@ -422,7 +444,7 @@ export default function ProjteConfigPage() {
       const { data, error } = await supabase.functions.invoke("projte-rodar-suite-completa", {
         body: { ambiente_id: amb.id },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
 
       const runUrl = (data as any)?.run_url as string | null;

@@ -129,13 +129,13 @@ Deno.serve(async (req) => {
 
     const githubPat = Deno.env.get("GITHUB_PAT");
     if (!githubPat) {
-      return jsonResponse(
-        {
-          error:
-            "GITHUB_PAT não configurado nos secrets desta Edge Function (Project Settings > Edge Functions > projte-rodar-suite-completa > Secrets). Precisa de permissão 'Actions: write' e 'Secrets: write'.",
-        },
-        500
-      );
+      // Mesma correção aplicada em projte-verificar-camada3 (2026-08-18):
+      // erro de configuração precisa deixar rastro em provisionamento_logs,
+      // não só um 500 mudo pro navegador.
+      const mensagem =
+        "GITHUB_PAT não configurado nos secrets desta Edge Function (Project Settings > Edge Functions > projte-rodar-suite-completa > Secrets). Precisa de permissão 'Actions: write' e 'Secrets: write'.";
+      await logStep("suite_disparo", "erro", mensagem);
+      return jsonResponse({ error: mensagem }, 500);
     }
     const githubRef = Deno.env.get("GITHUB_REF") || "master";
 

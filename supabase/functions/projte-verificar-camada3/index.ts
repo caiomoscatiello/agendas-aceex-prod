@@ -85,13 +85,21 @@ Deno.serve(async (req) => {
 
     const githubPat = Deno.env.get("GITHUB_PAT");
     if (!githubPat) {
-      return jsonResponse(
-        {
-          error:
-            "GITHUB_PAT não configurado nos secrets desta Edge Function (Project Settings > Edge Functions > projte-verificar-camada3 > Secrets).",
-        },
-        500
-      );
+      // Log direto aqui (não só no catch): esse é um erro de configuração,
+      // não uma exceção -- sem isso, um 500 por PAT ausente não deixava
+      // NENHUM rastro em provisionamento_logs, dificultando diagnosticar à
+      // distância (bug real encontrado em 2026-08-18, testando o QA
+      // republicado no Vercel).
+      const mensagem =
+        "GITHUB_PAT não configurado nos secrets desta Edge Function (Project Settings > Edge Functions > projte-verificar-camada3 > Secrets).";
+      await projteSchema.from("provisionamento_logs").insert({
+        ambiente_id: ambienteId,
+        tipo: "verificacao",
+        etapa: "camada3_disparo",
+        status: "erro",
+        mensagem,
+      });
+      return jsonResponse({ error: mensagem }, 500);
     }
     const githubRef = Deno.env.get("GITHUB_REF") || "master";
 
