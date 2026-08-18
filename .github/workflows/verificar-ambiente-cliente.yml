@@ -1,0 +1,68 @@
+name: Verificar Ambiente do Cliente (camada 3)
+
+# Camada 3 da verificação de ambiente ("esta no ar de verdade, com um
+# usuário de verdade clicando"), disparado pelo botão "Verificar Ambiente"
+# no painel Config PROJTE. Roda aqui (não numa Edge Function do Supabase)
+# porque precisa de um navegador de verdade (Chromium) -- Deno/Edge
+# Functions não têm isso.
+#
+# Segurança: os inputs abaixo incluem a senha do usuário SINTÉTICO de
+# monitoramento (não é dado de negócio do cliente, é resetada a cada
+# "Criar Ambiente" -- ver supabase/functions/projte-provision-ambiente).
+# Esses inputs ficam visíveis para qualquer pessoa com acesso de leitura às
+# Actions deste repositório. Aceito como trade-off deliberado (quem tem
+# esse acesso já é alguém de confiança da equipe PROJTE); se isso mudar,
+# revisitar antes de continuar usando.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ambiente_label:
+        description: "Rótulo do ambiente (ex.: Cliente X - QA)"
+        required: true
+      base_url:
+        description: "URL do frontend do cliente a verificar"
+        required: true
+      monitor_email:
+        description: "Email do usuário sintético de monitoramento"
+        required: true
+      monitor_password:
+        description: "Senha do usuário sintético de monitoramento"
+        required: true
+
+jobs:
+  smoke-test:
+    name: "Smoke test: ${{ inputs.ambiente_label }}"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Instalar Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Rodar smoke test de login (camada 3)
+        env:
+          QA_BASE_URL: ${{ inputs.base_url }}
+          MONITOR_EMAIL: ${{ inputs.monitor_email }}
+          MONITOR_PASSWORD: ${{ inputs.monitor_password }}
+        run: npx playwright test --config=qa/playwright.ambiente-cliente.config.ts
+
+      - name: Upload relatório (sempre, ajuda a diagnosticar falha ou confirmar sucesso)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-ambiente-cliente-${{ github.run_id }}
+          path: |
+            qa/reports/ambiente-cliente-results.json
+            qa/artifacts-ambiente-cliente/
+          retention-days: 14
+          if-no-files-found: ignore

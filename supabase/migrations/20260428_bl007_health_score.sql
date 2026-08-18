@@ -106,9 +106,15 @@ CREATE POLICY "Hierarquia health_historico leitura" ON projeto_health_historico
   );
 
 -- Histórico: apenas service_role escreve (via Edge Function)
+-- Nota: policies de INSERT no Postgres só aceitam WITH CHECK (não existe
+-- USING para INSERT -- ERROR 42601 "only WITH CHECK expression allowed for
+-- INSERT"). A versão anterior deste arquivo tinha USING (true) aqui; isso
+-- nunca quebrou em produção porque a policy real foi criada sem essa
+-- cláusula (provavelmente corrigida manualmente antes de rodar, sem
+-- atualizar este arquivo) -- só foi descoberto ao tentar reaplicar este
+-- arquivo do zero num projeto novo via "Criar Ambiente" (2026-08-04).
 CREATE POLICY "Service role escreve historico" ON projeto_health_historico
   FOR INSERT TO service_role
-  USING (true)
   WITH CHECK (true);
 
 -- ─── TRIGGER: cria config com defaults ao criar projeto ────────────────────────────────────────────────────────────

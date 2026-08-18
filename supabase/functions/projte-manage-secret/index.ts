@@ -19,7 +19,7 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
 
-const TIPOS_VALIDOS = ["service_role_key", "anon_key", "db_password", "management_token", "outro"];
+const TIPOS_VALIDOS = ["service_role_key", "anon_key", "db_password", "management_token", "monitor_credentials", "suite_fixture_credentials", "outro"];
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {

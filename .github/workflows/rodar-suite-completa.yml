@@ -1,0 +1,126 @@
+name: Rodar Suite Completa BL-020 (camada 4)
+
+# Camada 4 da verificação de ambiente: deploy das edge functions do produto
+# pro projeto do cliente + suite de testes BL-020 completa (não só o smoke
+# de login da camada 3), disparado pelo botão "Rodar Suite Completa" no
+# painel Config PROJTE (supabase/functions/projte-rodar-suite-completa).
+#
+# Segurança:
+#   - management_token e service_role_key do projeto do CLIENTE (os dois
+#     dão acesso total ao banco/projeto dele) NUNCA passam como input de
+#     workflow_dispatch. A edge function que dispara este workflow grava
+#     os dois, criptografados com a chave pública deste repositório, como
+#     Actions secrets (CLIENT_MANAGEMENT_TOKEN / CLIENT_SERVICE_ROLE_KEY)
+#     antes de disparar -- só ficam legíveis dentro do job, via secrets.*,
+#     nunca em log. São secrets de escopo do repositório inteiro,
+#     sobrescritos a cada execução (uso interno, uma execução por vez --
+#     ver comentário de trade-off em projte-rodar-suite-completa/index.ts).
+#   - As credenciais dos 3 usuários FIXTURE de teste (admin/coordenador/
+#     consultor -- não são dados de negócio do cliente, são resetadas a
+#     cada execução) seguem o mesmo trade-off já aceito pra senha do
+#     usuário de monitoramento da camada 3: vão como input em texto puro,
+#     visíveis pra quem tem acesso de leitura às Actions deste repositório.
+#
+# IN002 (único teste da suite dependente de integração real com Monday.com)
+# é pulado -- decisão do Caio, Monday não está configurado por cliente
+# ainda.
+
+on:
+  workflow_dispatch:
+    inputs:
+      ambiente_label:
+        description: "Rótulo do ambiente (ex.: Cliente X - QA)"
+        required: true
+      base_url:
+        description: "URL do frontend do cliente"
+        required: true
+      project_ref:
+        description: "Ref do projeto Supabase do cliente"
+        required: true
+      project_url:
+        description: "URL do projeto Supabase do cliente"
+        required: true
+      admin_email:
+        required: true
+      admin_password:
+        required: true
+      coordenador_email:
+        required: true
+      coordenador_password:
+        required: true
+      consultor_email:
+        required: true
+      consultor_password:
+        required: true
+
+jobs:
+  deploy-functions:
+    name: "Deploy edge functions: ${{ inputs.ambiente_label }}"
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Instalar Supabase CLI
+        uses: supabase/setup-cli@v1
+        with:
+          version: latest
+
+      - name: Deploy das edge functions do produto (exclui projte-* e _shared)
+        env:
+          SUPABASE_ACCESS_TOKEN: ${{ secrets.CLIENT_MANAGEMENT_TOKEN }}
+        run: |
+          set -e
+          for dir in supabase/functions/*/; do
+            name=$(basename "$dir")
+            if [[ "$name" == "_shared" || "$name" == projte-* ]]; then
+              echo "Pulando $name (control-plane / não é function do produto)"
+              continue
+            fi
+            echo "Deploy: $name"
+            supabase functions deploy "$name" --project-ref "${{ inputs.project_ref }}"
+          done
+
+  suite-completa:
+    name: "Suite BL-020 completa: ${{ inputs.ambiente_label }}"
+    needs: deploy-functions
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Instalar dependências
+        run: npm ci
+
+      - name: Instalar Chromium (Playwright)
+        run: npx playwright install --with-deps chromium
+
+      - name: Rodar suite BL-020 completa (exceto IN002 -- ver comentário no topo)
+        env:
+          QA_BASE_URL: ${{ inputs.base_url }}
+          SUPABASE_URL: ${{ inputs.project_url }}
+          VITE_SUPABASE_URL: ${{ inputs.project_url }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.CLIENT_SERVICE_ROLE_KEY }}
+          QA_ADMIN_EMAIL: ${{ inputs.admin_email }}
+          QA_ADMIN_PASSWORD: ${{ inputs.admin_password }}
+          QA_COORDENADOR_EMAIL: ${{ inputs.coordenador_email }}
+          QA_COORDENADOR_PASSWORD: ${{ inputs.coordenador_password }}
+          QA_CONSULTOR_EMAIL: ${{ inputs.consultor_email }}
+          QA_CONSULTOR_PASSWORD: ${{ inputs.consultor_password }}
+        run: npx playwright test --grep-invert "IN002"
+
+      - name: Upload relatório (sempre, ajuda a diagnosticar falha ou confirmar sucesso)
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: relatorio-suite-completa-${{ github.run_id }}
+          path: |
+            qa/reports/
+            qa/artifacts/
+          retention-days: 14
+          if-no-files-found: ignore

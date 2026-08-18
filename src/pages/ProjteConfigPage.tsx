@@ -50,6 +50,7 @@ interface Ambiente {
   tipo: "qa" | "producao";
   supabase_project_ref: string | null;
   supabase_project_url: string | null;
+  frontend_url: string | null;
   status: "nao_provisionado" | "provisionando" | "ativo" | "erro" | "pausado";
   template_release_id: string | null;
   notas: string | null;
@@ -68,7 +69,7 @@ interface TemplateRelease {
   versao: string;
 }
 
-const SECRET_TIPOS = ["service_role_key", "anon_key", "db_password", "management_token", "outro"];
+const SECRET_TIPOS = ["service_role_key", "anon_key", "db_password", "management_token", "monitor_credentials", "outro"];
 
 const emptyForm = {
   nome_fantasia: "",
@@ -130,6 +131,10 @@ export default function ProjteConfigPage() {
   const [savingSecret, setSavingSecret] = useState<string | null>(null);
   const [secretForms, setSecretForms] = useState<Record<string, { tipo: string; valor: string; descricao: string }>>({});
   const [provisioning, setProvisioning] = useState<string | null>(null);
+  const [checking, setChecking] = useState<string | null>(null);
+  const [checkResult, setCheckResult] = useState<{ label: string; relatorio: any } | null>(null);
+  const [runningCamada3, setRunningCamada3] = useState<string | null>(null);
+  const [runningCamada4, setRunningCamada4] = useState<string | null>(null);
 
   useEffect(() => {
     loadClientes();
@@ -195,6 +200,7 @@ export default function ProjteConfigPage() {
       .update({
         supabase_project_ref: amb.supabase_project_ref || null,
         supabase_project_url: amb.supabase_project_url || null,
+        frontend_url: amb.frontend_url || null,
         status: amb.status,
         template_release_id: amb.template_release_id || null,
         notas: amb.notas || null,
@@ -300,6 +306,100 @@ export default function ProjteConfigPage() {
     }
     await loadAmbientes(amb.cliente_id);
     setProvisioning(null);
+  };
+
+  const handleCheckAmbiente = async (amb: Ambiente) => {
+    if (!amb.supabase_project_ref?.trim()) {
+      toast({ title: "Preencha e salve o project ref antes de verificar", variant: "destructive" });
+      return;
+    }
+    const secrets = ambienteSecrets[amb.id] || [];
+    if (!secrets.some((s) => s.tipo === "management_token")) {
+      toast({ title: "Registre o management_token nos Segredos antes de verificar", variant: "destructive" });
+      return;
+    }
+    const label = amb.tipo === "qa" ? "QA" : "Produção";
+    setChecking(amb.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("projte-check-ambiente", {
+        body: { ambiente_id: amb.id },
+      });
+      if (error) throw error;
+      setCheckResult({ label, relatorio: (data as any)?.relatorio ?? data });
+    } catch (err: any) {
+      toast({ title: "Erro ao verificar ambiente", description: err.message, variant: "destructive" });
+    }
+    setChecking(null);
+  };
+
+  const handleVerificarCamada3 = async (amb: Ambiente) => {
+    if (!amb.frontend_url?.trim()) {
+      toast({
+        title: "Preencha o Frontend URL do ambiente",
+        description: "Sem uma URL de frontend publicada, não há o que o Playwright abrir.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setRunningCamada3(amb.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("projte-verificar-camada3", {
+        body: { ambiente_id: amb.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      const runUrl = (data as any)?.run_url as string | null;
+      toast({
+        title: "Verificação de camada 3 disparada",
+        description: runUrl
+          ? "Abrindo o acompanhamento no GitHub Actions em outra aba."
+          : "Rodando no GitHub Actions (não consegui obter o link direto — confira na aba Actions do repositório).",
+      });
+      if (runUrl) window.open(runUrl, "_blank");
+    } catch (err: any) {
+      toast({ title: "Erro ao disparar verificação de camada 3", description: err.message, variant: "destructive" });
+    }
+    setRunningCamada3(null);
+  };
+
+  const handleRodarSuiteCompleta = async (amb: Ambiente) => {
+    if (!amb.frontend_url?.trim()) {
+      toast({
+        title: "Preencha o Frontend URL do ambiente",
+        description: "Sem uma URL de frontend publicada, não há o que a suite abrir.",
+        variant: "destructive",
+      });
+      return;
+    }
+    if (amb.status !== "ativo") {
+      toast({
+        title: "Ambiente não está ativo",
+        description: "Rode 'Criar Ambiente' com sucesso antes de rodar a suite completa.",
+        variant: "destructive",
+      });
+      return;
+    }
+    setRunningCamada4(amb.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("projte-rodar-suite-completa", {
+        body: { ambiente_id: amb.id },
+      });
+      if (error) throw error;
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      const runUrl = (data as any)?.run_url as string | null;
+      toast({
+        title: "Suite completa (camada 4) disparada",
+        description: runUrl
+          ? "Deploy das functions + suite BL-020 completa (exceto IN002) rodando. Abrindo o acompanhamento no GitHub Actions."
+          : "Rodando no GitHub Actions (não consegui obter o link direto — confira na aba Actions do repositório).",
+      });
+      if (runUrl) window.open(runUrl, "_blank");
+    } catch (err: any) {
+      toast({ title: "Erro ao disparar suite completa", description: err.message, variant: "destructive" });
+    }
+    setRunningCamada4(null);
   };
 
   const loadClientes = async () => {
@@ -700,24 +800,70 @@ export default function ProjteConfigPage() {
                             <Server className="h-4 w-4" /> {label}
                             <Badge variant="outline" className="text-[10px] font-normal">{amb.status}</Badge>
                           </CardTitle>
-                          <Button
-                            size="sm"
-                            variant={amb.status === "ativo" ? "outline" : "default"}
-                            className="gap-2"
-                            onClick={() => handleProvisionAmbiente(amb)}
-                            disabled={provisioning === amb.id}
-                          >
-                            {provisioning === amb.id ? (
-                              <Loader2 className="h-4 w-4 animate-spin" />
-                            ) : (
-                              <Rocket className="h-4 w-4" />
-                            )}
-                            {provisioning === amb.id
-                              ? "Provisionando..."
-                              : amb.status === "ativo"
-                                ? "Recriar Ambiente"
-                                : "Criar Ambiente"}
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-2"
+                              onClick={() => handleCheckAmbiente(amb)}
+                              disabled={checking === amb.id}
+                            >
+                              {checking === amb.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Server className="h-4 w-4" />
+                              )}
+                              {checking === amb.id ? "Verificando..." : "Verificar Ambiente"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-2"
+                              onClick={() => handleVerificarCamada3(amb)}
+                              disabled={runningCamada3 === amb.id || !amb.frontend_url?.trim()}
+                              title={!amb.frontend_url?.trim() ? "Preencha o Frontend URL primeiro" : undefined}
+                            >
+                              {runningCamada3 === amb.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Server className="h-4 w-4" />
+                              )}
+                              {runningCamada3 === amb.id ? "Disparando..." : "Verificar Login (camada 3)"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="gap-2"
+                              onClick={() => handleRodarSuiteCompleta(amb)}
+                              disabled={runningCamada4 === amb.id || !amb.frontend_url?.trim() || amb.status !== "ativo"}
+                              title={!amb.frontend_url?.trim() ? "Preencha o Frontend URL primeiro" : undefined}
+                            >
+                              {runningCamada4 === amb.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Server className="h-4 w-4" />
+                              )}
+                              {runningCamada4 === amb.id ? "Disparando..." : "Rodar Suite Completa (camada 4)"}
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant={amb.status === "ativo" ? "outline" : "default"}
+                              className="gap-2"
+                              onClick={() => handleProvisionAmbiente(amb)}
+                              disabled={provisioning === amb.id}
+                            >
+                              {provisioning === amb.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Rocket className="h-4 w-4" />
+                              )}
+                              {provisioning === amb.id
+                                ? "Provisionando..."
+                                : amb.status === "ativo"
+                                  ? "Recriar Ambiente"
+                                  : "Criar Ambiente"}
+                            </Button>
+                          </div>
                         </div>
                         <p className="text-[11px] text-muted-foreground pt-1">
                           Espelha o schema do template PROJTE (sem dados) no projeto Supabase acima, usando o
@@ -744,6 +890,19 @@ export default function ProjteConfigPage() {
                               placeholder="https://abcdxyz.supabase.co"
                             />
                           </div>
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs">Frontend URL (opcional)</Label>
+                          <Input
+                            className="h-8 text-xs font-mono"
+                            value={amb.frontend_url || ""}
+                            onChange={(e) => updateAmbienteLocal(amb.id, { frontend_url: e.target.value })}
+                            placeholder="https://app-do-cliente.vercel.app (preencha quando existir um frontend publicado)"
+                          />
+                          <p className="text-[10px] text-muted-foreground">
+                            Usado pela verificação de camada 3 (login real via Playwright). Sem essa URL, a
+                            verificação só confere o backend (Supabase).
+                          </p>
                         </div>
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                           <div className="space-y-1">
@@ -853,6 +1012,92 @@ export default function ProjteConfigPage() {
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
               Salvar
             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!checkResult} onOpenChange={(open) => !open && setCheckResult(null)}>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Verificação do ambiente {checkResult?.label}</DialogTitle>
+            <DialogDescription>
+              Projeto Supabase, saúde dos serviços e schema do template — sem checar frontend/app do cliente
+              (fora do escopo do "Criar Ambiente").
+            </DialogDescription>
+          </DialogHeader>
+          {checkResult && (
+            <div className="space-y-4 text-sm">
+              <div>
+                <p className="font-medium mb-1">Projeto Supabase</p>
+                {checkResult.relatorio?.projeto?.erro ? (
+                  <p className="text-destructive text-xs">{checkResult.relatorio.projeto.erro}</p>
+                ) : (
+                  <Badge variant="outline">{checkResult.relatorio?.projeto?.status ?? "desconhecido"}</Badge>
+                )}
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">Serviços</p>
+                {checkResult.relatorio?.servicos?.erro ? (
+                  <p className="text-destructive text-xs">{checkResult.relatorio.servicos.erro}</p>
+                ) : Array.isArray(checkResult.relatorio?.servicos?.dados) ? (
+                  <div className="flex flex-wrap gap-2">
+                    {checkResult.relatorio.servicos.dados.map((s: any) => (
+                      <Badge key={s.name} variant={s.healthy ? "outline" : "destructive"} className="text-[10px]">
+                        {s.name}: {s.healthy ? "ok" : s.status ?? "erro"}
+                      </Badge>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-xs text-muted-foreground">Sem dados.</p>
+                )}
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">Schema (tabelas-chave e cron jobs)</p>
+                {checkResult.relatorio?.schema?.erro ? (
+                  <p className="text-destructive text-xs">{checkResult.relatorio.schema.erro}</p>
+                ) : (
+                  <div className="space-y-2 text-xs">
+                    <p>
+                      Total de tabelas em <code>public</code>:{" "}
+                      {checkResult.relatorio?.schema?.diagnostico?.total_tabelas_public ?? "?"}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {Object.entries(checkResult.relatorio?.schema?.diagnostico?.tabelas_chave ?? {}).map(
+                        ([nome, existe]: [string, any]) => (
+                          <Badge key={nome} variant={existe ? "outline" : "destructive"} className="text-[10px]">
+                            {nome}
+                          </Badge>
+                        )
+                      )}
+                    </div>
+                    <p>
+                      RLS em <code>projetos</code>:{" "}
+                      {checkResult.relatorio?.schema?.diagnostico?.rls_projetos ? "ativo" : "inativo"}
+                    </p>
+                    <div className="flex flex-wrap gap-1">
+                      {(checkResult.relatorio?.schema?.diagnostico?.cron_jobs ?? []).map((j: any) => (
+                        <Badge key={j.jobname} variant={j.active ? "outline" : "destructive"} className="text-[10px]">
+                          {j.jobname} ({j.schedule})
+                        </Badge>
+                      ))}
+                      {(checkResult.relatorio?.schema?.diagnostico?.cron_jobs ?? []).length === 0 && (
+                        <span className="text-muted-foreground">Nenhum cron job encontrado.</span>
+                      )}
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <p className="font-medium mb-1">Frontend/app do cliente</p>
+                <p className="text-xs text-muted-foreground">{checkResult.relatorio?.frontend_app?.nota}</p>
+              </div>
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCheckResult(null)}>Fechar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

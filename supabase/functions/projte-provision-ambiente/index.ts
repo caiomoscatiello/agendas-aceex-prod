@@ -126,7 +126,8 @@ Deno.serve(async (req) => {
     }
 
     const targetRef = ambiente.supabase_project_ref.trim();
-    const targetFunctionsUrl = ambiente.supabase_project_url.replace(/\/+$/, "") + "/functions/v1";
+    const targetBaseUrl = ambiente.supabase_project_url.replace(/\/+$/, "");
+    const targetFunctionsUrl = targetBaseUrl + "/functions/v1";
 
     const logStep = async (etapa: string, status: "ok" | "erro", mensagem: string) => {
       await projteSchema.from("provisionamento_logs").insert({
@@ -159,13 +160,46 @@ Deno.serve(async (req) => {
     if (!migrationsData || migrationsData.length === 0) {
       return jsonResponse({ error: `Release ${latestRelease.versao} não tem migrations cadastradas.` }, 500);
     }
-    const MIGRATIONS = migrationsData as { seq: number; name: string; sql: string }[];
+    const ALL_MIGRATIONS = migrationsData as { seq: number; name: string; sql: string }[];
+
+    // Retomada: se a ultima tentativa desse ambiente terminou em erro (ex.:
+    // um bug pontual numa migration especifica, ja corrigido), NAO reaplica
+    // desde o inicio. Varias migrations do produto sao ALTER TABLE ADD
+    // COLUMN / CREATE POLICY sem guarda de idempotencia (sem IF NOT EXISTS),
+    // entao rodar tudo de novo do zero contra um projeto ja parcialmente
+    // provisionado quebraria logo na primeira migration ja aplicada
+    // anteriormente. Em vez disso, olha o que ja foi logado como "ok" nas
+    // tentativas anteriores e pula essas migrations (por nome, imune a
+    // renumeracao de seq entre tentativas).
+    let MIGRATIONS = ALL_MIGRATIONS;
+    let retomando = false;
+    if (ambiente.status === "erro") {
+      const { data: logsAnteriores, error: logsErr } = await projteSchema
+        .from("provisionamento_logs")
+        .select("etapa")
+        .eq("ambiente_id", ambienteId)
+        .eq("status", "ok");
+      if (logsErr) throw logsErr;
+
+      const nomesAplicados = new Set((logsAnteriores || []).map((l: { etapa: string }) => l.etapa));
+      const pendentes = ALL_MIGRATIONS.filter((m) => !nomesAplicados.has(m.name));
+
+      if (pendentes.length > 0 && pendentes.length < ALL_MIGRATIONS.length) {
+        MIGRATIONS = pendentes;
+        retomando = true;
+      }
+      // Se nada foi aplicado ainda (pendentes.length === ALL_MIGRATIONS.length)
+      // ou se por algum motivo tudo ja consta como aplicado, roda a lista
+      // completa normalmente (comportamento antigo, seguro nesses dois casos).
+    }
 
     await projteSchema.from("ambientes").update({ status: "provisionando" }).eq("id", ambienteId);
     await logStep(
       "inicio",
       "ok",
-      `Iniciando provisionamento de schema (${MIGRATIONS.length} migrations, release ${latestRelease.versao}) para o projeto ${targetRef}.`
+      retomando
+        ? `Retomando provisionamento apos falha anterior: ${MIGRATIONS.length} migration(s) pendente(s) de ${ALL_MIGRATIONS.length} no total (release ${latestRelease.versao}), projeto ${targetRef}.`
+        : `Iniciando provisionamento de schema (${MIGRATIONS.length} migrations, release ${latestRelease.versao}) para o projeto ${targetRef}.`
     );
 
     const runQuery = async (sql: string) => {
@@ -205,6 +239,112 @@ Deno.serve(async (req) => {
       await logStep(migration.name, "ok", `Migration ${i + 1}/${MIGRATIONS.length} aplicada.`);
     }
 
+    // Semeia (ou atualiza a senha de) 1 usuario sintetico de monitoramento no
+    // projeto-alvo. Usado pela verificacao de camada 3 (login real via
+    // Playwright, disparado por fora desta function) -- sem isso nao ha
+    // nenhum usuario pra logar num ambiente que acabou de ser espelhado
+    // "sem dados". NAO e dado de negocio do cliente: e um usuario tecnico,
+    // reconhecido e resetado a cada provisionamento. Falha aqui NAO derruba
+    // o provisionamento do schema (que ja terminou com sucesso nesse ponto)
+    // -- so fica registrada como aviso.
+    const MONITOR_EMAIL = "monitor@projte.internal";
+    try {
+      const keysRes = await fetch(`${MANAGEMENT_API_BASE}/projects/${targetRef}/api-keys?reveal=true`, {
+        headers: { Authorization: `Bearer ${managementToken}` },
+      });
+      const keysText = await keysRes.text();
+      if (!keysRes.ok) throw new Error(`HTTP ${keysRes.status} ao buscar api-keys: ${keysText.slice(0, 300)}`);
+      const keys = JSON.parse(keysText) as { name: string; api_key: string }[];
+      const serviceRoleKey =
+        keys.find((k) => k.name === "service_role")?.api_key ??
+        keys.find((k) => k.name === "secret")?.api_key;
+      if (!serviceRoleKey) {
+        throw new Error("Nenhuma chave service_role/secret encontrada nas api-keys do projeto.");
+      }
+
+      const monitorPassword = crypto.randomUUID() + "-Aa1!";
+      const authAdminHeaders = {
+        "Content-Type": "application/json",
+        "apikey": serviceRoleKey,
+        "Authorization": `Bearer ${serviceRoleKey}`,
+      };
+
+      const createRes = await fetch(`${targetBaseUrl}/auth/v1/admin/users`, {
+        method: "POST",
+        headers: authAdminHeaders,
+        body: JSON.stringify({ email: MONITOR_EMAIL, password: monitorPassword, email_confirm: true }),
+      });
+
+      if (!createRes.ok) {
+        // Provavelmente ja existe (reprovisionamento). Busca o usuario e
+        // reseta a senha pra um valor conhecido, em vez de falhar.
+        const listRes = await fetch(
+          `${targetBaseUrl}/auth/v1/admin/users?email=${encodeURIComponent(MONITOR_EMAIL)}`,
+          { headers: authAdminHeaders }
+        );
+        const listText = await listRes.text();
+        if (!listRes.ok) throw new Error(`HTTP ${listRes.status} ao buscar usuario existente: ${listText.slice(0, 300)}`);
+        const listJson = JSON.parse(listText);
+        const usersArray = Array.isArray(listJson) ? listJson : listJson.users;
+        const existingUser = (usersArray || []).find((u: any) => u.email === MONITOR_EMAIL);
+        if (!existingUser) {
+          const createText = await createRes.text();
+          throw new Error(`Falha ao criar usuario e não encontrei um existente: HTTP ${createRes.status} — ${createText.slice(0, 300)}`);
+        }
+
+        const patchRes = await fetch(`${targetBaseUrl}/auth/v1/admin/users/${existingUser.id}`, {
+          method: "PUT",
+          headers: authAdminHeaders,
+          body: JSON.stringify({ password: monitorPassword }),
+        });
+        if (!patchRes.ok) {
+          const patchText = await patchRes.text();
+          throw new Error(`HTTP ${patchRes.status} ao resetar senha do usuario de monitoramento: ${patchText.slice(0, 300)}`);
+        }
+      }
+
+      // Guarda email+senha no Vault deste ambiente (tipo monitor_credentials),
+      // mesmo padrao usado pelos demais segredos (ver projte-manage-secret).
+      const credenciais = JSON.stringify({ email: MONITOR_EMAIL, password: monitorPassword });
+      const { data: existingSecretRef } = await projteSchema
+        .from("ambiente_secrets")
+        .select("id, vault_secret_id")
+        .eq("ambiente_id", ambienteId)
+        .eq("tipo", "monitor_credentials")
+        .maybeSingle();
+
+      if (existingSecretRef) {
+        const { error: updateSecretErr } = await projteSchema.rpc("vault_update_secret", {
+          secret_id: existingSecretRef.vault_secret_id,
+          new_secret: credenciais,
+        });
+        if (updateSecretErr) throw updateSecretErr;
+      } else {
+        const secretName = `ambiente_${ambienteId}_monitor_credentials_${Date.now()}`;
+        const { data: newSecretId, error: createSecretErr } = await projteSchema.rpc("vault_create_secret", {
+          new_secret: credenciais,
+          new_name: secretName,
+          new_description: "Credenciais do usuario sintetico de monitoramento (camada 3 de verificação).",
+        });
+        if (createSecretErr) throw createSecretErr;
+        const { error: insertSecretErr } = await projteSchema.from("ambiente_secrets").insert({
+          ambiente_id: ambienteId,
+          tipo: "monitor_credentials",
+          vault_secret_id: newSecretId,
+          descricao: "Usuário sintético para verificação de login (Playwright).",
+        });
+        if (insertSecretErr) throw insertSecretErr;
+      }
+
+      await logStep("monitor_user", "ok", `Usuário de monitoramento (${MONITOR_EMAIL}) pronto para verificação de camada 3.`);
+    } catch (monitorErr) {
+      await logStep(
+        "monitor_user",
+        "erro",
+        `Schema OK, mas não consegui preparar o usuário de monitoramento: ${(monitorErr as Error).message}`
+      );
+    }
+
     const nowIso = new Date().toISOString();
     await projteSchema
       .from("ambientes")
@@ -219,7 +359,9 @@ Deno.serve(async (req) => {
     await logStep(
       "concluido",
       "ok",
-      `Schema provisionado com sucesso (${MIGRATIONS.length} migrations aplicadas). Release: ${latestRelease.versao}.`
+      retomando
+        ? `Schema provisionado com sucesso apos retomada (${MIGRATIONS.length} migration(s) pendente(s) aplicada(s), ${ALL_MIGRATIONS.length} no total). Release: ${latestRelease.versao}.`
+        : `Schema provisionado com sucesso (${MIGRATIONS.length} migrations aplicadas). Release: ${latestRelease.versao}.`
     );
 
     return jsonResponse({

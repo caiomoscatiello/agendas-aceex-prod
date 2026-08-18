@@ -36,6 +36,15 @@ dotenv.config({ path: resolve(__dirname, '.env') });
 
 const BASE_URL = process.env.QA_BASE_URL || 'http://localhost:8080';
 
+// v5: quando QA_BASE_URL aponta pra um host remoto (ambiente real de
+// cliente -- camada 4, ver .github/workflows/rodar-suite-completa.yml),
+// NAO faz sentido tentar subir "npm run dev" local -- nao existe servidor
+// nenhum pra subir, e o Playwright ia travar minutos esperando o healthcheck
+// de um webServer que nunca vai responder. So sobe o dev server quando
+// BASE_URL continua sendo localhost/127.0.0.1 (uso local/dev, comportamento
+// de sempre, inalterado).
+const isRemoteBaseUrl = /^https?:\/\/(?!localhost|127\.0\.0\.1)/i.test(BASE_URL);
+
 export default defineConfig({
 
   testDir: './qa/tests',
@@ -89,10 +98,12 @@ export default defineConfig({
     { name: 'mobile-chrome', use: { ...devices['iPhone 14'] }, testMatch: '**/UI_regressao.spec.ts' },
   ],
 
-  webServer: {
-    command: 'npm run dev',
-    url: 'http://localhost:8080',
-    reuseExistingServer: true,
-    timeout: 60_000,
-  },
+  webServer: isRemoteBaseUrl
+    ? undefined
+    : {
+        command: 'npm run dev',
+        url: 'http://localhost:8080',
+        reuseExistingServer: true,
+        timeout: 60_000,
+      },
 });

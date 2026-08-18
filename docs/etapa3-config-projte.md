@@ -245,3 +245,35 @@ fase futura).
   (contagem, ordem de `seq`, ausência de hardcode residual do Aceex, ausência de artefatos de
   corrupção), mas o primeiro clique real do botão ainda não aconteceu. Recomendação: testar
   primeiro contra o ambiente QA de um cliente antes de Produção.
+
+## 12. Primeiro teste real (QA) — falhou na migration 55/59, corrigido em 2026-08-04
+
+Primeiro clique real do botão, contra um ambiente QA (`blxfeaioadnzeaqncecf`). 54 das 59
+migrations rodaram OK; a 55ª (`20260416_fix_rls_projeto_alertas.sql`) falhou com
+`relation "projeto_alertas" does not exist` (HTTP 500 visível no console do navegador).
+
+**Causa raiz**: nenhuma das 65 migrations do repositório (nem as 59 selecionadas, nem as 6
+excluídas) cria a tabela `projeto_alertas` — ela existe em produção (Aceex) mas foi criada fora
+de qualquer arquivo `.sql`, provavelmente pelo editor visual de tabelas do Lovable numa sessão
+antiga que nunca gerou migration correspondente. Isso só ficou visível ao tentar espelhar o
+schema num projeto vazio.
+
+**Correção**:
+- DDL da tabela reconstruído via introspecção do schema real de produção (colunas, tipos,
+  defaults, PK, FK — sem CHECK constraints, sem índices além da PK, sem triggers). Nova migration
+  `20260804220000_create_projeto_alertas.sql`, com `IF NOT EXISTS` (inofensiva em produção, onde
+  a tabela já existe).
+- Registrada em `template_migrations` na posição `seq=55` (as migrations que eram 55–59 foram
+  deslocadas para 56–60) — `20260804220100_seed_projeto_alertas_into_template_migrations.sql`.
+- **Retomada em vez de reinício do zero**: a edge function foi ajustada para, quando
+  `ambientes.status = 'erro'`, olhar o que já foi logado como `ok` em `provisionamento_logs` e
+  pular essas migrations (por nome, não por `seq` — imune à renumeração acima), rodando só as
+  pendentes. Sem isso, corrigir o schema e clicar de novo re-rodaria as 54 migrations já
+  aplicadas com sucesso — várias são `ALTER TABLE ADD COLUMN` / `CREATE POLICY` sem guarda de
+  idempotência e quebrariam na primeira repetição. Deployado como v2.
+- Ainda não confirmado que o ambiente QA termina de provisionar com o fix — próximo passo é
+  clicar "Criar Ambiente" de novo nesse mesmo ambiente e conferir `provisionamento_logs`.
+
+**Lição para releases futuras**: antes de publicar uma nova `template_release`, rodar as
+migrations candidatas contra um projeto Supabase vazio (não contra produção) pra pegar esse tipo
+de dependência oculta antes do cliente.
