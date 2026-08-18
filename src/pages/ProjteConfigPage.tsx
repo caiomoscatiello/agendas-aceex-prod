@@ -288,7 +288,7 @@ export default function ProjteConfigPage() {
       const { data, error } = await supabase.functions.invoke("projte-manage-secret", {
         body: { ambiente_id: ambienteId, tipo: form.tipo, valor: form.valor, descricao: form.descricao },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
 
       toast({ title: "Segredo salvo no Vault" });
@@ -311,7 +311,7 @@ export default function ProjteConfigPage() {
       const { data, error } = await supabase.functions.invoke("projte-manage-secret", {
         body: { action: "remove", ambiente_id: ambienteId, tipo },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
 
       setAmbienteSecrets((prev) => ({
@@ -349,7 +349,7 @@ export default function ProjteConfigPage() {
       const { data, error } = await supabase.functions.invoke("projte-provision-ambiente", {
         body: { ambiente_id: amb.id },
       });
-      if (error) throw error;
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
       if ((data as any)?.error) throw new Error((data as any).error);
 
       toast({
