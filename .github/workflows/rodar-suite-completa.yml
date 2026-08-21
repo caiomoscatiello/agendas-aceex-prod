@@ -120,7 +120,7 @@ jobs:
         with:
           name: relatorio-suite-completa-${{ github.run_id }}
           path: |
-            qa/reports/
-            qa/artifacts/
+            QA/reports/
+            QA/artifacts/
           retention-days: 14
           if-no-files-found: ignore

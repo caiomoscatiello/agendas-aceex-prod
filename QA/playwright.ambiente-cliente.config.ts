@@ -25,7 +25,7 @@ export default defineConfig({
 
   reporter: [
     ['list'],
-    ['json', { outputFile: 'qa/reports/ambiente-cliente-results.json' }],
+    ['json', { outputFile: 'reports/ambiente-cliente-results.json' }],
   ],
 
   use: {
@@ -40,7 +40,7 @@ export default defineConfig({
     navigationTimeout: 30_000,
   },
 
-  outputDir: 'qa/artifacts-ambiente-cliente',
+  outputDir: 'artifacts-ambiente-cliente',
 
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },

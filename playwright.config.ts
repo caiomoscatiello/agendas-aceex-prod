@@ -47,19 +47,19 @@ const isRemoteBaseUrl = /^https?:\/\/(?!localhost|127\.0\.0\.1)/i.test(BASE_URL)
 
 export default defineConfig({
 
-  testDir: './qa/tests',
+  testDir: './QA/tests',
   timeout: 60_000,
   expect: { timeout: 10_000 },
   retries: process.env.CI ? 1 : 0,
   workers: 1, // ver nota v3 no topo -- 2 workers gerava mais falhas E era mais lento nesta maquina
 
-  globalSetup:    './qa/globalSetup.ts',
-  globalTeardown: './qa/teardown.ts',
+  globalSetup:    './QA/globalSetup.ts',
+  globalTeardown: './QA/Teardown.ts',
 
   reporter: [
     ['list'],
-    ['html', { outputFolder: 'qa/reports', open: 'never' }],
-    ['json', { outputFile: 'qa/reports/results.json' }],
+    ['html', { outputFolder: 'QA/reports', open: 'never' }],
+    ['json', { outputFile: 'QA/reports/results.json' }],
   ],
 
   use: {
@@ -91,7 +91,7 @@ export default defineConfig({
     QA_ADMIN_PASSWORD:         process.env.QA_ADMIN_PASSWORD         || '',
   },
 
-  outputDir: 'qa/artifacts',
+  outputDir: 'QA/artifacts',
 
   projects: [
     { name: 'chromium', use: { ...devices['Desktop Chrome'] } },
