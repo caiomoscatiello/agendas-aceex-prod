@@ -8,7 +8,7 @@ import {
   login,
   captureConsoleErrors,
   assertZeroConsoleErrors,
-} from './helpers';
+} from './Helpers';
 
 // A001 -- Login Consultor
 test('A001 - Login Consultor', async ({ page }) => {

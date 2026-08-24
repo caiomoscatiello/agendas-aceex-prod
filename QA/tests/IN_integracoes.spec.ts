@@ -9,7 +9,7 @@
 //      cancelamento" e fragil (outra atividade no projeto pode gerar linhas a
 //      qualquer momento). Fix definitivo: filtrar direto pela ACAO esperada
 //      (cancel/excluir), ignorando create/incluir/update onde quer que
-//      apareçam -- ver bloco 'relevantes'. Removida a dependencia de
+//      apareÃ§am -- ver bloco 'relevantes'. Removida a dependencia de
 //      aguardarSyncMondayFixture (nao e mais necessaria pra corretude, so
 //      adicionava ate 20s de espera desnecessaria).
 // v11: IN003 -- diagnostico final (nao era race, era expectativa errada). Lendo
@@ -72,7 +72,7 @@ import {
   criarEAprovarAgenda,
   garantirAgendaSelecionada,
   QA_PROJETO_NOME,
-} from './helpers';
+} from './Helpers';
 
 // Helper: conta logs de integracao apos um timestamp
 async function contarLogsApos(timestampInicio: Date, filtroStatus = 'success') {
@@ -277,7 +277,7 @@ test('IN003 - Anti-loop: exclusao dispara sync uma unica vez', async ({ browser 
   // fontes/uso real podem gerar linhas em integration_logs a qualquer momento).
   // Fix definitivo: nao depender mais de tempo pra distinguir setup de
   // cancelamento -- filtrar direto pela ACAO esperada (cancel/excluir),
-  // ignorando create/incluir/update onde quer que apareçam. Ver filtro em
+  // ignorando create/incluir/update onde quer que apareÃ§am. Ver filtro em
   // 'relevantes' abaixo.
   const timestampInicio = new Date();
 
