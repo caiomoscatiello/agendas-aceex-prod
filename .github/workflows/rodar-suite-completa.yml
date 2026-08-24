@@ -97,8 +97,15 @@ jobs:
       - name: Instalar dependências
         run: npm ci
 
-      - name: Instalar Chromium (Playwright)
-        run: npx playwright install --with-deps chromium
+      - name: Instalar Chromium e Webkit (Playwright)
+        # webkit é necessário pro projeto "mobile-chrome" do playwright.config.ts
+        # (usa devices['iPhone 14'], que no Playwright roda sobre o engine
+        # WebKit -- emula Safari/iOS, não Chrome de verdade -- mesmo o nome
+        # do projeto dizendo "chrome"). Sem isso, todo teste UI_regressao.spec.ts
+        # no project mobile-chrome falhava instantaneamente com "Executable
+        # doesn't exist" -- não é bug de ambiente/schema, é só faltar
+        # instalar o browser certo no runner do CI.
+        run: npx playwright install --with-deps chromium webkit
 
       - name: Rodar suite BL-020 completa (exceto IN002 -- ver comentário no topo)
         env:

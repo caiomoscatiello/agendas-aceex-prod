@@ -274,6 +274,28 @@ Deno.serve(async (req) => {
     const adminId = fixtureCreds.admin.id;
     const consultorId = fixtureCreds.consultor.id;
 
+    // Bug real encontrado em 2026-08-24 (2a rodada de investigação, depois
+    // que o primeiro fix de protheus_integracoes não resolveu AG003/AG005/
+    // IN001/IN003): mock-protheus (supabase/functions/mock-protheus/index.ts
+    // linha ~35) valida o header x-api-key sempre contra a linha de código
+    // '0003' (hardcoded), mesmo quando quem chama é o fluxo de exclusão
+    // (código '0004'). Em produção isso "funciona" porque 0003 e 0004
+    // SEMPRE compartilham o mesmo api_key (confirmado por consulta direta) —
+    // um acoplamento implícito que não estava documentado em nenhum lugar.
+    // O upsert anterior desta function deixava cada linha gerar seu próprio
+    // api_key (DEFAULT gen_random_uuid() da tabela), então excluir (0004)
+    // sempre recebia 401 do mock e nunca logava "success". Gerado aqui um
+    // único valor e usado nas duas linhas.
+    const protheusMockApiKey = crypto.randomUUID();
+
+    // Segundo bug real, mesma investigação: protheus-agenda-sync exige
+    // codigo_consultor não-vazio (profiles.codigo) como campo obrigatório
+    // na validação — se vazio, loga status "error" (não "success"), MESMO
+    // com a integração ativa e o endpoint certo. profiles.codigo tem
+    // default '' e nada nesta fixture (nem em nenhum outro lugar) nunca
+    // preenchia esse campo pros 3 usuários de teste recém-criados. Sem
+    // isso, TODO envio (incluir ou excluir) falhava na validação antes
+    // mesmo de tentar o HTTP pro mock.
     const fixtureSql = `
       insert into public.projetos (nome_cliente, codigo_cliente, coordenador_id, horas_contratadas, deslocamento, status)
       select '${FIXTURE_NOME_CLIENTE}', '${FIXTURE_CODIGO_CLIENTE}', '${coordId}'::uuid, 999, 0, 'Liberado'
@@ -315,12 +337,21 @@ Deno.serve(async (req) => {
       -- mock-protheus do PRÓPRIO projeto-alvo (nunca o do master) --
       -- upsert por código, não depende de já existir a linha (funciona
       -- mesmo se "Recriar Ambiente" ainda não rodou com a migration
-      -- seq=82 aplicada).
-      insert into public.protheus_integracoes (codigo, descricao, direcao, webhook_path, endpoint, ativo)
+      -- seq=82 aplicada). api_key IGUAL nas duas linhas de propósito --
+      -- ver comentário acima (mock-protheus valida sempre contra 0003).
+      insert into public.protheus_integracoes (codigo, descricao, direcao, webhook_path, endpoint, ativo, api_key)
       values
-        ('0003', 'Inclusão de Agenda', 'Envia', '', '${targetBaseUrl}/functions/v1/mock-protheus', true),
-        ('0004', 'Exclusão de Agenda', 'Envia', '', '${targetBaseUrl}/functions/v1/mock-protheus', true)
-      on conflict (codigo) do update set endpoint = excluded.endpoint, ativo = true;
+        ('0003', 'Inclusão de Agenda', 'Envia', '', '${targetBaseUrl}/functions/v1/mock-protheus', true, '${protheusMockApiKey}'),
+        ('0004', 'Exclusão de Agenda', 'Envia', '', '${targetBaseUrl}/functions/v1/mock-protheus', true, '${protheusMockApiKey}')
+      on conflict (codigo) do update set endpoint = excluded.endpoint, ativo = true, api_key = excluded.api_key;
+
+      -- codigo_consultor (profiles.codigo) é campo obrigatório na validação
+      -- de protheus-agenda-sync -- ver comentário acima de fixtureSql.
+      -- Sem valor aqui, TODO envio falhava na validação antes de tentar o
+      -- HTTP, tanto incluir quanto excluir.
+      update public.profiles set codigo = 'QAADM' where user_id = '${adminId}'::uuid and (codigo is null or codigo = '');
+      update public.profiles set codigo = 'QACOO' where user_id = '${coordId}'::uuid and (codigo is null or codigo = '');
+      update public.profiles set codigo = 'QACON' where user_id = '${consultorId}'::uuid and (codigo is null or codigo = '');
     `;
     const fixtureResult = await runQuery(fixtureSql);
     if (!fixtureResult.ok) {
