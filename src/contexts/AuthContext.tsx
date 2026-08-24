@@ -42,7 +42,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Provisório (Etapa 3): checa se o usuário está autorizado no control-plane
   // da PROJTE (schema projte_config), decoplado do app_role do produto Aceex.
+  //
+  // O schema projte_config só existe (e só está exposto no PostgREST) dentro
+  // do projeto Supabase MASTER da PROJTE (ofolgjtqgmudfeoppwtb) -- é onde o
+  // schema foi criado, de forma provisória, dentro do próprio projeto Aceex
+  // Production (ver docs/etapa3-config-projte.md secao 10). Todo AMBIENTE DE
+  // CLIENTE (QA, producao de cliente) roda esse MESMO bundle de frontend mas
+  // aponta pro Supabase daquele cliente, onde projte_config nao existe --
+  // sem esse guard, essa chamada sempre respondia 406 (schema nao exposto)
+  // em qualquer ambiente de cliente, contado como falha de HTTP/console pelos
+  // testes de QA (UI004) e visivel a qualquer usuario real logado. Bug real
+  // encontrado em 2026-08-24 rodando a Suite Completa contra o ambiente QA.
+  const PROJTE_MASTER_PROJECT_REF = "ofolgjtqgmudfeoppwtb";
+  const isProjteMasterProject =
+    (import.meta.env.VITE_SUPABASE_URL as string | undefined)?.includes(PROJTE_MASTER_PROJECT_REF) ?? false;
+
   const fetchProjteAuthorization = async (userId: string) => {
+    if (!isProjteMasterProject) {
+      setIsProjteAuthorized(false);
+      return;
+    }
     const { data } = await (supabase as any)
       .schema("projte_config")
       .from("usuarios_autorizados")
