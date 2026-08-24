@@ -4,43 +4,53 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 //
 // Pedido do Caio (2026-08-24): o painel Config PROJTE deve ser o
 // instalador/configurador de verdade -- automatizar TAMBÉM a publicação do
-// frontend (Vercel), não só o schema (Supabase, via projte-provision-ambiente)
-// e os testes (via projte-rodar-suite-completa). Até aqui esse passo era
-// 100% manual: publicar via dashboard da Vercel e colar a URL no campo
-// Frontend URL. Essa function fecha esse ciclo:
+// frontend (Vercel), não só o schema (Supabase, via projte-provision-ambiente).
 //
-//   1. Cria (ou reaproveita, se já criado antes -- ambientes.vercel_project_id)
-//      um projeto Vercel NOVO por ambiente, ligado a este mesmo repositório
-//      Git (branch/ref configurável via VERCEL_GIT_REF, default "master") --
-//      mesmo princípio de isolamento já usado pro Supabase ("zero
-//      compartilhamento entre clientes", ver docs/etapa3-config-projte.md):
-//      cada ambiente tem seu PRÓPRIO projeto Vercel, nunca reaproveita o de
-//      outro cliente.
-//   2. Configura as env vars do projeto (VITE_SUPABASE_URL e
-//      VITE_SUPABASE_PUBLISHABLE_KEY) apontando pro Supabase DESSE ambiente
-//      -- a chave anon é buscada fresca via Management API do Supabase
-//      (mesmo padrão de projte-rodar-suite-completa pra service_role_key),
-//      nunca fica hardcoded em nenhum lugar.
-//   3. Garante um Deploy Hook (URL de trigger criada uma vez, reaproveitada
-//      depois) e chama ele -- mais robusto do que montar a chamada de
-//      "criar deployment" direto (schema dessa API muda mais entre versões
-//      do que deploy hooks, que são simples e estáveis).
-//   4. Espera (polling) o deployment mais recente do projeto ficar READY,
-//      grava a URL final em ambientes.frontend_url e ambientes.vercel_project_id.
+// CORREÇÃO DE ARQUITETURA (2026-08-24, mesma tarde): a primeira versão desta
+// function assumia uma conta Vercel ÚNICA da PROJTE, com um projeto por
+// ambiente linkado ao repo Git da PROJTE. ERRADO -- o Caio corrigiu: "o
+// cliente tem seu vercel... o vercel do projte é o repositório... cada
+// cliente terá seu vercel com qa e prod". Ou seja:
+//   - Cada AMBIENTE (QA e Produção de cada cliente) tem sua PRÓPRIA conta
+//     Vercel, separada -- mesmo princípio de isolamento já usado pro
+//     Supabase ("zero compartilhamento entre clientes").
+//   - Como a conta Vercel do cliente não tem (nem deveria ter) acesso ao
+//     repositório Git privado da PROJTE, não dá pra linkar por Git. Publica
+//     direto: baixa o código-fonte do GitHub (via GITHUB_PAT, já configurado
+//     nesta função pra outras finalidades) e envia os arquivos pra API da
+//     Vercel (mesmo mecanismo que `vercel deploy` usa por baixo: upload de
+//     arquivo por SHA1 + criação de deployment referenciando os SHAs).
 //
-// Pré-requisito (não configurado por esta function): secret VERCEL_API_TOKEN
-// nesta Edge Function (Project Settings > Edge Functions >
-// projte-publish-frontend > Secrets) -- Personal Access Token gerado em
-// vercel.com/account/tokens, com permissão de criar/gerenciar projetos.
-// Se a conta Vercel for de TIME (não pessoal), configurar também
-// VERCEL_TEAM_ID (Settings do time > General > Team ID).
+// Fluxo:
+//   1. Token da Vercel DESSE ambiente (Vault, tipo 'vercel_token' --
+//      registrado pelo Caio em Segredos, gerado pelo CLIENTE na conta Vercel
+//      dele). Nunca um secret global.
+//   2. Cria (ou reaproveita -- ambientes.vercel_project_id) o projeto Vercel
+//      dentro da conta do cliente e configura as env vars de build
+//      (VITE_SUPABASE_URL / VITE_SUPABASE_PUBLISHABLE_KEY, buscadas frescas
+//      via Management API do Supabase desse ambiente -- nunca hardcoded).
+//   3. Baixa o tarball do repo no GitHub (branch configurável via
+//      VERCEL_GIT_REF, default "master"), filtra só o necessário pro build
+//      Vite (package.json, configs, src/, public/ -- fora node_modules,
+//      supabase/, QA/, docs/, .env), calcula SHA1 de cada arquivo e faz
+//      upload pra Vercel.
+//   4. Cria o deployment (target=production) referenciando os arquivos por
+//      SHA1, espera (polling) ficar READY, grava a URL final em
+//      ambientes.frontend_url.
 //
-// NOTA HONESTA: essa é a primeira versão desta automação -- diferente do
-// resto do painel (que já passou por várias rodadas reais de teste hoje),
-// esta function ainda não foi validada contra um deploy real. Todo erro é
-// logado em detalhe (corpo da resposta da Vercel, não só o status) em
-// provisionamento_logs, pra qualquer ajuste de schema/endpoint ser rápido
-// de diagnosticar na primeira tentativa real.
+// Pré-requisitos:
+//   - Secret GITHUB_PAT nesta Edge Function (já configurado -- mesmo usado
+//     por projte-verificar-camada3/projte-rodar-suite-completa).
+//   - Um segredo tipo 'vercel_token' registrado em Ambiente > Segredos, POR
+//     AMBIENTE (Personal Access Token gerado pelo CLIENTE em
+//     vercel.com/account/tokens, na conta Vercel dele).
+//
+// NOTA HONESTA: essa é a primeira versão desta automação -- em especial o
+// parser de tar (formato ustar, sem biblioteca externa) e a dança de upload
+// de arquivo por SHA1 da API da Vercel ainda não foram validados contra um
+// deploy real. Todo erro é logado em detalhe (corpo da resposta, não só o
+// status) em provisionamento_logs, pra ajuste rápido na primeira tentativa
+// real.
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -51,6 +61,25 @@ const GITHUB_OWNER = "caiomoscatiello";
 const GITHUB_REPO = "agendas-aceex-prod";
 const MANAGEMENT_API_BASE = "https://api.supabase.com/v1";
 const VERCEL_API_BASE = "https://api.vercel.com";
+
+// Só isso é necessário pra `npm install && vite build` -- fora fica de fora
+// (supabase/, QA/, docs/, .git, .env, node_modules, etc.), tanto por
+// tamanho quanto porque não faz sentido subir código de backend/testes/
+// segredos locais pra dentro da conta Vercel do cliente.
+const INCLUDE_TOP_LEVEL = [
+  "package.json",
+  "package-lock.json",
+  "index.html",
+  "components.json",
+  "postcss.config.js",
+  "tailwind.config.ts",
+  "tsconfig.json",
+  "tsconfig.app.json",
+  "tsconfig.node.json",
+  "vite.config.ts",
+  "public",
+  "src",
+];
 
 function jsonResponse(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -67,6 +96,73 @@ function slugify(input: string): string {
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/^-+|-+$/g, "")
     .slice(0, 40);
+}
+
+async function sha1Hex(data: Uint8Array): Promise<string> {
+  const digest = await crypto.subtle.digest("SHA-1", data);
+  return Array.from(new Uint8Array(digest)).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
+// Parser mínimo de tar (formato ustar/GNU, o que o endpoint de tarball do
+// GitHub devolve, dentro de um .gz). Só extrai entradas do tipo "arquivo
+// regular" (typeflag '0' ou '\0') que estejam dentro de INCLUDE_TOP_LEVEL,
+// já removendo o prefixo "<owner>-<repo>-<sha>/" que o GitHub sempre inclui.
+async function fetchGithubSourceFiles(
+  pat: string,
+  ref: string
+): Promise<{ path: string; data: Uint8Array }[]> {
+  const res = await fetch(`https://api.github.com/repos/${GITHUB_OWNER}/${GITHUB_REPO}/tarball/${ref}`, {
+    headers: {
+      Authorization: `Bearer ${pat}`,
+      "User-Agent": "projte-publish-frontend",
+      Accept: "application/vnd.github+json",
+    },
+  });
+  if (!res.ok) {
+    const text = await res.text().catch(() => "");
+    throw new Error(`HTTP ${res.status} ao baixar tarball do GitHub (ref="${ref}"): ${text.slice(0, 300)}`);
+  }
+  const gzBytes = new Uint8Array(await res.arrayBuffer());
+  const stream = new Blob([gzBytes]).stream().pipeThrough(new DecompressionStream("gzip"));
+  const tarBytes = new Uint8Array(await new Response(stream).arrayBuffer());
+
+  const decoder = new TextDecoder();
+  const files: { path: string; data: Uint8Array }[] = [];
+  let offset = 0;
+  while (offset + 512 <= tarBytes.length) {
+    const header = tarBytes.subarray(offset, offset + 512);
+    const nameBytes = header.subarray(0, 100);
+    const nameEnd = nameBytes.indexOf(0);
+    const name = decoder.decode(nameBytes.subarray(0, nameEnd === -1 ? 100 : nameEnd));
+    if (!name) break; // bloco de padding no fim do arquivo
+
+    const typeFlag = String.fromCharCode(header[156]);
+    const sizeOctalRaw = decoder.decode(header.subarray(124, 136)).replace(/\0/g, "").trim();
+    const size = sizeOctalRaw ? parseInt(sizeOctalRaw, 8) : 0;
+
+    offset += 512;
+
+    if (typeFlag === "0" || typeFlag === "\0") {
+      const data = tarBytes.subarray(offset, offset + size);
+      const slashIdx = name.indexOf("/");
+      const relPath = slashIdx >= 0 ? name.slice(slashIdx + 1) : name;
+      if (relPath) {
+        const top = relPath.split("/")[0];
+        if (INCLUDE_TOP_LEVEL.includes(top)) {
+          files.push({ path: relPath, data: data.slice() });
+        }
+      }
+    }
+
+    offset += Math.ceil(size / 512) * 512;
+  }
+
+  if (files.length === 0) {
+    throw new Error(
+      `Tarball do GitHub baixado, mas nenhum arquivo bateu com INCLUDE_TOP_LEVEL -- confira se o ref "${ref}" existe e se a estrutura do repo mudou.`
+    );
+  }
+  return files;
 }
 
 Deno.serve(async (req) => {
@@ -123,14 +219,13 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "ambiente_id é obrigatório" }, 400);
     }
 
-    const vercelToken = Deno.env.get("VERCEL_API_TOKEN");
-    if (!vercelToken) {
+    const githubPat = Deno.env.get("GITHUB_PAT");
+    if (!githubPat) {
       const mensagem =
-        "VERCEL_API_TOKEN não configurado nos secrets desta Edge Function (Project Settings > Edge Functions > projte-publish-frontend > Secrets). Gere em vercel.com/account/tokens.";
+        "GITHUB_PAT não configurado nos secrets desta Edge Function (Project Settings > Edge Functions > Secrets).";
       await logStep("publicar_frontend", "erro", mensagem);
       return jsonResponse({ error: mensagem }, 500);
     }
-    const vercelTeamId = Deno.env.get("VERCEL_TEAM_ID") || undefined;
     const gitRef = Deno.env.get("VERCEL_GIT_REF") || "master";
 
     const { data: ambiente, error: ambienteErr } = await projteSchema
@@ -152,37 +247,46 @@ Deno.serve(async (req) => {
       return jsonResponse({ error: "Ambiente sem supabase_project_ref/supabase_project_url preenchidos." }, 400);
     }
 
-    const { data: cliente, error: clienteErr } = await projteSchema
-      .from("clientes")
-      .select("nome_fantasia")
-      .eq("id", ambiente.cliente_id)
-      .maybeSingle();
-    if (clienteErr) throw clienteErr;
-
-    const projectName = `projte-${slugify(cliente?.nome_fantasia || "cliente")}-${ambiente.tipo}`;
-
-    // management_token do projeto-alvo (revelado só aqui dentro) -- necessário
-    // pra buscar a chave anon fresca via Management API do Supabase.
-    const { data: tokenRef } = await projteSchema
+    // ---- Tokens desse ambiente específico (Vault) -- nunca globais ----
+    const { data: secretRefs } = await projteSchema
       .from("ambiente_secrets")
-      .select("vault_secret_id")
+      .select("tipo, vault_secret_id")
       .eq("ambiente_id", ambienteId)
-      .eq("tipo", "management_token")
-      .maybeSingle();
-    if (!tokenRef) {
-      return jsonResponse({ error: "Nenhum management_token registrado pra esse ambiente." }, 400);
+      .in("tipo", ["management_token", "vercel_token"]);
+
+    const managementTokenRef = secretRefs?.find((s: any) => s.tipo === "management_token");
+    const vercelTokenRef = secretRefs?.find((s: any) => s.tipo === "vercel_token");
+
+    if (!managementTokenRef) {
+      return jsonResponse({ error: "Nenhum management_token registrado pra esse ambiente (Segredos, passo 2)." }, 400);
     }
+    if (!vercelTokenRef) {
+      return jsonResponse({
+        error:
+          "Nenhum vercel_token registrado pra esse ambiente (Segredos). Peça pro cliente gerar um Personal Access Token em vercel.com/account/tokens (na conta Vercel DELE) e registre aqui com o tipo 'vercel_token'.",
+      }, 400);
+    }
+
     const { data: managementToken, error: mtErr } = await projteSchema.rpc("vault_reveal_secret", {
-      secret_id: tokenRef.vault_secret_id,
+      secret_id: managementTokenRef.vault_secret_id,
     });
     if (mtErr) throw mtErr;
     if (!managementToken) {
       return jsonResponse({ error: "Não foi possível recuperar o management_token do Vault." }, 500);
     }
 
+    const { data: vercelToken, error: vtErr } = await projteSchema.rpc("vault_reveal_secret", {
+      secret_id: vercelTokenRef.vault_secret_id,
+    });
+    if (vtErr) throw vtErr;
+    if (!vercelToken) {
+      return jsonResponse({ error: "Não foi possível recuperar o vercel_token do Vault." }, 500);
+    }
+
     const targetRef = ambiente.supabase_project_ref.trim();
     const targetBaseUrl = ambiente.supabase_project_url.replace(/\/+$/, "");
 
+    // ---- Chave anon fresca do Supabase desse ambiente ----
     const keysRes = await fetch(`${MANAGEMENT_API_BASE}/projects/${targetRef}/api-keys?reveal=true`, {
       headers: { Authorization: `Bearer ${managementToken}` },
     });
@@ -195,11 +299,9 @@ Deno.serve(async (req) => {
       throw new Error("Nenhuma chave anon/publishable encontrada nas api-keys do projeto Supabase do ambiente.");
     }
 
-    // ---- Helper genérico pra chamadas na API da Vercel ----
+    // ---- Helper genérico pra chamadas na API da Vercel (token DESTE ambiente) ----
     const vercelFetch = async (path: string, init: RequestInit = {}) => {
-      const url = new URL(`${VERCEL_API_BASE}${path}`);
-      if (vercelTeamId) url.searchParams.set("teamId", vercelTeamId);
-      const res = await fetch(url.toString(), {
+      const res = await fetch(`${VERCEL_API_BASE}${path}`, {
         ...init,
         headers: {
           "Content-Type": "application/json",
@@ -213,7 +315,9 @@ Deno.serve(async (req) => {
       return { ok: res.ok, status: res.status, text, json };
     };
 
-    // ---- 1. Cria (ou reaproveita) o projeto Vercel ----
+    const projectName = `aceex-${ambiente.tipo}`;
+
+    // ---- 1. Cria (ou reaproveita) o projeto Vercel na conta DESTE cliente ----
     let vercelProjectId = ambiente.vercel_project_id as string | null;
 
     if (vercelProjectId) {
@@ -227,11 +331,7 @@ Deno.serve(async (req) => {
     if (!vercelProjectId) {
       const createRes = await vercelFetch("/v10/projects", {
         method: "POST",
-        body: JSON.stringify({
-          name: projectName,
-          framework: "vite",
-          gitRepository: { type: "github", repo: `${GITHUB_OWNER}/${GITHUB_REPO}` },
-        }),
+        body: JSON.stringify({ name: projectName, framework: "vite" }),
       });
       if (!createRes.ok) {
         const mensagem = `Falha ao criar projeto Vercel "${projectName}": HTTP ${createRes.status} — ${createRes.text.slice(0, 800)}`;
@@ -242,7 +342,7 @@ Deno.serve(async (req) => {
       await projteSchema.from("ambientes").update({ vercel_project_id: vercelProjectId }).eq("id", ambienteId);
     }
 
-    // ---- 2. Configura as env vars (idempotente: atualiza se já existir) ----
+    // ---- 2. Configura as env vars de build (idempotente) ----
     const desiredEnvs = [
       { key: "VITE_SUPABASE_URL", value: targetBaseUrl },
       { key: "VITE_SUPABASE_PUBLISHABLE_KEY", value: anonKey },
@@ -284,64 +384,76 @@ Deno.serve(async (req) => {
       }
     }
 
-    // ---- 3. Garante um Deploy Hook e dispara ----
-    const hooksRes = await vercelFetch(`/v1/projects/${vercelProjectId}/deploy-hooks`);
-    let hookUrl: string | null = null;
-    if (hooksRes.ok) {
-      const found = (hooksRes.json?.hooks ?? hooksRes.json ?? []).find?.((h: any) => h.name === "projte-auto");
-      if (found?.url) hookUrl = found.url;
-    }
-    if (!hookUrl) {
-      const createHookRes = await vercelFetch(`/v10/projects/${vercelProjectId}/deploy-hooks`, {
+    // ---- 3. Baixa o código-fonte do GitHub e faz upload dos arquivos pra Vercel ----
+    const sourceFiles = await fetchGithubSourceFiles(githubPat, gitRef);
+
+    const filesWithSha = await Promise.all(
+      sourceFiles.map(async (f) => ({ ...f, sha: await sha1Hex(f.data) }))
+    );
+
+    for (const f of filesWithSha) {
+      const uploadRes = await fetch(`${VERCEL_API_BASE}/v2/files`, {
         method: "POST",
-        body: JSON.stringify({ name: "projte-auto", ref: gitRef }),
+        headers: {
+          Authorization: `Bearer ${vercelToken}`,
+          "Content-Length": String(f.data.byteLength),
+          "x-vercel-digest": f.sha,
+        },
+        body: f.data,
       });
-      if (createHookRes.ok) {
-        hookUrl = createHookRes.json?.link?.url ?? createHookRes.json?.url ?? null;
-      } else {
-        const mensagem = `Falha ao criar deploy hook: HTTP ${createHookRes.status} — ${createHookRes.text.slice(0, 800)}`;
+      if (!uploadRes.ok) {
+        const uploadText = await uploadRes.text().catch(() => "");
+        const mensagem = `Falha ao subir arquivo "${f.path}" pra Vercel: HTTP ${uploadRes.status} — ${uploadText.slice(0, 500)}`;
         await logStep("publicar_frontend", "erro", mensagem);
         return jsonResponse({ error: mensagem }, 500);
       }
     }
-    if (!hookUrl) {
-      const mensagem = "Deploy hook criado mas sem URL na resposta da Vercel -- não deu pra disparar o deploy.";
+
+    // ---- 4. Cria o deployment referenciando os arquivos por SHA1 ----
+    const deployRes = await vercelFetch("/v13/deployments", {
+      method: "POST",
+      body: JSON.stringify({
+        name: projectName,
+        project: vercelProjectId,
+        target: "production",
+        projectSettings: { framework: "vite" },
+        files: filesWithSha.map((f) => ({ file: f.path, sha: f.sha, size: f.data.byteLength })),
+      }),
+    });
+    if (!deployRes.ok) {
+      const mensagem = `Falha ao criar deployment na Vercel: HTTP ${deployRes.status} — ${deployRes.text.slice(0, 800)}`;
+      await logStep("publicar_frontend", "erro", mensagem);
+      return jsonResponse({ error: mensagem }, 500);
+    }
+    const deploymentId = deployRes.json?.id;
+    if (!deploymentId) {
+      const mensagem = `Deployment criado, mas resposta da Vercel não trouxe um id: ${deployRes.text.slice(0, 500)}`;
       await logStep("publicar_frontend", "erro", mensagem);
       return jsonResponse({ error: mensagem }, 500);
     }
 
-    const triggerRes = await fetch(hookUrl, { method: "POST" });
-    if (!triggerRes.ok) {
-      const triggerText = await triggerRes.text().catch(() => "");
-      const mensagem = `Falha ao disparar o deploy hook: HTTP ${triggerRes.status} — ${triggerText.slice(0, 500)}`;
-      await logStep("publicar_frontend", "erro", mensagem);
-      return jsonResponse({ error: mensagem }, 500);
-    }
-
-    // ---- 4. Aguarda o deployment mais recente ficar READY (polling, ~4min) ----
+    // ---- 5. Aguarda (polling) o deployment ficar READY (~4min) ----
     let finalUrl: string | null = null;
     let readyState = "";
     const inicioPolling = Date.now();
     while (Date.now() - inicioPolling < 240_000) {
       await new Promise((r) => setTimeout(r, 8_000));
-      const deploysRes = await vercelFetch(`/v6/deployments?projectId=${vercelProjectId}&limit=1`);
-      if (!deploysRes.ok) continue;
-      const latest = deploysRes.json?.deployments?.[0];
-      if (!latest) continue;
-      readyState = latest.readyState ?? latest.state ?? "";
+      const statusRes = await vercelFetch(`/v13/deployments/${deploymentId}`);
+      if (!statusRes.ok) continue;
+      readyState = statusRes.json?.readyState ?? "";
       if (readyState === "READY") {
-        finalUrl = latest.url ? `https://${latest.url}` : null;
+        finalUrl = statusRes.json?.url ? `https://${statusRes.json.url}` : null;
         break;
       }
       if (readyState === "ERROR" || readyState === "CANCELED") {
-        const mensagem = `Deploy na Vercel terminou com estado "${readyState}" -- confira o dashboard da Vercel pro log de build completo.`;
+        const mensagem = `Deploy na Vercel terminou com estado "${readyState}" -- confira o dashboard da Vercel do cliente pro log de build completo.`;
         await logStep("publicar_frontend", "erro", mensagem);
         return jsonResponse({ error: mensagem }, 500);
       }
     }
 
     if (!finalUrl) {
-      const mensagem = `Deploy disparado, mas não ficou READY em 4min (último estado: "${readyState || "desconhecido"}"). Confira o dashboard da Vercel -- pode só estar demorando mais que o esperado.`;
+      const mensagem = `Deploy disparado, mas não ficou READY em 4min (último estado: "${readyState || "desconhecido"}"). Confira o dashboard da Vercel do cliente -- pode só estar demorando mais que o esperado.`;
       await logStep("publicar_frontend", "erro", mensagem);
       return jsonResponse({ error: mensagem }, 500);
     }

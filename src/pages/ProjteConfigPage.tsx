@@ -70,7 +70,7 @@ interface TemplateRelease {
   versao: string;
 }
 
-const SECRET_TIPOS = ["service_role_key", "anon_key", "db_password", "management_token", "monitor_credentials", "outro"];
+const SECRET_TIPOS = ["service_role_key", "anon_key", "db_password", "management_token", "monitor_credentials", "vercel_token", "outro"];
 
 // Sequenciador de instalação do ambiente (pedido do Caio: "um passo a passo,
 // como um install padrão, com progressão e validando as etapas realizadas" —
@@ -450,12 +450,21 @@ export default function ProjteConfigPage() {
       });
       return;
     }
+    const secrets = ambienteSecrets[amb.id] || [];
+    if (!secrets.some((s) => s.tipo === "vercel_token")) {
+      toast({
+        title: "Registre o vercel_token nos Segredos antes de publicar",
+        description: "É o Personal Access Token gerado pelo CLIENTE na conta Vercel dele (vercel.com/account/tokens) -- cada ambiente usa a própria conta Vercel do cliente.",
+        variant: "destructive",
+      });
+      return;
+    }
     const label = amb.tipo === "qa" ? "QA" : "Produção";
     if (
       !confirm(
         amb.vercel_project_id
-          ? `Isso vai publicar uma nova versão do frontend (${label}) no projeto Vercel já existente. Continuar?`
-          : `Isso vai criar um projeto Vercel NOVO pro ambiente ${label} e publicar o frontend nele. Pode levar alguns minutos. Continuar?`
+          ? `Isso vai publicar uma nova versão do frontend (${label}) no projeto Vercel do cliente já existente. Continuar?`
+          : `Isso vai criar um projeto Vercel NOVO, dentro da conta Vercel do CLIENTE, pro ambiente ${label}, e publicar o frontend nele. Pode levar alguns minutos. Continuar?`
       )
     ) {
       return;
@@ -1011,7 +1020,7 @@ export default function ProjteConfigPage() {
 
                         <div className="border-t pt-3 space-y-2">
                           <p className="text-xs font-medium flex items-center gap-1 text-muted-foreground">
-                            <KeyRound className="h-3 w-3" /> 2. Segredos (Supabase Vault) — registre o management_token aqui
+                            <KeyRound className="h-3 w-3" /> 2. Segredos (Supabase Vault) — registre o management_token (passo 3) e o vercel_token do cliente (passo 5) aqui
                           </p>
                           {secrets.length === 0 ? (
                             <p className="text-xs text-muted-foreground">Nenhum segredo registrado.</p>
@@ -1133,10 +1142,11 @@ export default function ProjteConfigPage() {
                             placeholder="https://app-do-cliente.vercel.app (preenchido automaticamente após publicar)"
                           />
                           <p className="text-[10px] text-muted-foreground">
-                            O botão cria (ou reaproveita) um projeto Vercel próprio deste ambiente, configura as env
-                            vars do Supabase e publica -- a URL acima é preenchida sozinha ao terminar. O campo
-                            continua editável pra ajustar manualmente se precisar. Sem uma URL preenchida, as
-                            camadas 6 e 7 abaixo ficam bloqueadas (não há o que o Playwright abrir).
+                            O botão publica direto na conta Vercel DO CLIENTE (token registrado em Segredos, tipo
+                            "vercel_token") -- cria (ou reaproveita) um projeto lá, configura as env vars do
+                            Supabase e publica; a URL acima é preenchida sozinha ao terminar. O campo continua
+                            editável pra ajustar manualmente se precisar. Sem uma URL preenchida, as camadas 6 e 7
+                            abaixo ficam bloqueadas (não há o que o Playwright abrir).
                           </p>
                         </div>
 
