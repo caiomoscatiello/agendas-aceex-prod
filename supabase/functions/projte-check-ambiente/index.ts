@@ -215,13 +215,21 @@ Deno.serve(async (req) => {
 
     const tudoOk = !projectStatusErro && !servicosErro && !diagnosticoErro;
 
-    await projteSchema.from("provisionamento_logs").insert({
+    // Bug real encontrado em 2026-08-24: esse insert vinha falhando sempre
+    // (CHECK antigo de provisionamento_logs.tipo só aceitava
+    // 'provisionamento'/'atualizacao'), em silêncio, porque o erro do
+    // .insert() nunca era checado -- os chips do sequenciador na tela
+    // nunca tinham histórico persistido. Corrigido via migration
+    // 20260824150000 (CHECK agora aceita 'verificacao'); o check abaixo
+    // fica pra não deixar um problema parecido passar batido de novo.
+    const { error: logErr } = await projteSchema.from("provisionamento_logs").insert({
       ambiente_id: ambienteId,
       tipo: "verificacao",
       etapa: "verificar_ambiente",
       status: tudoOk ? "ok" : "erro",
       mensagem: JSON.stringify(relatorio).slice(0, 4000),
     });
+    if (logErr) console.error("[projte-check-ambiente] falha ao gravar provisionamento_logs:", logErr);
 
     return jsonResponse({ success: tudoOk, relatorio });
   } catch (err) {

@@ -41,6 +41,22 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
+// Bug real encontrado em 2026-08-24: os inserts em provisionamento_logs
+// desta function vinham falhando sempre (CHECK antigo de
+// provisionamento_logs.tipo só aceitava 'provisionamento'/'atualizacao'),
+// em silêncio, porque nenhum call site checava o erro do .insert() -- o
+// chip 6 do sequenciador nunca tinha histórico persistido. Corrigido via
+// migration 20260824150000 (CHECK agora aceita 'verificacao'); esse helper
+// centraliza o log e o check de erro pra não deixar isso passar batido de
+// novo.
+async function logProvisionamento(
+  projteSchema: any,
+  row: { ambiente_id: string; tipo: string; etapa: string; status: "ok" | "erro"; mensagem: string }
+) {
+  const { error } = await projteSchema.from("provisionamento_logs").insert(row);
+  if (error) console.error("[projte-verificar-camada3] falha ao gravar provisionamento_logs:", error);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -92,7 +108,7 @@ Deno.serve(async (req) => {
       // republicado no Vercel).
       const mensagem =
         "GITHUB_PAT não configurado nos secrets desta Edge Function (Project Settings > Edge Functions > projte-verificar-camada3 > Secrets).";
-      await projteSchema.from("provisionamento_logs").insert({
+      await logProvisionamento(projteSchema, {
         ambiente_id: ambienteId,
         tipo: "verificacao",
         etapa: "camada3_disparo",
@@ -172,7 +188,7 @@ Deno.serve(async (req) => {
 
     if (!dispatchRes.ok) {
       const text = await dispatchRes.text();
-      await projteSchema.from("provisionamento_logs").insert({
+      await logProvisionamento(projteSchema, {
         ambiente_id: ambienteId,
         tipo: "verificacao",
         etapa: "camada3_disparo",
@@ -206,7 +222,7 @@ Deno.serve(async (req) => {
       // best-effort, nao falha o disparo por causa disso
     }
 
-    await projteSchema.from("provisionamento_logs").insert({
+    await logProvisionamento(projteSchema, {
       ambiente_id: ambienteId,
       tipo: "verificacao",
       etapa: "camada3_disparo",
@@ -221,7 +237,7 @@ Deno.serve(async (req) => {
     console.error("[projte-verificar-camada3] error:", err);
     if (ambienteId) {
       try {
-        await projteSchema.from("provisionamento_logs").insert({
+        await logProvisionamento(projteSchema, {
           ambiente_id: ambienteId,
           tipo: "verificacao",
           etapa: "camada3_disparo",

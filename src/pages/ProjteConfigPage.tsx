@@ -182,14 +182,52 @@ export default function ProjteConfigPage() {
   const [checkResult, setCheckResult] = useState<{ label: string; relatorio: any } | null>(null);
   const [runningCamada3, setRunningCamada3] = useState<string | null>(null);
   const [runningCamada4, setRunningCamada4] = useState<string | null>(null);
-  // Status transiente (só desta sessão do navegador) de cada camada, por
-  // ambiente -- alimenta os chips do sequenciador. Não é persistido no
-  // banco de propósito: o resultado real e permanente já fica registrado em
-  // provisionamento_logs; isso aqui é só feedback visual imediato de "cliquei
-  // e disparou certo" enquanto a pessoa está na tela.
+  // Status de cada camada (chips 4/6/7 do sequenciador), por ambiente.
+  // Hidratado a partir de provisionamento_logs em loadAmbientes (fonte de
+  // verdade persistida) e atualizado otimisticamente logo após cada clique
+  // bem-sucedido, pra feedback imediato sem esperar o round-trip de leitura.
+  //
+  // Bug real encontrado em 2026-08-24: até essa data, projte-check-ambiente /
+  // projte-verificar-camada3 / projte-rodar-suite-completa gravavam
+  // tipo='verificacao' em provisionamento_logs, mas o CHECK da tabela só
+  // aceitava 'provisionamento'/'atualizacao' -- o insert falhava sempre,
+  // em silêncio (nenhum call site checava o erro do .insert()). Ou seja, o
+  // "resultado real e permanente" que o código antigo dizia estar em
+  // provisionamento_logs nunca existiu de fato; os chips 4/6/7 pareciam
+  // "esquecer" a cada reload porque eram 100% estado de sessão do navegador.
+  // Corrigido em duas frentes: migration 20260824150000 (CHECK agora aceita
+  // 'verificacao') + esta tela agora lê o histórico real em loadAmbientes.
   const [layerStatus, setLayerStatus] = useState<
     Record<string, { camada12?: "ok" | "erro"; camada3?: "ok" | "erro"; camada4?: "ok" | "erro" }>
   >({});
+
+  const ETAPA_CAMADA12 = "verificar_ambiente";
+  const ETAPA_CAMADA3 = "camada3_disparo";
+  const ETAPA_CAMADA4 = "suite_disparo";
+
+  const loadLayerStatus = async (ambienteIds: string[]) => {
+    if (ambienteIds.length === 0) {
+      setLayerStatus({});
+      return;
+    }
+    const { data: logs } = await projteConfig()
+      .from("provisionamento_logs")
+      .select("ambiente_id, etapa, status, timestamp")
+      .in("ambiente_id", ambienteIds)
+      .in("etapa", [ETAPA_CAMADA12, ETAPA_CAMADA3, ETAPA_CAMADA4])
+      .order("timestamp", { ascending: false });
+
+    const next: Record<string, { camada12?: "ok" | "erro"; camada3?: "ok" | "erro"; camada4?: "ok" | "erro" }> = {};
+    // Já vem ordenado do mais recente pro mais antigo -- a primeira ocorrência
+    // de cada (ambiente_id, etapa) que a gente vir já é a mais recente.
+    (logs || []).forEach((l: { ambiente_id: string; etapa: string; status: "ok" | "erro" }) => {
+      const entry = (next[l.ambiente_id] ||= {});
+      if (l.etapa === ETAPA_CAMADA12 && entry.camada12 === undefined) entry.camada12 = l.status;
+      if (l.etapa === ETAPA_CAMADA3 && entry.camada3 === undefined) entry.camada3 = l.status;
+      if (l.etapa === ETAPA_CAMADA4 && entry.camada4 === undefined) entry.camada4 = l.status;
+    });
+    setLayerStatus(next);
+  };
 
   useEffect(() => {
     loadClientes();
@@ -223,8 +261,10 @@ export default function ProjteConfigPage() {
         grouped[s.ambiente_id] = [...(grouped[s.ambiente_id] || []), s];
       });
       setAmbienteSecrets(grouped);
+      await loadLayerStatus(amb.map((a) => a.id));
     } else {
       setAmbienteSecrets({});
+      setLayerStatus({});
     }
     setLoadingAmbientes(false);
   };
@@ -248,7 +288,11 @@ export default function ProjteConfigPage() {
     setAmbientes((prev) => prev.map((a) => (a.id === id ? { ...a, ...patch } : a)));
   };
 
-  const saveAmbiente = async (amb: Ambiente) => {
+  // silent=true é usado pelo autosave (onBlur/onValueChange dos campos do
+  // ambiente) -- salva do mesmo jeito, só sem toast de sucesso, pra não
+  // poluir a tela com uma notificação a cada campo que perde o foco. Erro
+  // sempre aparece, silent ou não.
+  const saveAmbiente = async (amb: Ambiente, opts?: { silent?: boolean }) => {
     setSavingAmbiente(amb.tipo);
     const { error } = await projteConfig()
       .from("ambientes")
@@ -264,7 +308,7 @@ export default function ProjteConfigPage() {
       .eq("id", amb.id);
     if (error) {
       toast({ title: "Erro ao salvar ambiente", description: error.message, variant: "destructive" });
-    } else {
+    } else if (!opts?.silent) {
       toast({ title: `Ambiente ${amb.tipo === "qa" ? "QA" : "Produção"} salvo` });
     }
     setSavingAmbiente(null);
@@ -898,6 +942,7 @@ export default function ProjteConfigPage() {
                               className="h-8 text-xs font-mono"
                               value={amb.supabase_project_ref || ""}
                               onChange={(e) => updateAmbienteLocal(amb.id, { supabase_project_ref: e.target.value })}
+                              onBlur={() => saveAmbiente(amb, { silent: true })}
                               placeholder="abcdxyz"
                             />
                           </div>
@@ -907,14 +952,15 @@ export default function ProjteConfigPage() {
                               className="h-8 text-xs font-mono"
                               value={amb.supabase_project_url || ""}
                               onChange={(e) => updateAmbienteLocal(amb.id, { supabase_project_url: e.target.value })}
+                              onBlur={() => saveAmbiente(amb, { silent: true })}
                               placeholder="https://abcdxyz.supabase.co"
                             />
                           </div>
                         </div>
-                        <Button size="sm" variant="outline" onClick={() => saveAmbiente(amb)} disabled={savingAmbiente === tipo}>
-                          {savingAmbiente === tipo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                          Salvar projeto Supabase
-                        </Button>
+                        <p className="text-[10px] text-muted-foreground flex items-center gap-1">
+                          {savingAmbiente === tipo && <Loader2 className="h-3 w-3 animate-spin" />}
+                          Salva sozinho ao sair do campo.
+                        </p>
 
                         <div className="border-t pt-3 space-y-2">
                           <p className="text-xs font-medium flex items-center gap-1 text-muted-foreground">
@@ -1015,16 +1061,14 @@ export default function ProjteConfigPage() {
                             className="h-8 text-xs font-mono"
                             value={amb.frontend_url || ""}
                             onChange={(e) => updateAmbienteLocal(amb.id, { frontend_url: e.target.value })}
+                            onBlur={() => saveAmbiente(amb, { silent: true })}
                             placeholder="https://app-do-cliente.vercel.app (preencha quando existir um frontend publicado)"
                           />
                           <p className="text-[10px] text-muted-foreground">
                             Publicação hoje é manual (Vercel) — cole a URL aqui depois de publicar. Sem ela, as
-                            camadas 6 e 7 abaixo ficam bloqueadas (não há o que o Playwright abrir).
+                            camadas 6 e 7 abaixo ficam bloqueadas (não há o que o Playwright abrir). Salva sozinho
+                            ao sair do campo.
                           </p>
-                          <Button size="sm" variant="outline" className="mt-1" onClick={() => saveAmbiente(amb)} disabled={savingAmbiente === tipo}>
-                            {savingAmbiente === tipo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Salvar Frontend URL
-                          </Button>
                         </div>
 
                         <div className="border-t pt-3 space-y-2">
@@ -1076,7 +1120,11 @@ export default function ProjteConfigPage() {
                               <Label className="text-xs">Release do template</Label>
                               <Select
                                 value={amb.template_release_id || "none"}
-                                onValueChange={(v) => updateAmbienteLocal(amb.id, { template_release_id: v === "none" ? null : v })}
+                                onValueChange={(v) => {
+                                  const patch = { template_release_id: v === "none" ? null : v };
+                                  updateAmbienteLocal(amb.id, patch);
+                                  saveAmbiente({ ...amb, ...patch }, { silent: true });
+                                }}
                               >
                                 <SelectTrigger className="h-8 text-xs"><SelectValue placeholder="Nenhuma" /></SelectTrigger>
                                 <SelectContent>
@@ -1089,7 +1137,14 @@ export default function ProjteConfigPage() {
                             </div>
                             <div className="space-y-1">
                               <Label className="text-xs">Status (manual, override)</Label>
-                              <Select value={amb.status} onValueChange={(v) => updateAmbienteLocal(amb.id, { status: v as Ambiente["status"] })}>
+                              <Select
+                                value={amb.status}
+                                onValueChange={(v) => {
+                                  const patch = { status: v as Ambiente["status"] };
+                                  updateAmbienteLocal(amb.id, patch);
+                                  saveAmbiente({ ...amb, ...patch }, { silent: true });
+                                }}
+                              >
                                 <SelectTrigger className="h-8 text-xs"><SelectValue /></SelectTrigger>
                                 <SelectContent>
                                   <SelectItem value="nao_provisionado">Não provisionado</SelectItem>
@@ -1108,12 +1163,12 @@ export default function ProjteConfigPage() {
                               className="text-xs"
                               value={amb.notas || ""}
                               onChange={(e) => updateAmbienteLocal(amb.id, { notas: e.target.value })}
+                              onBlur={() => saveAmbiente(amb, { silent: true })}
                             />
                           </div>
-                          <Button size="sm" variant="outline" onClick={() => saveAmbiente(amb)} disabled={savingAmbiente === tipo}>
-                            {savingAmbiente === tipo ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                            Salvar
-                          </Button>
+                          <p className="text-[10px] text-muted-foreground">
+                            Release, status e notas salvam sozinhos ao mudar/sair do campo.
+                          </p>
                         </div>
 
                         <div className="border-t pt-3 flex items-start gap-2 bg-blue-50 rounded-md p-2">

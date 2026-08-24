@@ -87,15 +87,23 @@ Deno.serve(async (req) => {
 
   let ambienteId: string | undefined;
 
+  // Bug real encontrado em 2026-08-24: esse insert vinha falhando sempre
+  // (CHECK antigo de provisionamento_logs.tipo só aceitava
+  // 'provisionamento'/'atualizacao'), em silêncio, porque o erro do
+  // .insert() nunca era checado -- o chip 7 do sequenciador nunca tinha
+  // histórico persistido. Corrigido via migration 20260824150000 (CHECK
+  // agora aceita 'verificacao'); o check abaixo fica pra não deixar um
+  // problema parecido passar batido de novo.
   const logStep = async (etapa: string, status: "ok" | "erro", mensagem: string) => {
     if (!ambienteId) return;
-    await projteSchema.from("provisionamento_logs").insert({
+    const { error } = await projteSchema.from("provisionamento_logs").insert({
       ambiente_id: ambienteId,
       tipo: "verificacao",
       etapa,
       status,
       mensagem,
     });
+    if (error) console.error("[projte-rodar-suite-completa] falha ao gravar provisionamento_logs:", error);
   };
 
   try {
