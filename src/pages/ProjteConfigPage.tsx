@@ -51,6 +51,7 @@ interface Ambiente {
   supabase_project_ref: string | null;
   supabase_project_url: string | null;
   frontend_url: string | null;
+  vercel_project_id: string | null;
   status: "nao_provisionado" | "provisionando" | "ativo" | "erro" | "pausado";
   template_release_id: string | null;
   notas: string | null;
@@ -182,6 +183,7 @@ export default function ProjteConfigPage() {
   const [checkResult, setCheckResult] = useState<{ label: string; relatorio: any } | null>(null);
   const [runningCamada3, setRunningCamada3] = useState<string | null>(null);
   const [runningCamada4, setRunningCamada4] = useState<string | null>(null);
+  const [publishingFrontend, setPublishingFrontend] = useState<string | null>(null);
   // Status de cada camada (chips 4/6/7 do sequenciador), por ambiente.
   // Hidratado a partir de provisionamento_logs em loadAmbientes (fonte de
   // verdade persistida) e atualizado otimisticamente logo após cada clique
@@ -431,6 +433,51 @@ export default function ProjteConfigPage() {
       setLayerStatus((prev) => ({ ...prev, [amb.id]: { ...prev[amb.id], camada12: "erro" } }));
     }
     setChecking(null);
+  };
+
+  // Pedido do Caio (2026-08-24): o painel deve ser um instalador de verdade
+  // -- publicar o frontend também é automático (projte-publish-frontend cria
+  // um projeto Vercel do zero por ambiente, na primeira vez; nas próximas
+  // reaproveita o mesmo projeto via ambientes.vercel_project_id). Antes desse
+  // botão, o passo 5 era 100% manual (colar a URL depois de publicar via
+  // dashboard da Vercel).
+  const handlePublishFrontend = async (amb: Ambiente) => {
+    if (amb.status !== "ativo") {
+      toast({
+        title: "Ambiente não está ativo",
+        description: "Rode 'Criar Ambiente' com sucesso antes de publicar o frontend.",
+        variant: "destructive",
+      });
+      return;
+    }
+    const label = amb.tipo === "qa" ? "QA" : "Produção";
+    if (
+      !confirm(
+        amb.vercel_project_id
+          ? `Isso vai publicar uma nova versão do frontend (${label}) no projeto Vercel já existente. Continuar?`
+          : `Isso vai criar um projeto Vercel NOVO pro ambiente ${label} e publicar o frontend nele. Pode levar alguns minutos. Continuar?`
+      )
+    ) {
+      return;
+    }
+
+    setPublishingFrontend(amb.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("projte-publish-frontend", {
+        body: { ambiente_id: amb.id },
+      });
+      if (error) throw new Error(await extractFunctionErrorMessage(error));
+      if ((data as any)?.error) throw new Error((data as any).error);
+
+      toast({
+        title: `Frontend ${label} publicado`,
+        description: (data as any)?.frontend_url ?? undefined,
+      });
+    } catch (err: any) {
+      toast({ title: "Erro ao publicar frontend", description: err.message, variant: "destructive" });
+    }
+    await loadAmbientes(amb.cliente_id);
+    setPublishingFrontend(null);
   };
 
   const handleVerificarCamada3 = async (amb: Ambiente) => {
@@ -1055,19 +1102,41 @@ export default function ProjteConfigPage() {
                           </div>
                         </div>
 
-                        <div className="space-y-1 border-t pt-3">
-                          <Label className="text-xs">5. Frontend URL</Label>
+                        <div className="space-y-2 border-t pt-3">
+                          <Label className="text-xs">5. Publicar Frontend (Vercel)</Label>
+                          <div className="flex flex-wrap gap-2">
+                            <Button
+                              size="sm"
+                              variant={amb.vercel_project_id ? "outline" : "default"}
+                              className="gap-2"
+                              onClick={() => handlePublishFrontend(amb)}
+                              disabled={publishingFrontend === amb.id || !step3Ok}
+                              title={!step3Ok ? "Rode 'Criar Ambiente' primeiro" : undefined}
+                            >
+                              {publishingFrontend === amb.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Rocket className="h-4 w-4" />
+                              )}
+                              {publishingFrontend === amb.id
+                                ? "Publicando... (pode levar alguns minutos)"
+                                : amb.vercel_project_id
+                                  ? "Republicar Frontend"
+                                  : "Publicar Frontend"}
+                            </Button>
+                          </div>
                           <Input
                             className="h-8 text-xs font-mono"
                             value={amb.frontend_url || ""}
                             onChange={(e) => updateAmbienteLocal(amb.id, { frontend_url: e.target.value })}
                             onBlur={() => saveAmbiente(amb, { silent: true })}
-                            placeholder="https://app-do-cliente.vercel.app (preencha quando existir um frontend publicado)"
+                            placeholder="https://app-do-cliente.vercel.app (preenchido automaticamente após publicar)"
                           />
                           <p className="text-[10px] text-muted-foreground">
-                            Publicação hoje é manual (Vercel) — cole a URL aqui depois de publicar. Sem ela, as
-                            camadas 6 e 7 abaixo ficam bloqueadas (não há o que o Playwright abrir). Salva sozinho
-                            ao sair do campo.
+                            O botão cria (ou reaproveita) um projeto Vercel próprio deste ambiente, configura as env
+                            vars do Supabase e publica -- a URL acima é preenchida sozinha ao terminar. O campo
+                            continua editável pra ajustar manualmente se precisar. Sem uma URL preenchida, as
+                            camadas 6 e 7 abaixo ficam bloqueadas (não há o que o Playwright abrir).
                           </p>
                         </div>
 
