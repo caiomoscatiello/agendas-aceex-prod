@@ -301,6 +301,26 @@ Deno.serve(async (req) => {
       insert into public.user_roles (user_id, role)
       select '${consultorId}'::uuid, 'consultor'::app_role
       where not exists (select 1 from public.user_roles where user_id = '${consultorId}'::uuid);
+
+      -- Bug real encontrado em 2026-08-24: AG003/AG005/IN001/IN003 (todo
+      -- teste que depende de sync com Protheus) sempre falhavam por
+      -- nenhum log de sync "success" ser gerado -- protheus-agenda-sync
+      -- só envia de fato se existir uma linha ATIVA em
+      -- protheus_integracoes pro código 0003 (incluir) / 0004 (excluir),
+      -- e nenhum ambiente novo tinha isso (ver migration
+      -- 20260824210000_seed_missing_protheus_integracoes.sql -- essa
+      -- registra as 5 linhas no template com endpoint EM BRANCO, de
+      -- propósito, pra não vazar segredo entre ambientes). Aqui, só pra
+      -- rodar a suite de QA, ativamos 0003/0004 apontando pro
+      -- mock-protheus do PRÓPRIO projeto-alvo (nunca o do master) --
+      -- upsert por código, não depende de já existir a linha (funciona
+      -- mesmo se "Recriar Ambiente" ainda não rodou com a migration
+      -- seq=82 aplicada).
+      insert into public.protheus_integracoes (codigo, descricao, direcao, webhook_path, endpoint, ativo)
+      values
+        ('0003', 'Inclusão de Agenda', 'Envia', '', '${targetBaseUrl}/functions/v1/mock-protheus', true),
+        ('0004', 'Exclusão de Agenda', 'Envia', '', '${targetBaseUrl}/functions/v1/mock-protheus', true)
+      on conflict (codigo) do update set endpoint = excluded.endpoint, ativo = true;
     `;
     const fixtureResult = await runQuery(fixtureSql);
     if (!fixtureResult.ok) {
